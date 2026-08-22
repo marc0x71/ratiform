@@ -14,19 +14,20 @@ impl StatefulWidget for Form {
     type State = FormState;
 
     fn render(self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {
+        // Block::default().on_light_yellow().render(area, buf);
         let heights: Vec<_> = state.fields.iter().map(|f| f.options.height + 1).collect();
+        let (from_field, to_field) = scroll_offset(&heights, area.height, state.focus);
 
-        let constraints: Vec<_> = state
-            .fields
+        let constraints: Vec<_> = state.fields[from_field..=to_field]
             .iter()
             .map(|f| Constraint::Length(f.options.height + 1))
             .collect();
         let rows = Layout::vertical(constraints).split(area);
-        let (from_field, to_field) = scroll_offset(&heights, area.height, state.focus);
         let label_width = state.max_label_length() as u16 + 2;
         state.cursor_position = None;
 
-        for (idx, field) in state.fields.iter_mut().enumerate() {
+        for (idx, field) in state.fields[from_field..=to_field].iter_mut().enumerate() {
+            // for (idx, field) in state.fields.iter_mut().enumerate() {
             let [row, _] =
                 Layout::vertical([Constraint::Fill(1), Constraint::Length(1)]).areas(rows[idx]);
 
@@ -37,7 +38,9 @@ impl StatefulWidget for Form {
             let label = Span::raw(field.label());
             label.render(left, buf);
 
-            if let Some(position) = render_field(right, buf, field, state.focus == idx) {
+            if let Some(position) =
+                render_field(right, buf, field, state.focus == (idx + from_field))
+            {
                 state.cursor_position = Some(position);
             }
         }
@@ -57,64 +60,68 @@ fn scroll_offset(heights: &[u16], viewport_height: u16, focus: usize) -> (usize,
     }
     let (left, right) = weights.get(focus).unwrap();
 
+    let min = right.saturating_sub(viewport_height);
+
     let lowest = weights
         .iter()
-        .position(|e| e.1 > *left)
+        .position(|e| e.0 >= min)
         .unwrap_or(weights.len().saturating_sub(1));
 
-    let max = *left + viewport_height;
-    let heightest = weights
+    let max = weights[lowest].0 + viewport_height;
+    let heighest = weights
         .iter()
-        .position(|e| e.1 > max)
+        .skip(lowest)
+        .position(|e| e.1 >= max)
+        .map(|idx| idx + lowest)
         .unwrap_or(weights.len().saturating_sub(1));
 
-    (lowest, heightest)
+    (lowest, heighest)
 }
-
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
-    fn all_content_fits_shows_everything_regardless_of_focus() {
-        // totale = 9, viewport = 10: nessuno scroll necessario, qualunque sia il focus
-        let heights = [3, 3, 3];
-        assert_eq!(scroll_offset(&heights, 10, 0), (0, 2));
-        assert_eq!(scroll_offset(&heights, 10, 1), (0, 2));
-        assert_eq!(scroll_offset(&heights, 10, 2), (0, 2));
+    fn focus_that_already_fits_stays_at_zero() {
+        let heights = [2, 2, 6, 2];
+        assert_eq!(scroll_offset(&heights, 9, 0), (0, 2));
+        assert_eq!(scroll_offset(&heights, 9, 1), (0, 2));
     }
 
     #[test]
-    fn exact_fit_shows_everything() {
-        // totale == viewport esattamente: deve comunque scattare lo shortcut
-        let heights = [5, 5];
-        assert_eq!(scroll_offset(&heights, 10, 0), (0, 1));
+    fn minimal_scroll_reveals_focus_end_exactly() {
+        let heights = [2, 2, 6, 2];
+        assert_eq!(scroll_offset(&heights, 9, 2), (1, 3));
+    }
+
+    #[test]
+    fn minimal_scroll_can_partially_hide_a_preceding_field() {
+        let heights = [2, 2, 6, 2];
+        assert_eq!(scroll_offset(&heights, 9, 3), (2, 3));
+    }
+
+    #[test]
+    fn no_longer_anchors_when_focus_already_fits_from_zero() {
+        let heights = [5, 5, 3, 3, 3];
         assert_eq!(scroll_offset(&heights, 10, 1), (0, 1));
     }
 
     #[test]
-    fn empty_heights_returns_degenerate_range() {
-        // nessun campo: comportamento "di default" documentato, non necessariamente
-        // significativo a valle (il chiamante deve gestire heights.len() == 0 a parte)
-        let heights: [u16; 0] = [];
-        assert_eq!(scroll_offset(&heights, 10, 0), (0, 0));
-    }
-
-    #[test]
-    fn window_starts_exactly_at_focus_field() {
-        // field0:[0,5) field1:[5,15) field2:[15,20) <- focus
-        // il contenuto non entra tutto (25 > 10): la finestra parte
-        // esattamente dall'inizio del campo con focus, mai prima
+    fn minimal_scroll_can_leave_a_field_partially_visible_on_both_sides() {
         let heights = [5, 10, 5, 5];
         assert_eq!(scroll_offset(&heights, 10, 2), (2, 3));
     }
 
     #[test]
-    fn window_extends_forward_while_space_allows() {
-        // focus=1 (righe [5,10)); la finestra [5,15) copre anche field2 [10,13)
-        // per intero e field3 [13,16) solo parzialmente; field4 resta fuori
-        let heights = [5, 5, 3, 3, 3];
-        assert_eq!(scroll_offset(&heights, 10, 1), (1, 3));
+    fn boundary_field_with_zero_visible_rows_is_excluded() {
+        let heights = [5, 5, 5];
+        assert_eq!(scroll_offset(&heights, 10, 0), (0, 1));
+    }
+
+    #[test]
+    fn field_taller_than_viewport_still_anchors_at_its_start() {
+        let heights = [3, 3, 15];
+        assert_eq!(scroll_offset(&heights, 10, 2), (2, 2));
     }
 
     #[test]
@@ -124,40 +131,23 @@ mod tests {
     }
 
     #[test]
-    fn first_field_taller_than_viewport_is_shown_alone() {
-        let heights = [15, 3, 3];
-        assert_eq!(scroll_offset(&heights, 10, 0), (0, 0));
+    fn no_snap_needed_when_raw_offset_already_a_field_boundary() {
+        let heights = [2, 2, 6, 2];
+        let (lower, _) = scroll_offset(&heights, 9, 3);
     }
 
     #[test]
-    fn last_field_taller_than_viewport_is_shown_alone() {
-        let heights = [3, 3, 15];
-        assert_eq!(scroll_offset(&heights, 10, 2), (2, 2));
+    fn focus_already_visible_from_zero_no_snap_penalty() {
+        let heights = [2, 2, 6, 2];
+        assert_eq!(scroll_offset(&heights, 9, 0), (0, 2));
     }
 
     #[test]
-    fn highest_falls_back_to_last_field_when_window_extends_past_end() {
-        // focus sull'ultimo campo: max (left + viewport) supera il totale,
-        // nessun weights.1 lo supera -> scatta il fallback unwrap_or
-        let heights = [3, 3, 3, 3]; // totale 12, viewport 10
-        assert_eq!(scroll_offset(&heights, 10, 3), (3, 3));
-    }
-
-    #[test]
-    fn field_ending_exactly_at_viewport_boundary() {
-        // field0:[0,5) field1:[5,10) field2:[10,15)
-        // dopo field0+field1 la somma è ESATTAMENTE 10 (== viewport):
-        // field2 inizia proprio dove finisce la viewport, quindi a schermo
-        // non se ne vedrebbe nemmeno una riga. Con l'implementazione attuale
-        // viene comunque incluso nel range.
-        let heights = [5, 5, 5];
-        assert_eq!(scroll_offset(&heights, 10, 0), (0, 2));
-    }
-
-    #[test]
-    #[should_panic]
-    fn focus_out_of_bounds_panics() {
-        let heights = [3, 3];
-        scroll_offset(&heights, 1, 5); // total(6) > viewport(1): niente shortcut, focus fuori range
+    fn bottom_can_still_be_cut_in_half() {
+        let heights = [5, 10, 5, 5];
+        let (_, highest) = scroll_offset(&heights, 10, 2);
+        let heights2 = [3, 3, 3, 3];
+        let (_, highest2) = scroll_offset(&heights2, 8, 0);
+        assert_eq!(highest2, 2);
     }
 }
