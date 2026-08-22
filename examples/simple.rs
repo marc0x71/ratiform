@@ -14,7 +14,7 @@ fn main() -> std::io::Result<()> {
             .values(&["Italia", "Francia", "Germania"])
             .required()
             .checkbox("Accetto i termini")
-            .checked(true)
+            .checked(false)
             .optional()
             .build();
 
@@ -22,7 +22,6 @@ fn main() -> std::io::Result<()> {
             terminal.draw(|frame| {
                 frame.render_stateful_widget(Form::default(), frame.area(), &mut state);
                 if let Some(position) = state.cursor_position() {
-                    println!("{position:?}");
                     frame.set_cursor_position(position);
                 }
             })?;

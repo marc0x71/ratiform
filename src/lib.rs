@@ -1,5 +1,6 @@
 #![allow(unused)]
 pub mod builder;
+mod event;
 mod field;
 mod render;
 
@@ -13,6 +14,8 @@ use ratatui::{
     text::Span,
     widgets::{Block, Paragraph, StatefulWidget, Widget},
 };
+
+use crate::event::handle_input_field;
 
 #[derive(Default, Clone, Copy)]
 pub enum FormResult {
@@ -69,7 +72,13 @@ impl FormState {
             KeyCode::BackTab if !self.fields.is_empty() => {
                 self.focus = self.focus.wrapping_sub(1) % self.fields.len();
             }
-            _ => {}
+            _ => {
+                if !self.fields.is_empty()
+                    && let Some(field) = self.fields.get_mut(self.focus)
+                {
+                    handle_input_field(key_event.code, field);
+                }
+            }
         }
     }
 
