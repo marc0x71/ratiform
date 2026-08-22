@@ -30,5 +30,13 @@ pub fn handle_input_checkbox(key_code: KeyCode, check_box: &mut CheckBox) {
     }
 }
 pub fn handle_input_select(key_code: KeyCode, select: &mut Select) {
-    // TODO: da fare
+    match key_code {
+        KeyCode::Up => select.up(),
+        KeyCode::Down => select.down(),
+        KeyCode::Home => select.home(),
+        KeyCode::End => select.end(),
+        KeyCode::PageUp => select.page_up(),
+        KeyCode::PageDown => select.page_down(),
+        _ => {}
+    }
 }

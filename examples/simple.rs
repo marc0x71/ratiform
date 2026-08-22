@@ -1,4 +1,4 @@
-use ratatui::crossterm::event::{self, Event, KeyCode};
+use ratatui::crossterm::event::{self, Event};
 use ratiform::{Form, builder::FormBuilder};
 
 fn main() -> std::io::Result<()> {
@@ -11,7 +11,9 @@ fn main() -> std::io::Result<()> {
             .value("Rossi")
             .required()
             .select("Paese")
-            .values(&["Italia", "Francia", "Germania"])
+            .values_ref(&[("I", "Italia"), ("F", "Francia"), ("D", "Germania")])
+            .selected(1)
+            .height(5)
             .required()
             .checkbox("Accetto i termini")
             .checked(false)

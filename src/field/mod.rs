@@ -1,3 +1,5 @@
+use ratatui::widgets::ListState;
+
 pub enum Requirement {
     Required,
     Optional,
@@ -7,6 +9,7 @@ pub struct FieldOptions {
     pub(crate) required: Requirement,
     pub(crate) disabled: bool,
     pub(crate) readonly: bool,
+    pub(crate) height: u16,
 }
 impl Default for FieldOptions {
     fn default() -> Self {
@@ -14,6 +17,7 @@ impl Default for FieldOptions {
             required: Requirement::Required,
             disabled: false,
             readonly: false,
+            height: 1,
         }
     }
 }
@@ -50,7 +54,7 @@ impl FieldKind {
         match self {
             FieldKind::SingleLine(k) => k.value.clone(),
             FieldKind::CheckBox(k) => k.checked.to_string(),
-            FieldKind::Select(k) => k.values.first().map_or("".to_string(), |f| f.clone()),
+            FieldKind::Select(k) => k.values.first().map_or("".to_string(), |f| f.0.clone()),
         }
     }
 }
@@ -118,5 +122,32 @@ impl CheckBox {
 
 pub struct Select {
     pub(crate) label: String,
-    pub(crate) values: Vec<String>,
+    pub(crate) values: Vec<(String, String)>,
+    pub(crate) list_state: ListState,
+}
+
+impl Select {
+    pub(crate) fn up(&mut self) {
+        self.list_state.select_previous();
+    }
+
+    pub(crate) fn down(&mut self) {
+        self.list_state.select_next();
+    }
+
+    pub(crate) fn home(&mut self) {
+        self.list_state.select_first();
+    }
+
+    pub(crate) fn end(&mut self) {
+        self.list_state.select_last();
+    }
+
+    pub(crate) fn page_up(&mut self) {
+        self.list_state.scroll_up_by(8);
+    }
+
+    pub(crate) fn page_down(&mut self) {
+        self.list_state.scroll_down_by(8);
+    }
 }

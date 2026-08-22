@@ -1,3 +1,5 @@
+use ratatui::widgets::ListState;
+
 use crate::{
     FormState,
     field::{CheckBox, Field, FieldKind, FieldOptions, Requirement, Select, SingleLine},
@@ -37,6 +39,7 @@ impl FormBuilder {
             label: label.into(),
             values: Vec::new(),
             options: FieldOptions::default(),
+            selected: 0,
         }
     }
 
@@ -63,6 +66,10 @@ macro_rules! field_builder_common {
             }
             pub fn readonly(mut self) -> Self {
                 self.options.readonly = true;
+                self
+            }
+            pub fn height(mut self, height: u16) -> Self {
+                self.options.height = height;
                 self
             }
 
@@ -146,17 +153,37 @@ field_builder_common!(CheckboxBuilder);
 pub struct SelectBuilder {
     form: FormBuilder,
     label: String,
-    values: Vec<String>,
+    values: Vec<(String, String)>,
+    selected: usize,
     options: FieldOptions,
 }
 
 impl SelectBuilder {
-    pub fn values<T: AsRef<str>>(mut self, values: &[T]) -> Self {
-        let values = values
+    pub fn selected(mut self, selected: usize) -> Self {
+        self.selected = selected;
+        self
+    }
+
+    pub fn values_ref(mut self, input: &[(&str, &str)]) -> Self {
+        self.values = input
             .iter()
-            .map(|item| item.as_ref().to_string())
+            .map(|(k, v)| ((*k).into(), (*v).into()))
             .collect();
-        self.values = values;
+
+        self
+    }
+
+    pub fn values<I, K, V>(mut self, input: I) -> Self
+    where
+        I: IntoIterator<Item = (K, V)>,
+        K: Into<String>,
+        V: Into<String>,
+    {
+        self.values = input
+            .into_iter()
+            .map(|(k, v)| (k.into(), v.into()))
+            .collect();
+
         self
     }
 
@@ -165,6 +192,7 @@ impl SelectBuilder {
             kind: FieldKind::Select(Select {
                 label: self.label,
                 values: self.values,
+                list_state: ListState::default().with_selected(Some(self.selected)),
             }),
             options: self.options,
         });

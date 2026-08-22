@@ -1,9 +1,10 @@
 use ratatui::{
     buffer::Buffer,
     layout::Rect,
-    style::{Color, Style, Stylize},
+    prelude::{StatefulWidget, Widget},
+    style::{Color, Modifier, Style, Stylize},
     text::Span,
-    widgets::{Block, Paragraph, Widget},
+    widgets::{Block, List, Paragraph},
 };
 
 use crate::field::{CheckBox, Field, FieldKind, Select, SingleLine};
@@ -73,6 +74,20 @@ fn render_select(
     select: &mut Select,
     has_focus: bool,
 ) -> Option<(u16, u16)> {
-    // TODO: da fare
+    let items: Vec<_> = select.values.iter().map(|(k, v)| v.as_str()).collect();
+
+    let style = if has_focus {
+        Style::default().fg(Color::White)
+    } else {
+        Style::default().fg(Color::Gray)
+    };
+
+    let list = List::new(items)
+        .style(style)
+        .highlight_style(Modifier::REVERSED)
+        .highlight_symbol("> ");
+
+    StatefulWidget::render(list, area, buf, &mut select.list_state);
+
     None
 }
