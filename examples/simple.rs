@@ -1,4 +1,7 @@
-use ratatui::crossterm::event::{self, Event};
+use ratatui::{
+    crossterm::event::{self, Event},
+    layout::{Constraint, Layout},
+};
 use ratiform::{Form, builder::FormBuilder};
 
 fn main() -> std::io::Result<()> {
@@ -22,7 +25,9 @@ fn main() -> std::io::Result<()> {
 
         loop {
             terminal.draw(|frame| {
-                frame.render_stateful_widget(Form::default(), frame.area(), &mut state);
+                let [area, _] = Layout::vertical([Constraint::Length(6), Constraint::Fill(1)])
+                    .areas(frame.area());
+                frame.render_stateful_widget(Form::default(), area, &mut state);
                 if let Some(position) = state.cursor_position() {
                     frame.set_cursor_position(position);
                 }
