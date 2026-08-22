@@ -76,15 +76,15 @@ fn render_select(
 ) -> Option<(u16, u16)> {
     let items: Vec<_> = select.values.iter().map(|(k, v)| v.as_str()).collect();
 
-    let style = if has_focus {
-        Style::default().fg(Color::White)
-    } else {
-        Style::default().fg(Color::Gray)
-    };
+    let style = Style::default().fg(Color::Gray);
 
     let list = List::new(items)
         .style(style)
-        .highlight_style(Modifier::REVERSED)
+        .highlight_style(if has_focus {
+            Modifier::REVERSED
+        } else {
+            Modifier::ITALIC
+        })
         .highlight_symbol("> ");
 
     StatefulWidget::render(list, area, buf, &mut select.list_state);
