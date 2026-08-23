@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: ["**"]
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: 0
+  RUST_BACKTRACE: 1
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+
+    steps:
+      # ── 1. Checkout ──────────────────────────────────────────────────────────
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      # ── 2. Toolchain Rust ────────────────────────────────────────────────────
+      - name: Installa toolchain Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      # ── 3. Cache ─────────────────────────────────────────────────────────────
+      - name: Cache Cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          cache-on-failure: true
+
+      # ── 4. Formato ───────────────────────────────────────────────────────────
+      - name: Verifica formattazione (rustfmt)
+        run: cargo fmt --all -- --check
+
+      # ── 5. Lint ──────────────────────────────────────────────────────────────
+      - name: Lint (clippy)
+        run: cargo clippy --all-targets -- -D warnings
+
+      # ── 6. Test ──────────────────────────────────────────────────────────────
+      - name: Test
+        run: cargo test --workspace
