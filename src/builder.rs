@@ -22,7 +22,7 @@ impl<T> Default for FormBuilder<T> {
     }
 }
 
-impl<T> FormBuilder<T> {
+impl<T: PartialEq> FormBuilder<T> {
     pub fn new() -> Self {
         Self::default()
     }
@@ -67,7 +67,7 @@ impl<T> FormBuilder<T> {
 #[macro_export]
 macro_rules! field_builder_common {
     ($builder:ident<$generic:ident>) => {
-        impl<$generic> $builder<$generic> {
+        impl<$generic: PartialEq> $builder<$generic> {
             // FieldOptions
             pub fn required(mut self) -> Self {
                 self.options.required = $crate::field::Requirement::Required;

@@ -22,7 +22,7 @@ pub struct SingleLineBuilder<T> {
     pub(crate) options: FieldOptions,
 }
 
-impl<T> SingleLineBuilder<T> {
+impl<T: PartialEq> SingleLineBuilder<T> {
     pub fn value(mut self, value: impl Into<String>) -> Self {
         self.value = value.into();
         self
@@ -56,6 +56,10 @@ pub struct SingleLineStatus {
 impl SingleLineStatus {
     pub(crate) fn get(&self) -> String {
         self.value.clone()
+    }
+
+    pub(crate) fn set(&mut self, value: &str) {
+        self.value = value.to_string();
     }
 
     fn byte_position(&self, position: u16, default: usize) -> usize {

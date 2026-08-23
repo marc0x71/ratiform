@@ -12,7 +12,7 @@ use crate::{
     widget::{check_box::render_checkbox, select::render_select, single_line::render_singleline},
 };
 
-impl<T> StatefulWidget for Form<T> {
+impl<T: PartialEq> StatefulWidget for Form<T> {
     type State = FormState<T>;
 
     fn render(self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {

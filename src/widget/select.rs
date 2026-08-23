@@ -25,7 +25,7 @@ pub struct SelectBuilder<T> {
     pub(crate) options: FieldOptions,
 }
 
-impl<T> SelectBuilder<T> {
+impl<T: PartialEq> SelectBuilder<T> {
     pub fn selected(mut self, selected: usize) -> Self {
         self.selected = selected;
         self
@@ -84,6 +84,11 @@ impl SelectStatus {
             .selected()
             .and_then(|idx| self.values.get(idx).map(|(k, _)| k.clone()))
             .unwrap_or_default()
+    }
+
+    pub(crate) fn set(&mut self, value: &str) {
+        let index = self.values.iter().position(|(k, _)| k == value);
+        self.list_state.select(index);
     }
 
     fn up(&mut self) {

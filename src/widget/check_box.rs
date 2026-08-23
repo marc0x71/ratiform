@@ -23,7 +23,7 @@ pub struct CheckboxBuilder<T> {
     pub(crate) options: FieldOptions,
 }
 
-impl<T> CheckboxBuilder<T> {
+impl<T: PartialEq> CheckboxBuilder<T> {
     pub fn checked(mut self, checked: bool) -> Self {
         self.checked = checked;
         self
@@ -57,6 +57,10 @@ impl CheckBoxStatus {
     }
     fn toggle(&mut self) {
         self.checked = !self.checked
+    }
+
+    pub(crate) fn set(&mut self, value: &str) {
+        self.checked = value.parse().unwrap_or_default();
     }
 }
 

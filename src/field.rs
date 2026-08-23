@@ -42,9 +42,15 @@ impl<T> Field<T> {
     pub fn label(&self) -> &str {
         self.kind.label()
     }
+
     pub fn get(&self) -> String {
         self.kind.get()
     }
+
+    pub(crate) fn set(&mut self, value: &str) {
+        self.kind.set(value);
+    }
+
     pub(crate) fn validate(&mut self) {
         self.error = if matches!(self.options.required, Requirement::Required)
             && self.kind.get().is_empty()
@@ -60,6 +66,7 @@ impl<T> Field<T> {
             self.error = Some(error);
         }
     }
+
     pub(crate) fn has_error(&self) -> bool {
         self.error.is_some()
     }
@@ -84,6 +91,13 @@ impl FieldKind {
             FieldKind::SingleLine(k) => k.get(),
             FieldKind::CheckBox(k) => k.get(),
             FieldKind::Select(k) => k.get(),
+        }
+    }
+    pub fn set(&mut self, value: &str) {
+        match self {
+            FieldKind::SingleLine(k) => k.set(value),
+            FieldKind::CheckBox(k) => k.set(value),
+            FieldKind::Select(k) => k.set(value),
         }
     }
 }

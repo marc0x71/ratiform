@@ -34,7 +34,7 @@ pub struct FormState<T> {
     result: FormResult,
 }
 
-impl<T> FormState<T> {
+impl<T: PartialEq> FormState<T> {
     pub(crate) fn new(fields: Vec<Field<T>>) -> Self {
         Self {
             fields,
@@ -98,6 +98,16 @@ impl<T> FormState<T> {
             let value = f.get();
             (f.id, value)
         })
+    }
+
+    pub fn value(&self, id: &T) -> Option<String> {
+        self.fields.iter().find(|&f| f.id == *id).map(|f| f.get())
+    }
+
+    pub fn set_value(&mut self, id: &T, value: &str) {
+        if let Some(f) = self.fields.iter_mut().find(|f| f.id == *id) {
+            f.set(value);
+        }
     }
 }
 
