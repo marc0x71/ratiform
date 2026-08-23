@@ -1,4 +1,5 @@
 # ratiform
+[![CI](https://github.com/marc0x71/ratiform/actions/workflows/ci.yml/badge.svg)](https://github.com/marc0x71/ratiform/actions/workflows/ci.yml)
 
 A simple form component for [Ratatui](https://github.com/ratatui/ratatui).
 
