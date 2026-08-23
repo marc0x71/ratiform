@@ -49,6 +49,7 @@ impl<T> Field<T> {
 
     pub(crate) fn set(&mut self, value: &str) {
         self.kind.set(value);
+        self.validate();
     }
 
     pub(crate) fn validate(&mut self) {
