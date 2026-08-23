@@ -101,7 +101,20 @@ impl<T> FormState<T> {
     }
 }
 
-#[derive(Default)]
 pub struct Form<T> {
     _phantom: PhantomData<T>,
+}
+
+impl<T> Form<T> {
+    pub fn new() -> Self {
+        Self {
+            _phantom: PhantomData,
+        }
+    }
+}
+
+impl<T> Default for Form<T> {
+    fn default() -> Self {
+        Self::new()
+    }
 }
