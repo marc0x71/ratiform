@@ -36,6 +36,7 @@ impl SingleLineBuilder {
                 position,
             }),
             options: self.options,
+            error: None,
         });
 
         self.form
@@ -51,6 +52,10 @@ pub struct SingleLineStatus {
 }
 
 impl SingleLineStatus {
+    pub(crate) fn get(&self) -> String {
+        self.value.clone()
+    }
+
     fn byte_position(&self, position: u16, default: usize) -> usize {
         self.value
             .char_indices()

@@ -1,3 +1,5 @@
+use std::clone;
+
 use ratatui::{
     buffer::Buffer,
     crossterm::event::KeyCode,
@@ -59,6 +61,7 @@ impl SelectBuilder {
                 list_state: ListState::default().with_selected(Some(self.selected)),
             }),
             options: self.options,
+            error: None,
         });
 
         self.form
@@ -74,6 +77,13 @@ pub struct SelectStatus {
 }
 
 impl SelectStatus {
+    pub(crate) fn get(&self) -> String {
+        self.list_state
+            .selected()
+            .and_then(|idx| self.values.get(idx).map(|(k, _)| k.clone()))
+            .unwrap_or_default()
+    }
+
     fn up(&mut self) {
         self.list_state.select_previous();
     }

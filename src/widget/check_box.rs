@@ -35,6 +35,7 @@ impl CheckboxBuilder {
                 checked: self.checked,
             }),
             options: self.options,
+            error: None,
         });
 
         self.form
@@ -49,6 +50,9 @@ pub struct CheckBoxStatus {
 }
 
 impl CheckBoxStatus {
+    pub(crate) fn get(&self) -> String {
+        self.checked.to_string()
+    }
     fn toggle(&mut self) {
         self.checked = !self.checked
     }

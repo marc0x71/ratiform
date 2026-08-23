@@ -65,7 +65,7 @@ impl FormState {
             return;
         }
         match key_event.code {
-            KeyCode::Enter => self.result = FormResult::Submitted,
+            KeyCode::Enter if !self.has_errors() => self.result = FormResult::Submitted,
             KeyCode::Esc => self.result = FormResult::Cancelled,
             KeyCode::Tab if !self.fields.is_empty() => {
                 self.focus = self.focus.wrapping_add(1) % self.fields.len();
@@ -85,6 +85,10 @@ impl FormState {
 
     pub fn result(&self) -> FormResult {
         self.result
+    }
+
+    fn has_errors(&self) -> bool {
+        self.fields.iter().any(|f| f.has_error())
     }
 }
 

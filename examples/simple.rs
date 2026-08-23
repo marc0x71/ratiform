@@ -9,6 +9,11 @@ fn main() -> std::io::Result<()> {
         let mut state = FormBuilder::new()
             .single_line("Nome")
             .value("Mario")
+            .validator(Box::new(|v| {
+                (v.len() > 2)
+                    .then_some(())
+                    .ok_or_else(|| "Il nome deve avere una lunghezza maggiore di 2".to_owned())
+            }))
             .required()
             .single_line("Cognome")
             .value("Rossi")

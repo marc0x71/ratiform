@@ -4,6 +4,8 @@ use crate::widget::{
     check_box::CheckBoxStatus, select::SelectStatus, single_line::SingleLineStatus,
 };
 
+pub type Validator = Box<dyn Fn(&str) -> Result<(), String>>;
+
 pub enum Requirement {
     Required,
     Optional,
@@ -14,7 +16,9 @@ pub struct FieldOptions {
     pub(crate) disabled: bool,
     pub(crate) readonly: bool,
     pub(crate) height: u16,
+    pub(crate) validator: Option<Validator>,
 }
+
 impl Default for FieldOptions {
     fn default() -> Self {
         Self {
@@ -22,6 +26,7 @@ impl Default for FieldOptions {
             disabled: false,
             readonly: false,
             height: 1,
+            validator: None,
         }
     }
 }
@@ -29,14 +34,33 @@ impl Default for FieldOptions {
 pub struct Field {
     pub(crate) kind: FieldKind,
     pub(crate) options: FieldOptions,
+    pub(crate) error: Option<String>,
 }
 
 impl Field {
     pub fn label(&self) -> &str {
         self.kind.label()
     }
-    pub fn value(&self) -> String {
-        self.kind.value()
+    pub fn get(&self) -> String {
+        self.kind.get()
+    }
+    pub(crate) fn validate(&mut self) {
+        self.error = if matches!(self.options.required, Requirement::Required)
+            && self.kind.get().is_empty()
+        {
+            Some("<*>".to_owned())
+        } else {
+            None
+        };
+        let value = self.kind.get();
+        if let Some(function) = self.options.validator.as_ref()
+            && let Err(error) = function(&value)
+        {
+            self.error = Some(error);
+        }
+    }
+    pub(crate) fn has_error(&self) -> bool {
+        self.error.is_some()
     }
 }
 
@@ -54,11 +78,11 @@ impl FieldKind {
             FieldKind::Select(k) => k.label.as_str(),
         }
     }
-    pub fn value(&self) -> String {
+    pub fn get(&self) -> String {
         match self {
-            FieldKind::SingleLine(k) => k.value.clone(),
-            FieldKind::CheckBox(k) => k.checked.to_string(),
-            FieldKind::Select(k) => k.values.first().map_or("".to_string(), |f| f.0.clone()),
+            FieldKind::SingleLine(k) => k.get(),
+            FieldKind::CheckBox(k) => k.get(),
+            FieldKind::Select(k) => k.get(),
         }
     }
 }

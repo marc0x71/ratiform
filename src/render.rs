@@ -1,6 +1,6 @@
 use ratatui::{
     buffer::Buffer,
-    layout::{Constraint, Layout, Rect},
+    layout::{Constraint, HorizontalAlignment, Layout, Rect},
     style::Stylize,
     text::Span,
     widgets::{Block, Paragraph, StatefulWidget, Widget},
@@ -30,7 +30,7 @@ impl StatefulWidget for Form {
 
         for (idx, field) in state.fields[from_field..=to_field].iter_mut().enumerate() {
             // for (idx, field) in state.fields.iter_mut().enumerate() {
-            let [row, _] =
+            let [row, error] =
                 Layout::vertical([Constraint::Fill(1), Constraint::Length(1)]).areas(rows[idx]);
 
             let [left, right] =
@@ -44,6 +44,13 @@ impl StatefulWidget for Form {
                 render_field(right, buf, field, state.focus == (idx + from_field))
             {
                 state.cursor_position = Some(position);
+            }
+
+            if let Some(message) = field.error.as_ref() {
+                let error_message = Paragraph::new(message.as_str())
+                    .red()
+                    .alignment(HorizontalAlignment::Right);
+                error_message.render(error, buf);
             }
         }
     }
