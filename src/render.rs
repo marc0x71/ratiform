@@ -1,7 +1,7 @@
 use ratatui::{
     buffer::Buffer,
     layout::{Constraint, HorizontalAlignment, Layout, Rect},
-    style::Stylize,
+    style::{Modifier, Stylize},
     text::Span,
     widgets::{Block, Paragraph, StatefulWidget, Widget},
 };
@@ -37,7 +37,13 @@ impl StatefulWidget for Form {
                 Layout::horizontal([Constraint::Length(label_width), Constraint::Fill(1)])
                     .areas(row);
 
-            let label = Span::raw(field.label());
+            let modifier = if field.options.disabled {
+                Modifier::CROSSED_OUT
+            } else {
+                Modifier::default()
+            };
+
+            let label = Span::raw(field.label()).add_modifier(modifier);
             label.render(left, buf);
 
             if let Some(position) =
@@ -64,10 +70,14 @@ pub fn render_field(
 ) -> Option<(u16, u16)> {
     match field.kind {
         FieldKind::SingleLine(ref mut single_line) => {
-            render_singleline(area, buf, single_line, has_focus)
+            render_singleline(area, buf, single_line, has_focus, field.options.disabled)
         }
-        FieldKind::CheckBox(ref mut checkbox) => render_checkbox(area, buf, checkbox, has_focus),
-        FieldKind::Select(ref mut select) => render_select(area, buf, select, has_focus),
+        FieldKind::CheckBox(ref mut checkbox) => {
+            render_checkbox(area, buf, checkbox, has_focus, field.options.disabled)
+        }
+        FieldKind::Select(ref mut select) => {
+            render_select(area, buf, select, has_focus, field.options.disabled)
+        }
     }
 }
 

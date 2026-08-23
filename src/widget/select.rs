@@ -4,7 +4,7 @@ use ratatui::{
     buffer::Buffer,
     crossterm::event::KeyCode,
     layout::Rect,
-    style::{Color, Modifier, Style},
+    style::{Color, Modifier, Style, Stylize},
     widgets::{List, ListState, StatefulWidget},
 };
 
@@ -128,7 +128,14 @@ pub(crate) fn render_select(
     buf: &mut Buffer,
     select: &mut SelectStatus,
     has_focus: bool,
+    disabled: bool,
 ) -> Option<(u16, u16)> {
+    let modifier = if disabled {
+        Modifier::CROSSED_OUT
+    } else {
+        Modifier::default()
+    };
+
     let items: Vec<_> = select.values.iter().map(|(k, v)| v.as_str()).collect();
 
     let style = Style::default().fg(Color::Gray);
@@ -140,7 +147,8 @@ pub(crate) fn render_select(
         } else {
             Modifier::ITALIC
         })
-        .highlight_symbol("> ");
+        .highlight_symbol("> ")
+        .add_modifier(modifier);
 
     StatefulWidget::render(list, area, buf, &mut select.list_state);
 

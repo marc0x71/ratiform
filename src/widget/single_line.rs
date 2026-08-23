@@ -2,7 +2,7 @@ use ratatui::{
     buffer::Buffer,
     crossterm::event::KeyCode,
     layout::Rect,
-    style::{Color, Style},
+    style::{Color, Modifier, Style, Stylize},
     widgets::{Block, Paragraph, Widget},
 };
 
@@ -119,14 +119,22 @@ pub(crate) fn render_singleline(
     buf: &mut Buffer,
     singleline: &mut SingleLineStatus,
     has_focus: bool,
+    disabled: bool,
 ) -> Option<(u16, u16)> {
+    let modifier = if disabled {
+        Modifier::CROSSED_OUT
+    } else {
+        Modifier::default()
+    };
     let style = if has_focus {
         Style::default().fg(Color::Black).bg(Color::Gray)
     } else {
         Style::default().fg(Color::Gray)
     };
 
-    let value = Paragraph::new(singleline.value.as_str()).block(Block::default().style(style));
+    let value = Paragraph::new(singleline.value.as_str())
+        .block(Block::default().style(style))
+        .add_modifier(modifier);
 
     value.render(area, buf);
 

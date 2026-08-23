@@ -2,7 +2,7 @@ use ratatui::{
     buffer::Buffer,
     crossterm::event::KeyCode,
     layout::Rect,
-    style::{Color, Style},
+    style::{Color, Modifier, Style, Stylize},
     text::Span,
     widgets::Widget,
 };
@@ -71,8 +71,15 @@ pub(crate) fn render_checkbox(
     buf: &mut Buffer,
     checkbox: &mut CheckBoxStatus,
     has_focus: bool,
+    disabled: bool,
 ) -> Option<(u16, u16)> {
     let flag = if checkbox.checked { "[✓]" } else { "[ ]" };
+
+    let modifier = if disabled {
+        Modifier::CROSSED_OUT
+    } else {
+        Modifier::default()
+    };
 
     let style = if has_focus {
         Style::default().fg(Color::White)
@@ -80,7 +87,7 @@ pub(crate) fn render_checkbox(
         Style::default().fg(Color::Gray)
     };
 
-    let value = Span::raw(flag).style(style);
+    let value = Span::raw(flag).style(style).add_modifier(modifier);
 
     value.render(area, buf);
 
