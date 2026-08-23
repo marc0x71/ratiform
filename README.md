@@ -1,7 +1,9 @@
- # ratiform
+# ratiform
 [![CI](https://github.com/marc0x71/ratiform/actions/workflows/ci.yml/badge.svg)](https://github.com/marc0x71/ratiform/actions/workflows/ci.yml)
 
-A simple form component for [Ratatui](https://github.com/ratatui/ratatui).
+A small, composable, stateful form widget for [Ratatui](https://github.com/ratatui/ratatui).
+
+Build forms with a typed field identity, keep the state in your application, and render them like any other Ratatui widget.
 
 > **⚠️ Work in progress**
 >
@@ -10,6 +12,29 @@ A simple form component for [Ratatui](https://github.com/ratatui/ratatui).
 `ratiform` provides a small, builder-based form component for [Ratatui](https://github.com/ratatui/ratatui), with keyboard navigation and a few basic input widgets.
 
 The project is dual-licensed under the **MIT License** and the **Apache License 2.0** (see [License](#license) below).
+
+## Design
+
+```
+             ratiform
+                │
+      ┌─────────┼─────────┐
+      │         │         │
+   Builder    State     Widget
+      │         │         │
+      └─────────┼─────────┘
+                │
+          your application
+```
+
+* The form doesn't own your application.
+* The form doesn't own your data.
+* The form doesn't decide what your UI looks like.
+* The form handles input, focus, validation and rendering.
+
+`FormBuilder` produces a `FormState<T>`, which your application owns for as long as the form is active — there is no hidden global state, no callback registry, nothing running in the background. `Form<T>` is a stateless `StatefulWidget`: you render it against that state exactly like you would any other Ratatui widget, in whichever `Rect`, frame, and event loop your application already has.
+
+The `T` here is the type of your field identifiers — see [Field identifiers](#field-identifiers) below, which is where most of what makes `ratiform` different from other form widgets actually lives.
 
 ## Installation
 
@@ -97,11 +122,27 @@ Forms are created using a builder API. Fields can be chained together and config
 * `height()`
 * `validator(...)`
 
-For example:
+### Field identifiers
+
+Every field is created together with an **identifier**, which is the first argument passed to `single_line()`, `checkbox()` and `select()`. `FormBuilder`, `FormState` and `Form` are all generic over the type of this identifier — it doesn't have to be a string or an integer, it can be your own `enum`:
+
+```rust
+#[derive(Debug, Hash, Eq, PartialEq)]
+enum FormField {
+    Nome,
+    Cognome,
+    Nazione,
+    Termini,
+}
+```
+
+This is what lets you match each submitted value back to the field that produced it (see [Retrieving the submitted values](#retrieving-the-submitted-values)) without relying on string keys: no risk of a typo in a field name going unnoticed until runtime, and the compiler will tell you if a `match` on the collected values forgets a variant. The examples in this README use a plain `enum` for this reason, even though any type works equally well — an integer, a `&'static str`, or anything else that fits your application.
+
+With `FormField` in scope, a complete form looks like this:
 
 ```rust
 let mut state = FormBuilder::new()
-    .single_line(1, "Nome")
+    .single_line(FormField::Nome, "Nome")
     .value("Mario")
     .validator(Box::new(|value: &str| {
         (value.len() > 2)
@@ -109,10 +150,10 @@ let mut state = FormBuilder::new()
             .ok_or_else(|| "Il nome deve avere una lunghezza maggiore di 2".to_owned())
     }))
     .required()
-    .single_line(2, "Cognome")
+    .single_line(FormField::Cognome, "Cognome")
     .value("Rossi")
     .required()
-    .select(3, "Paese")
+    .select(FormField::Nazione, "Paese")
     .values_ref(&[
         ("I", "Italia"),
         ("F", "Francia"),
@@ -121,17 +162,11 @@ let mut state = FormBuilder::new()
     .selected(1)
     .height(5)
     .required()
-    .checkbox(4, "Accetto i termini")
+    .checkbox(FormField::Termini, "Accetto i termini")
     .checked(false)
     .optional()
     .build();
 ```
-
-### Field identifiers
-
-Every field is created together with an **identifier** (`1`, `2`, `3`, `4` in the example above), which is the first argument passed to `single_line()`, `checkbox()` and `select()`. `FormBuilder`, `FormState` and `Form` are all generic over the type of this identifier, so it can be anything: an integer, a `&'static str`, a custom `enum`, ...
-
-The identifier is what lets you match each submitted value back to the field that produced it — see [Retrieving the submitted values](#retrieving-the-submitted-values).
 
 ### Validation
 
@@ -159,10 +194,18 @@ use ratatui::{
 };
 use ratiform::{Form, builder::FormBuilder};
 
+#[derive(Debug, Hash, Eq, PartialEq)]
+enum FormField {
+    Nome,
+    Cognome,
+    Nazione,
+    Termini,
+}
+
 fn main() -> std::io::Result<()> {
     let result = ratatui::run(|terminal| -> std::io::Result<_> {
         let mut state = FormBuilder::new()
-            .single_line(1, "Nome")
+            .single_line(FormField::Nome, "Nome")
             .value("Mario")
             .validator(Box::new(|value: &str| {
                 (value.len() > 2)
@@ -170,10 +213,10 @@ fn main() -> std::io::Result<()> {
                     .ok_or_else(|| "Il nome deve avere una lunghezza maggiore di 2".to_owned())
             }))
             .required()
-            .single_line(2, "Cognome")
+            .single_line(FormField::Cognome, "Cognome")
             .value("Rossi")
             .required()
-            .select(3, "Paese")
+            .select(FormField::Nazione, "Paese")
             .values_ref(&[
                 ("I", "Italia"),
                 ("F", "Francia"),
@@ -182,7 +225,7 @@ fn main() -> std::io::Result<()> {
             .selected(1)
             .height(5)
             .required()
-            .checkbox(4, "Accetto i termini")
+            .checkbox(FormField::Termini, "Accetto i termini")
             .checked(false)
             .optional()
             .build();
@@ -197,7 +240,7 @@ fn main() -> std::io::Result<()> {
                     .areas(frame.area());
 
                 frame.render_stateful_widget(
-                    Form::default(),
+                    Form::new(),
                     area,
                     &mut state,
                 );
@@ -215,7 +258,7 @@ fn main() -> std::io::Result<()> {
                 match state.result() {
                     ratiform::FormResult::Submitted
                     | ratiform::FormResult::Cancelled => {
-                        let values: HashMap<i32, String> = state.values().collect();
+                        let values: HashMap<FormField, String> = state.values().collect();
                         break Ok(values);
                     }
                     ratiform::FormResult::Working => {}
@@ -275,7 +318,7 @@ which can be passed to Ratatui's `set_cursor_position()` when rendering a focuse
 Once the form has reached `FormResult::Submitted` (or `FormResult::Cancelled`), the values entered by the user can be collected through `FormState::values()`, which returns an iterator of `(id, String)` pairs — one per field, paired with the identifier it was created with (see [Field identifiers](#field-identifiers)):
 
 ```rust
-let values: HashMap<i32, String> = state.values().collect();
+let values: HashMap<FormField, String> = state.values().collect();
 ```
 
 Note that `values()` consumes the `FormState`, so it's meant to be called once, after you're done using the form.
@@ -304,4 +347,3 @@ You may choose to use `ratiform` under the terms of either license.
 I used AI to help me write some of the tests and documentation for this project. Writing tests can be a bit tedious, and English isn't my native language, so AI has been a useful tool to speed things up and improve the documentation.
 
 I still review, adapt, and run the generated tests, but I prefer to be transparent about how AI was used in this project.
-
