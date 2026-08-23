@@ -90,7 +90,7 @@ impl SingleLineStatus {
         self.position = 0
     }
     fn end(&mut self) {
-        self.position = self.value.len() as u16
+        self.position = self.value.chars().count() as u16
     }
     fn insert(&mut self, c: char) {
         let byte_idx = self.byte_position(self.position, self.value.len());
