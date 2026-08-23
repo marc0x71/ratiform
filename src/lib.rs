@@ -92,6 +92,13 @@ impl<T> FormState<T> {
     fn has_errors(&self) -> bool {
         self.fields.iter().any(|f| f.has_error())
     }
+
+    pub fn values(self) -> impl Iterator<Item = (T, String)> {
+        self.fields.into_iter().map(|f| {
+            let value = f.get();
+            (f.id, value)
+        })
+    }
 }
 
 #[derive(Default)]

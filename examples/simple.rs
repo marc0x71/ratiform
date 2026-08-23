@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use ratatui::{
     crossterm::event::{self, Event},
     layout::{Constraint, Layout},
@@ -5,7 +7,7 @@ use ratatui::{
 use ratiform::{Form, builder::FormBuilder};
 
 fn main() -> std::io::Result<()> {
-    ratatui::run(|terminal| {
+    let result = ratatui::run(|terminal| -> std::io::Result<_> {
         let mut state = FormBuilder::new()
             .single_line(1, "Nome")
             .value("Mario")
@@ -44,11 +46,14 @@ fn main() -> std::io::Result<()> {
                 state.handle_input(key);
                 match state.result() {
                     ratiform::FormResult::Submitted | ratiform::FormResult::Cancelled => {
-                        break Ok(());
+                        let values: HashMap<i32, String> = state.values().collect();
+                        break Ok(values);
                     }
                     ratiform::FormResult::Working => {}
                 }
             }
         }
-    })
+    })?;
+    println!("got = {result:?}");
+    Ok(())
 }
