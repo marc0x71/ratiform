@@ -138,6 +138,8 @@ enum FormField {
 
 This is what lets you match each submitted value back to the field that produced it (see [Retrieving the submitted values](#retrieving-the-submitted-values)) without relying on string keys: no risk of a typo in a field name going unnoticed until runtime, and the compiler will tell you if a `match` on the collected values forgets a variant. The examples in this README use a plain `enum` for this reason, even though any type works equally well — an integer, a `&'static str`, or anything else that fits your application.
 
+Since fields are looked up by id (see [Reading and writing a single field](#reading-and-writing-a-single-field) below), `T` must implement `PartialEq`. `#[derive(PartialEq)]` — or `Hash, Eq, PartialEq` together, as in the `FormField` example above, needed if you also want to `collect()` into a `HashMap` — is enough for any plain enum or newtype.
+
 With `FormField` in scope, a complete form looks like this:
 
 ```rust
@@ -312,6 +314,27 @@ state.cursor_position()
 ```
 
 which can be passed to Ratatui's `set_cursor_position()` when rendering a focused text field.
+
+### Reading and writing a single field
+
+You don't have to wait for the form to be submitted to read or change a field's value — `FormState::value(&self, id: &T) -> Option<String>` returns the current value of the field with that id (`None` if no field has it), and `FormState::set_value(&mut self, id: &T, value: &str)` overwrites it:
+
+```rust
+if let Some(nome) = state.value(&FormField::Nome) {
+    // ...
+}
+
+state.set_value(&FormField::Termini, "true");
+```
+
+A couple of details worth knowing before you reach for this:
+
+* For a `Select` field, `set_value` matches against the **value** side of the pairs passed to `values_ref` (the first element, e.g. `"I"`, `"F"`, `"D"`), not the displayed label — the same convention `values_ref` itself already uses.
+* For a `Checkbox` field, the string is parsed as a `bool` (`"true"` / `"false"`); anything else is treated as `false`.
+
+### Focused field
+
+`FormState::focus_field(&self) -> Option<&T>` returns the id of the field that currently has focus (`None` only if the form has no fields at all). It's handy for anything that needs to react to "which field is the user on right now" — for instance, showing contextual help for the focused field elsewhere on screen.
 
 ### Retrieving the submitted values
 
