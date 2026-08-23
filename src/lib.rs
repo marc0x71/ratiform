@@ -3,6 +3,7 @@ pub mod builder;
 mod event;
 mod field;
 mod render;
+mod widget;
 
 use std::hash::Hash;
 

@@ -1,5 +1,3 @@
-mod widget;
-
 use ratatui::{
     buffer::Buffer,
     layout::{Constraint, Layout, Rect},
@@ -8,7 +6,11 @@ use ratatui::{
     widgets::{Block, Paragraph, StatefulWidget, Widget},
 };
 
-use crate::{Form, FormState, render::widget::render_field};
+use crate::{
+    Form, FormState,
+    field::{Field, FieldKind},
+    widget::{check_box::render_checkbox, select::render_select, single_line::render_singleline},
+};
 
 impl StatefulWidget for Form {
     type State = FormState;
@@ -47,6 +49,21 @@ impl StatefulWidget for Form {
     }
 }
 
+pub fn render_field(
+    area: Rect,
+    buf: &mut Buffer,
+    field: &mut Field,
+    has_focus: bool,
+) -> Option<(u16, u16)> {
+    match field.kind {
+        FieldKind::SingleLine(ref mut single_line) => {
+            render_singleline(area, buf, single_line, has_focus)
+        }
+        FieldKind::CheckBox(ref mut checkbox) => render_checkbox(area, buf, checkbox, has_focus),
+        FieldKind::Select(ref mut select) => render_select(area, buf, select, has_focus),
+    }
+}
+
 fn scroll_offset(heights: &[u16], viewport_height: u16, focus: usize) -> (usize, usize) {
     let total = heights.iter().sum();
     if viewport_height >= total {
@@ -77,6 +94,7 @@ fn scroll_offset(heights: &[u16], viewport_height: u16, focus: usize) -> (usize,
 
     (lowest, heighest)
 }
+
 #[cfg(test)]
 mod tests {
     use super::*;

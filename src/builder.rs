@@ -2,7 +2,8 @@ use ratatui::widgets::ListState;
 
 use crate::{
     FormState,
-    field::{CheckBox, Field, FieldKind, FieldOptions, Requirement, Select, SingleLine},
+    field::{Field, FieldKind, FieldOptions, Requirement},
+    widget::{check_box::CheckBoxStatus, select::SelectStatus, single_line::SingleLineStatus},
 };
 
 #[derive(Default)]
@@ -109,7 +110,7 @@ impl SingleLineBuilder {
     fn finish(mut self) -> FormBuilder {
         let position = self.value.len() as u16;
         self.form.fields.push(Field {
-            kind: FieldKind::SingleLine(SingleLine {
+            kind: FieldKind::SingleLine(SingleLineStatus {
                 label: self.label,
                 value: self.value,
                 position,
@@ -138,7 +139,7 @@ impl CheckboxBuilder {
 
     fn finish(mut self) -> FormBuilder {
         self.form.fields.push(Field {
-            kind: FieldKind::CheckBox(CheckBox {
+            kind: FieldKind::CheckBox(CheckBoxStatus {
                 label: self.label,
                 checked: self.checked,
             }),
@@ -189,7 +190,7 @@ impl SelectBuilder {
 
     fn finish(mut self) -> FormBuilder {
         self.form.fields.push(Field {
-            kind: FieldKind::Select(Select {
+            kind: FieldKind::Select(SelectStatus {
                 label: self.label,
                 values: self.values,
                 list_state: ListState::default().with_selected(Some(self.selected)),
