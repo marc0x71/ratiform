@@ -4,7 +4,7 @@ use crate::widget::{
     check_box::CheckBoxStatus, select::SelectStatus, single_line::SingleLineStatus,
 };
 
-pub type Validator = Box<dyn Fn(&str) -> Result<(), String>>;
+pub type Validator = Box<dyn Fn(&str) -> Result<(), String> + 'static>;
 
 pub enum Requirement {
     Required,
@@ -16,7 +16,7 @@ pub struct FieldOptions {
     pub(crate) disabled: bool,
     pub(crate) readonly: bool,
     pub(crate) height: u16,
-    pub(crate) validator: Option<Validator>,
+    pub(crate) validator: Vec<Validator>,
 }
 
 impl Default for FieldOptions {
@@ -26,7 +26,7 @@ impl Default for FieldOptions {
             disabled: false,
             readonly: false,
             height: 1,
-            validator: None,
+            validator: Vec::new(),
         }
     }
 }
@@ -58,13 +58,12 @@ impl<T> Field<T> {
         {
             Some("<*>".to_owned())
         } else {
-            None
-        };
-        let value = self.kind.get();
-        if let Some(function) = self.options.validator.as_ref()
-            && let Err(error) = function(&value)
-        {
-            self.error = Some(error);
+            let value = self.kind.get();
+            if !value.is_empty() {
+                self.options.validator.iter().find_map(|f| f(&value).err())
+            } else {
+                None
+            }
         }
     }
 

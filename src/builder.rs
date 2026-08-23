@@ -89,8 +89,12 @@ macro_rules! field_builder_common {
                 self.options.height = height;
                 self
             }
-            pub fn validator(mut self, function: $crate::field::Validator) -> Self {
-                self.options.validator = Some(function);
+
+            pub fn validator<F>(mut self, function: F) -> Self
+            where
+                F: Fn(&str) -> Result<(), String> + 'static,
+            {
+                self.options.validator.push(Box::new(function));
                 self
             }
 

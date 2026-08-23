@@ -11,14 +11,24 @@ fn main() -> std::io::Result<()> {
         let mut state = FormBuilder::new()
             .single_line(1, "Nome")
             .value("Mario")
-            .validator(Box::new(|v| {
-                (v.len() > 2)
+            .validator(Box::new(|value: &str| {
+                (value.len() > 2)
                     .then_some(())
                     .ok_or_else(|| "Il nome deve avere una lunghezza maggiore di 2".to_owned())
             }))
             .required()
             .single_line(2, "Cognome")
             .value("Rossi")
+            .validator(|value: &str| {
+                (value.len() > 2)
+                    .then_some(())
+                    .ok_or_else(|| "Il nome deve avere una lunghezza maggiore di 2".to_owned())
+            })
+            .validator(|value: &str| {
+                (value.len() < 11)
+                    .then_some(())
+                    .ok_or_else(|| "Il nome deve avere una lunghezza massima di 10".to_owned())
+            })
             .required()
             .select(3, "Paese")
             .values_ref(&[("I", "Italia"), ("F", "Francia"), ("D", "Germania")])

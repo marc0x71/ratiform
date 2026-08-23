@@ -146,14 +146,24 @@ With `FormField` in scope, a complete form looks like this:
 let mut state = FormBuilder::new()
     .single_line(FormField::Nome, "Nome")
     .value("Mario")
-    .validator(Box::new(|value: &str| {
+    .validator(|value: &str| {
         (value.len() > 2)
             .then_some(())
             .ok_or_else(|| "Il nome deve avere una lunghezza maggiore di 2".to_owned())
-    }))
+    })
     .required()
     .single_line(FormField::Cognome, "Cognome")
     .value("Rossi")
+    .validator(|value: &str| {
+        (value.len() > 2)
+            .then_some(())
+            .ok_or_else(|| "Il cognome deve avere una lunghezza maggiore di 2".to_owned())
+    })
+    .validator(|value: &str| {
+        (value.len() < 11)
+            .then_some(())
+            .ok_or_else(|| "Il cognome deve avere una lunghezza massima di 10".to_owned())
+    })
     .required()
     .select(FormField::Nazione, "Paese")
     .values_ref(&[
@@ -170,12 +180,22 @@ let mut state = FormBuilder::new()
     .build();
 ```
 
-### Validation
+Note the two `.validator(...)` calls chained on `Cognome`: both checks are kept, and are evaluated in that order (see [Validation](#validation) below).
 
-Two independent checks can mark a field as invalid:
+A field can be marked invalid in two ways:
 
-* **`required()`** — if the field is required and its current value is empty, it is automatically considered invalid. This needs no extra configuration.
-* **`validator(...)`** — a custom rule, expressed as `Box<dyn Fn(&str) -> Result<(), String>>`. The closure receives the field's current value and returns `Err(message)` when the value is not acceptable. Only one validator per field is supported; calling `validator()` again replaces the previous one.
+* **`required()`** — if the field is required and its current value is empty, it is automatically considered invalid, with a built-in message. This needs no extra configuration.
+* **`validator(...)`** — a custom rule, `Fn(&str) -> Result<(), String> + 'static`. The closure receives the field's current value and returns `Err(message)` when the value is not acceptable. `validator(...)` can be called any number of times on the same field; each call adds one more check, evaluated in the order they were added.
+
+The two interact like this:
+
+| Field state | Result |
+| --- | --- |
+| `required()`, value empty | invalid, with the built-in required message — validators are **not** run |
+| `optional()`, value empty | valid — validators are **not** run |
+| any value, non-empty | each validator runs in order; the first one that returns `Err` wins and its message is shown; if all of them return `Ok`, the field is valid |
+
+In other words, an empty value is never handed to a validator: `required()` decides on its own whether an empty field is acceptable, and only once a field actually has content do the custom validators get a say. This also means a validator doesn't need to special-case the empty string itself — that's `required()`/`optional()`'s job, not the validator's.
 
 Validation runs **in real time**: every time a keystroke changes a field's value, that field is immediately re-checked, not just when the form is submitted. When a field is invalid, its error message is rendered in red to the right of the field.
 
@@ -209,14 +229,24 @@ fn main() -> std::io::Result<()> {
         let mut state = FormBuilder::new()
             .single_line(FormField::Nome, "Nome")
             .value("Mario")
-            .validator(Box::new(|value: &str| {
+            .validator(|value: &str| {
                 (value.len() > 2)
                     .then_some(())
                     .ok_or_else(|| "Il nome deve avere una lunghezza maggiore di 2".to_owned())
-            }))
+            })
             .required()
             .single_line(FormField::Cognome, "Cognome")
             .value("Rossi")
+            .validator(|value: &str| {
+                (value.len() > 2)
+                    .then_some(())
+                    .ok_or_else(|| "Il cognome deve avere una lunghezza maggiore di 2".to_owned())
+            })
+            .validator(|value: &str| {
+                (value.len() < 11)
+                    .then_some(())
+                    .ok_or_else(|| "Il cognome deve avere una lunghezza massima di 10".to_owned())
+            })
             .required()
             .select(FormField::Nazione, "Paese")
             .values_ref(&[
@@ -331,6 +361,7 @@ A couple of details worth knowing before you reach for this:
 
 * For a `Select` field, `set_value` matches against the **value** side of the pairs passed to `values_ref` (the first element, e.g. `"I"`, `"F"`, `"D"`), not the displayed label — the same convention `values_ref` itself already uses.
 * For a `Checkbox` field, the string is parsed as a `bool` (`"true"` / `"false"`); anything else is treated as `false`.
+* `set_value` triggers validation (see [Validation](#validation)) immediately, just like a keystroke would — so if the value you set fails `required()` or one of the field's validators, the field's error state is updated right away, before the next render.
 
 ### Focused field
 
