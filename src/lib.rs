@@ -109,6 +109,10 @@ impl<T: PartialEq> FormState<T> {
             f.set(value);
         }
     }
+
+    pub fn focus_field(&self) -> Option<&T> {
+        self.fields.get(self.focus).map(|f| &f.id)
+    }
 }
 
 pub struct Form<T> {

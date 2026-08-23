@@ -28,9 +28,14 @@ fn main() -> std::io::Result<()> {
             .checkbox(4, "Accetto i termini")
             .checked(false)
             .optional()
+            .single_line(10, "Debug")
+            .disabled()
             .build();
 
         loop {
+            state.set_value(&4, "true");
+            let f = format!("focus={:?}", state.focus_field());
+            state.set_value(&10, &f);
             terminal.draw(|frame| {
                 let [area, _] = Layout::vertical([Constraint::Length(19), Constraint::Fill(1)])
                     .areas(frame.area());
