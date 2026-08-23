@@ -6,6 +6,44 @@ use ratatui::{
     widgets::{Block, Paragraph, Widget},
 };
 
+use crate::{
+    FormState,
+    builder::FormBuilder,
+    field::{Field, FieldKind, FieldOptions, Requirement},
+    field_builder_common,
+};
+
+// BUILDER
+pub struct SingleLineBuilder {
+    pub(crate) form: FormBuilder,
+    pub(crate) label: String,
+    pub(crate) value: String,
+    pub(crate) options: FieldOptions,
+}
+
+impl SingleLineBuilder {
+    pub fn value(mut self, value: impl Into<String>) -> Self {
+        self.value = value.into();
+        self
+    }
+
+    fn finish(mut self) -> FormBuilder {
+        let position = self.value.len() as u16;
+        self.form.fields.push(Field {
+            kind: FieldKind::SingleLine(SingleLineStatus {
+                label: self.label,
+                value: self.value,
+                position,
+            }),
+            options: self.options,
+        });
+
+        self.form
+    }
+}
+field_builder_common!(SingleLineBuilder);
+
+// STATUS
 pub struct SingleLineStatus {
     pub(crate) label: String,
     pub(crate) value: String,
@@ -56,6 +94,7 @@ impl SingleLineStatus {
     }
 }
 
+// EVENT
 pub(crate) fn handle_input_singleline(key_code: KeyCode, single_line: &mut SingleLineStatus) {
     match key_code {
         KeyCode::Backspace => single_line.backspace(),
@@ -69,6 +108,7 @@ pub(crate) fn handle_input_singleline(key_code: KeyCode, single_line: &mut Singl
     }
 }
 
+// RENDER
 pub(crate) fn render_singleline(
     area: Rect,
     buf: &mut Buffer,

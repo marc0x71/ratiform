@@ -6,6 +6,67 @@ use ratatui::{
     widgets::{List, ListState, StatefulWidget},
 };
 
+use crate::{
+    FormState,
+    builder::FormBuilder,
+    field::{Field, FieldKind, FieldOptions, Requirement},
+    field_builder_common,
+};
+
+// BUILDER
+pub struct SelectBuilder {
+    pub(crate) form: FormBuilder,
+    pub(crate) label: String,
+    pub(crate) values: Vec<(String, String)>,
+    pub(crate) selected: usize,
+    pub(crate) options: FieldOptions,
+}
+
+impl SelectBuilder {
+    pub fn selected(mut self, selected: usize) -> Self {
+        self.selected = selected;
+        self
+    }
+
+    pub fn values_ref(mut self, input: &[(&str, &str)]) -> Self {
+        self.values = input
+            .iter()
+            .map(|(k, v)| ((*k).into(), (*v).into()))
+            .collect();
+
+        self
+    }
+
+    pub fn values<I, K, V>(mut self, input: I) -> Self
+    where
+        I: IntoIterator<Item = (K, V)>,
+        K: Into<String>,
+        V: Into<String>,
+    {
+        self.values = input
+            .into_iter()
+            .map(|(k, v)| (k.into(), v.into()))
+            .collect();
+
+        self
+    }
+
+    fn finish(mut self) -> FormBuilder {
+        self.form.fields.push(Field {
+            kind: FieldKind::Select(SelectStatus {
+                label: self.label,
+                values: self.values,
+                list_state: ListState::default().with_selected(Some(self.selected)),
+            }),
+            options: self.options,
+        });
+
+        self.form
+    }
+}
+field_builder_common!(SelectBuilder);
+
+// STATUS
 pub struct SelectStatus {
     pub(crate) label: String,
     pub(crate) values: Vec<(String, String)>,
@@ -38,6 +99,7 @@ impl SelectStatus {
     }
 }
 
+// EVENT
 pub(crate) fn handle_input_select(key_code: KeyCode, select: &mut SelectStatus) {
     match key_code {
         KeyCode::Up => select.up(),
@@ -50,6 +112,7 @@ pub(crate) fn handle_input_select(key_code: KeyCode, select: &mut SelectStatus) 
     }
 }
 
+// RENDER
 pub(crate) fn render_select(
     area: Rect,
     buf: &mut Buffer,

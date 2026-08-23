@@ -7,6 +7,42 @@ use ratatui::{
     widgets::Widget,
 };
 
+use crate::{
+    FormState,
+    builder::FormBuilder,
+    field::{Field, FieldKind, FieldOptions, Requirement},
+    field_builder_common,
+};
+
+// BUILDER
+pub struct CheckboxBuilder {
+    pub(crate) form: FormBuilder,
+    pub(crate) label: String,
+    pub(crate) checked: bool,
+    pub(crate) options: FieldOptions,
+}
+
+impl CheckboxBuilder {
+    pub fn checked(mut self, checked: bool) -> Self {
+        self.checked = checked;
+        self
+    }
+
+    fn finish(mut self) -> FormBuilder {
+        self.form.fields.push(Field {
+            kind: FieldKind::CheckBox(CheckBoxStatus {
+                label: self.label,
+                checked: self.checked,
+            }),
+            options: self.options,
+        });
+
+        self.form
+    }
+}
+field_builder_common!(CheckboxBuilder);
+
+// STATUS
 pub struct CheckBoxStatus {
     pub(crate) label: String,
     pub(crate) checked: bool,
@@ -18,12 +54,14 @@ impl CheckBoxStatus {
     }
 }
 
+// EVENT
 pub(crate) fn handle_input_checkbox(key_code: KeyCode, check_box: &mut CheckBoxStatus) {
     if let KeyCode::Char(' ') = key_code {
         check_box.toggle();
     }
 }
 
+// RENDER
 pub(crate) fn render_checkbox(
     area: Rect,
     buf: &mut Buffer,

@@ -3,12 +3,16 @@ use ratatui::widgets::ListState;
 use crate::{
     FormState,
     field::{Field, FieldKind, FieldOptions, Requirement},
-    widget::{check_box::CheckBoxStatus, select::SelectStatus, single_line::SingleLineStatus},
+    widget::{
+        check_box::{CheckBoxStatus, CheckboxBuilder},
+        select::{SelectBuilder, SelectStatus},
+        single_line::{SingleLineBuilder, SingleLineStatus},
+    },
 };
 
 #[derive(Default)]
 pub struct FormBuilder {
-    fields: Vec<Field>,
+    pub(crate) fields: Vec<Field>,
 }
 
 impl FormBuilder {
@@ -49,16 +53,18 @@ impl FormBuilder {
     }
 }
 
+// MACRO
+#[macro_export]
 macro_rules! field_builder_common {
     ($builder:ty) => {
         impl $builder {
             // FieldOptions
             pub fn required(mut self) -> Self {
-                self.options.required = Requirement::Required;
+                self.options.required = $crate::field::Requirement::Required;
                 self
             }
             pub fn optional(mut self) -> Self {
-                self.options.required = Requirement::Optional;
+                self.options.required = $crate::field::Requirement::Optional;
                 self
             }
             pub fn disabled(mut self) -> Self {
@@ -75,13 +81,19 @@ macro_rules! field_builder_common {
             }
 
             // Builders
-            pub fn single_line(self, label: impl Into<String>) -> SingleLineBuilder {
+            pub fn single_line(
+                self,
+                label: impl Into<String>,
+            ) -> $crate::widget::single_line::SingleLineBuilder {
                 self.finish().single_line(label)
             }
-            pub fn checkbox(self, label: impl Into<String>) -> CheckboxBuilder {
+            pub fn checkbox(
+                self,
+                label: impl Into<String>,
+            ) -> $crate::widget::check_box::CheckboxBuilder {
                 self.finish().checkbox(label)
             }
-            pub fn select(self, label: impl Into<String>) -> SelectBuilder {
+            pub fn select(self, label: impl Into<String>) -> $crate::widget::select::SelectBuilder {
                 self.finish().select(label)
             }
 
@@ -92,113 +104,3 @@ macro_rules! field_builder_common {
         }
     };
 }
-
-// SINGLE LINE
-pub struct SingleLineBuilder {
-    form: FormBuilder,
-    label: String,
-    value: String,
-    options: FieldOptions,
-}
-
-impl SingleLineBuilder {
-    pub fn value(mut self, value: impl Into<String>) -> Self {
-        self.value = value.into();
-        self
-    }
-
-    fn finish(mut self) -> FormBuilder {
-        let position = self.value.len() as u16;
-        self.form.fields.push(Field {
-            kind: FieldKind::SingleLine(SingleLineStatus {
-                label: self.label,
-                value: self.value,
-                position,
-            }),
-            options: self.options,
-        });
-
-        self.form
-    }
-}
-field_builder_common!(SingleLineBuilder);
-
-// CHECK BOX
-pub struct CheckboxBuilder {
-    form: FormBuilder,
-    label: String,
-    checked: bool,
-    options: FieldOptions,
-}
-
-impl CheckboxBuilder {
-    pub fn checked(mut self, checked: bool) -> Self {
-        self.checked = checked;
-        self
-    }
-
-    fn finish(mut self) -> FormBuilder {
-        self.form.fields.push(Field {
-            kind: FieldKind::CheckBox(CheckBoxStatus {
-                label: self.label,
-                checked: self.checked,
-            }),
-            options: self.options,
-        });
-
-        self.form
-    }
-}
-field_builder_common!(CheckboxBuilder);
-
-pub struct SelectBuilder {
-    form: FormBuilder,
-    label: String,
-    values: Vec<(String, String)>,
-    selected: usize,
-    options: FieldOptions,
-}
-
-impl SelectBuilder {
-    pub fn selected(mut self, selected: usize) -> Self {
-        self.selected = selected;
-        self
-    }
-
-    pub fn values_ref(mut self, input: &[(&str, &str)]) -> Self {
-        self.values = input
-            .iter()
-            .map(|(k, v)| ((*k).into(), (*v).into()))
-            .collect();
-
-        self
-    }
-
-    pub fn values<I, K, V>(mut self, input: I) -> Self
-    where
-        I: IntoIterator<Item = (K, V)>,
-        K: Into<String>,
-        V: Into<String>,
-    {
-        self.values = input
-            .into_iter()
-            .map(|(k, v)| (k.into(), v.into()))
-            .collect();
-
-        self
-    }
-
-    fn finish(mut self) -> FormBuilder {
-        self.form.fields.push(Field {
-            kind: FieldKind::Select(SelectStatus {
-                label: self.label,
-                values: self.values,
-                list_state: ListState::default().with_selected(Some(self.selected)),
-            }),
-            options: self.options,
-        });
-
-        self.form
-    }
-}
-field_builder_common!(SelectBuilder);
