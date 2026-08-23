@@ -77,6 +77,7 @@ impl FormState {
                 if !self.fields.is_empty()
                     && let Some(field) = self.fields.get_mut(self.focus)
                     && !field.options.disabled
+                    && !field.options.readonly
                 {
                     handle_input_field(key_event.code, field);
                 }
