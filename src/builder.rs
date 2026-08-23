@@ -10,18 +10,26 @@ use crate::{
     },
 };
 
-#[derive(Default)]
-pub struct FormBuilder {
-    pub(crate) fields: Vec<Field>,
+pub struct FormBuilder<T> {
+    pub(crate) fields: Vec<Field<T>>,
 }
 
-impl FormBuilder {
+impl<T> Default for FormBuilder<T> {
+    fn default() -> Self {
+        Self {
+            fields: Default::default(),
+        }
+    }
+}
+
+impl<T> FormBuilder<T> {
     pub fn new() -> Self {
         Self::default()
     }
 
-    pub fn single_line(self, label: impl Into<String>) -> SingleLineBuilder {
+    pub fn single_line(self, id: T, label: impl Into<String>) -> SingleLineBuilder<T> {
         SingleLineBuilder {
+            id,
             form: self,
             label: label.into(),
             value: String::new(),
@@ -29,8 +37,9 @@ impl FormBuilder {
         }
     }
 
-    pub fn checkbox(self, label: impl Into<String>) -> CheckboxBuilder {
+    pub fn checkbox(self, id: T, label: impl Into<String>) -> CheckboxBuilder<T> {
         CheckboxBuilder {
+            id,
             form: self,
             label: label.into(),
             checked: false,
@@ -38,8 +47,9 @@ impl FormBuilder {
         }
     }
 
-    pub fn select(self, label: impl Into<String>) -> SelectBuilder {
+    pub fn select(self, id: T, label: impl Into<String>) -> SelectBuilder<T> {
         SelectBuilder {
+            id,
             form: self,
             label: label.into(),
             values: Vec::new(),
@@ -48,7 +58,7 @@ impl FormBuilder {
         }
     }
 
-    pub fn build(self) -> FormState {
+    pub fn build(self) -> FormState<T> {
         FormState::new(self.fields)
     }
 }
@@ -56,8 +66,8 @@ impl FormBuilder {
 // MACRO
 #[macro_export]
 macro_rules! field_builder_common {
-    ($builder:ty) => {
-        impl $builder {
+    ($builder:ident<$generic:ident>) => {
+        impl<$generic> $builder<$generic> {
             // FieldOptions
             pub fn required(mut self) -> Self {
                 self.options.required = $crate::field::Requirement::Required;
@@ -87,22 +97,28 @@ macro_rules! field_builder_common {
             // Builders
             pub fn single_line(
                 self,
+                id: $generic,
                 label: impl Into<String>,
-            ) -> $crate::widget::single_line::SingleLineBuilder {
-                self.finish().single_line(label)
+            ) -> $crate::widget::single_line::SingleLineBuilder<$generic> {
+                self.finish().single_line(id, label)
             }
             pub fn checkbox(
                 self,
+                id: $generic,
                 label: impl Into<String>,
-            ) -> $crate::widget::check_box::CheckboxBuilder {
-                self.finish().checkbox(label)
+            ) -> $crate::widget::check_box::CheckboxBuilder<$generic> {
+                self.finish().checkbox(id, label)
             }
-            pub fn select(self, label: impl Into<String>) -> $crate::widget::select::SelectBuilder {
-                self.finish().select(label)
+            pub fn select(
+                self,
+                id: $generic,
+                label: impl Into<String>,
+            ) -> $crate::widget::select::SelectBuilder<$generic> {
+                self.finish().select(id, label)
             }
 
             //
-            pub fn build(self) -> FormState {
+            pub fn build(self) -> FormState<T> {
                 self.finish().build()
             }
         }

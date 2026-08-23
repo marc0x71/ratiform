@@ -7,7 +7,7 @@ use ratiform::{Form, builder::FormBuilder};
 fn main() -> std::io::Result<()> {
     ratatui::run(|terminal| {
         let mut state = FormBuilder::new()
-            .single_line("Nome")
+            .single_line(1, "Nome")
             .value("Mario")
             .validator(Box::new(|v| {
                 (v.len() > 2)
@@ -15,15 +15,15 @@ fn main() -> std::io::Result<()> {
                     .ok_or_else(|| "Il nome deve avere una lunghezza maggiore di 2".to_owned())
             }))
             .required()
-            .single_line("Cognome")
+            .single_line(2, "Cognome")
             .value("Rossi")
             .required()
-            .select("Paese")
+            .select(3, "Paese")
             .values_ref(&[("I", "Italia"), ("F", "Francia"), ("D", "Germania")])
             .selected(1)
             .height(5)
             .required()
-            .checkbox("Accetto i termini")
+            .checkbox(4, "Accetto i termini")
             .checked(false)
             .optional()
             .build();

@@ -8,7 +8,7 @@ use crate::{
     },
 };
 
-pub fn handle_input_field(key_code: KeyCode, field: &mut Field) {
+pub fn handle_input_field<T>(key_code: KeyCode, field: &mut Field<T>) {
     match field.kind {
         FieldKind::SingleLine(ref mut single_line) => {
             handle_input_singleline(key_code, single_line)

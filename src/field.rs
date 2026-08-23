@@ -31,13 +31,14 @@ impl Default for FieldOptions {
     }
 }
 
-pub struct Field {
+pub struct Field<T> {
+    pub(crate) id: T,
     pub(crate) kind: FieldKind,
     pub(crate) options: FieldOptions,
     pub(crate) error: Option<String>,
 }
 
-impl Field {
+impl<T> Field<T> {
     pub fn label(&self) -> &str {
         self.kind.label()
     }

@@ -5,7 +5,7 @@ mod field;
 mod render;
 mod widget;
 
-use std::hash::Hash;
+use std::{hash::Hash, marker::PhantomData};
 
 use field::Field;
 use ratatui::{
@@ -27,15 +27,15 @@ pub enum FormResult {
 }
 
 #[derive(Default)]
-pub struct FormState {
-    fields: Vec<Field>,
+pub struct FormState<T> {
+    fields: Vec<Field<T>>,
     focus: usize,
     cursor_position: Option<(u16, u16)>,
     result: FormResult,
 }
 
-impl FormState {
-    pub(crate) fn new(fields: Vec<Field>) -> Self {
+impl<T> FormState<T> {
+    pub(crate) fn new(fields: Vec<Field<T>>) -> Self {
         Self {
             fields,
             focus: 0,
@@ -95,4 +95,6 @@ impl FormState {
 }
 
 #[derive(Default)]
-pub struct Form {}
+pub struct Form<T> {
+    _phantom: PhantomData<T>,
+}

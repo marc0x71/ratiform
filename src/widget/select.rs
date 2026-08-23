@@ -16,15 +16,16 @@ use crate::{
 };
 
 // BUILDER
-pub struct SelectBuilder {
-    pub(crate) form: FormBuilder,
+pub struct SelectBuilder<T> {
+    pub(crate) id: T,
+    pub(crate) form: FormBuilder<T>,
     pub(crate) label: String,
     pub(crate) values: Vec<(String, String)>,
     pub(crate) selected: usize,
     pub(crate) options: FieldOptions,
 }
 
-impl SelectBuilder {
+impl<T> SelectBuilder<T> {
     pub fn selected(mut self, selected: usize) -> Self {
         self.selected = selected;
         self
@@ -53,8 +54,9 @@ impl SelectBuilder {
         self
     }
 
-    fn finish(mut self) -> FormBuilder {
+    fn finish(mut self) -> FormBuilder<T> {
         self.form.fields.push(Field {
+            id: self.id,
             kind: FieldKind::Select(SelectStatus {
                 label: self.label,
                 values: self.values,
@@ -67,7 +69,7 @@ impl SelectBuilder {
         self.form
     }
 }
-field_builder_common!(SelectBuilder);
+field_builder_common!(SelectBuilder<T>);
 
 // STATUS
 pub struct SelectStatus {

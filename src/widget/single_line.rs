@@ -14,22 +14,24 @@ use crate::{
 };
 
 // BUILDER
-pub struct SingleLineBuilder {
-    pub(crate) form: FormBuilder,
+pub struct SingleLineBuilder<T> {
+    pub(crate) id: T,
+    pub(crate) form: FormBuilder<T>,
     pub(crate) label: String,
     pub(crate) value: String,
     pub(crate) options: FieldOptions,
 }
 
-impl SingleLineBuilder {
+impl<T> SingleLineBuilder<T> {
     pub fn value(mut self, value: impl Into<String>) -> Self {
         self.value = value.into();
         self
     }
 
-    fn finish(mut self) -> FormBuilder {
+    fn finish(mut self) -> FormBuilder<T> {
         let position = self.value.len() as u16;
         self.form.fields.push(Field {
+            id: self.id,
             kind: FieldKind::SingleLine(SingleLineStatus {
                 label: self.label,
                 value: self.value,
@@ -42,7 +44,7 @@ impl SingleLineBuilder {
         self.form
     }
 }
-field_builder_common!(SingleLineBuilder);
+field_builder_common!(SingleLineBuilder<T>);
 
 // STATUS
 pub struct SingleLineStatus {

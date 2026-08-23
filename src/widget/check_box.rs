@@ -15,21 +15,23 @@ use crate::{
 };
 
 // BUILDER
-pub struct CheckboxBuilder {
-    pub(crate) form: FormBuilder,
+pub struct CheckboxBuilder<T> {
+    pub(crate) id: T,
+    pub(crate) form: FormBuilder<T>,
     pub(crate) label: String,
     pub(crate) checked: bool,
     pub(crate) options: FieldOptions,
 }
 
-impl CheckboxBuilder {
+impl<T> CheckboxBuilder<T> {
     pub fn checked(mut self, checked: bool) -> Self {
         self.checked = checked;
         self
     }
 
-    fn finish(mut self) -> FormBuilder {
+    fn finish(mut self) -> FormBuilder<T> {
         self.form.fields.push(Field {
+            id: self.id,
             kind: FieldKind::CheckBox(CheckBoxStatus {
                 label: self.label,
                 checked: self.checked,
@@ -41,7 +43,7 @@ impl CheckboxBuilder {
         self.form
     }
 }
-field_builder_common!(CheckboxBuilder);
+field_builder_common!(CheckboxBuilder<T>);
 
 // STATUS
 pub struct CheckBoxStatus {

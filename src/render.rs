@@ -12,8 +12,8 @@ use crate::{
     widget::{check_box::render_checkbox, select::render_select, single_line::render_singleline},
 };
 
-impl StatefulWidget for Form {
-    type State = FormState;
+impl<T> StatefulWidget for Form<T> {
+    type State = FormState<T>;
 
     fn render(self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {
         // Block::default().on_light_yellow().render(area, buf);
@@ -62,10 +62,10 @@ impl StatefulWidget for Form {
     }
 }
 
-pub fn render_field(
+pub fn render_field<T>(
     area: Rect,
     buf: &mut Buffer,
-    field: &mut Field,
+    field: &mut Field<T>,
     has_focus: bool,
 ) -> Option<(u16, u16)> {
     match field.kind {
