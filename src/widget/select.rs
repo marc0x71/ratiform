@@ -152,3 +152,52 @@ pub(crate) fn render_select(
 
     None
 }
+
+#[cfg(test)]
+mod select_tests {
+    use super::*;
+
+    fn make_select(values: &[(&str, &str)], selected: Option<usize>) -> SelectStatus {
+        SelectStatus {
+            label: "Test".to_owned(),
+            values: values
+                .iter()
+                .map(|(k, v)| ((*k).to_owned(), (*v).to_owned()))
+                .collect(),
+            list_state: match selected {
+                Some(idx) => ListState::default().with_selected(Some(idx)),
+                None => ListState::default(),
+            },
+        }
+    }
+
+    #[test]
+    fn set_then_get_round_trips_the_selected_value() {
+        let mut select = make_select(
+            &[("I", "Italia"), ("F", "Francia"), ("D", "Germania")],
+            Some(0),
+        );
+        select.set("F");
+        assert_eq!(select.get(), "F");
+    }
+
+    #[test]
+    fn set_with_no_matching_value_deselects_everything() {
+        // A value that isn't in the list doesn't leave the current
+        // selection untouched -- it clears it entirely. The same
+        // "reset, not no-op" surprise already found in Checkbox::set().
+        let mut select = make_select(&[("I", "Italia"), ("F", "Francia")], Some(0));
+        select.set("nonexistent");
+        assert_eq!(select.get(), "");
+    }
+
+    #[test]
+    fn get_returns_empty_string_when_nothing_is_selected() {
+        // Through the builder, list_state always starts with a selection,
+        // so in practice this only happens if nothing was ever selected --
+        // but it's exactly the path that makes `required()` meaningful at
+        // all for a Select field.
+        let select = make_select(&[("I", "Italia")], None);
+        assert_eq!(select.get(), "");
+    }
+}
