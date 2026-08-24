@@ -76,24 +76,12 @@ pub(crate) fn render_checkbox(
     area: Rect,
     buf: &mut Buffer,
     checkbox: &mut CheckBoxStatus,
-    has_focus: bool,
-    disabled: bool,
+    value_style: Style,
+    _highlight_style: Style,
 ) -> Option<(u16, u16)> {
     let flag = if checkbox.checked { "[✓]" } else { "[ ]" };
 
-    let modifier = if disabled {
-        Modifier::CROSSED_OUT
-    } else {
-        Modifier::default()
-    };
-
-    let style = if has_focus {
-        Style::default().fg(Color::White)
-    } else {
-        Style::default().fg(Color::Gray)
-    };
-
-    let value = Span::raw(flag).style(style).add_modifier(modifier);
+    let value = Span::raw(flag).style(value_style);
 
     value.render(area, buf);
 

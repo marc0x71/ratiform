@@ -1,7 +1,7 @@
 use ratatui::{
     buffer::Buffer,
     layout::{Constraint, HorizontalAlignment, Layout, Rect},
-    style::{Modifier, Stylize},
+    style::{Modifier, Style, Stylize},
     text::Span,
     widgets::{Block, Paragraph, StatefulWidget, Widget},
 };
@@ -9,6 +9,7 @@ use ratatui::{
 use crate::{
     Form, FormState,
     field::{Field, FieldKind},
+    style::FieldState,
     widget::{check_box::render_checkbox, select::render_select, single_line::render_singleline},
 };
 
@@ -29,6 +30,8 @@ impl<T: PartialEq> StatefulWidget for Form<T> {
         state.cursor_position = None;
 
         for (idx, field) in state.fields[from_field..=to_field].iter_mut().enumerate() {
+            let has_focus = (idx + from_field) == state.focus;
+            let field_state = field.options.to_field_state(has_focus);
             // for (idx, field) in state.fields.iter_mut().enumerate() {
             let [row, error] =
                 Layout::vertical([Constraint::Fill(1), Constraint::Length(1)]).areas(rows[idx]);
@@ -37,18 +40,16 @@ impl<T: PartialEq> StatefulWidget for Form<T> {
                 Layout::horizontal([Constraint::Length(label_width), Constraint::Fill(1)])
                     .areas(row);
 
-            let modifier = if field.options.disabled {
-                Modifier::CROSSED_OUT
-            } else {
-                Modifier::default()
-            };
-
-            let label = Span::raw(field.label()).add_modifier(modifier);
+            let label = Span::raw(field.label()).style(self.style.label.style_for(&field_state));
             label.render(left, buf);
 
-            if let Some(position) =
-                render_field(right, buf, field, state.focus == (idx + from_field))
-            {
+            if let Some(position) = render_field(
+                right,
+                buf,
+                field,
+                self.style.value.style_for(&field_state),
+                self.style.highlight.style_for(&field_state),
+            ) {
                 state.cursor_position = Some(position);
             }
 
@@ -66,17 +67,18 @@ pub fn render_field<T>(
     area: Rect,
     buf: &mut Buffer,
     field: &mut Field<T>,
-    has_focus: bool,
+    value_style: Style,
+    highlight_style: Style,
 ) -> Option<(u16, u16)> {
     match field.kind {
         FieldKind::SingleLine(ref mut single_line) => {
-            render_singleline(area, buf, single_line, has_focus, field.options.disabled)
+            render_singleline(area, buf, single_line, value_style, highlight_style)
         }
         FieldKind::CheckBox(ref mut checkbox) => {
-            render_checkbox(area, buf, checkbox, has_focus, field.options.disabled)
+            render_checkbox(area, buf, checkbox, value_style, highlight_style)
         }
         FieldKind::Select(ref mut select) => {
-            render_select(area, buf, select, has_focus, field.options.disabled)
+            render_select(area, buf, select, value_style, highlight_style)
         }
     }
 }

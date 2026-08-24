@@ -134,28 +134,15 @@ pub(crate) fn render_select(
     area: Rect,
     buf: &mut Buffer,
     select: &mut SelectStatus,
-    has_focus: bool,
-    disabled: bool,
+    value_style: Style,
+    highlight_style: Style,
 ) -> Option<(u16, u16)> {
-    let modifier = if disabled {
-        Modifier::CROSSED_OUT
-    } else {
-        Modifier::default()
-    };
-
     let items: Vec<_> = select.values.iter().map(|(k, v)| v.as_str()).collect();
 
-    let style = Style::default().fg(Color::Gray);
-
     let list = List::new(items)
-        .style(style)
-        .highlight_style(if has_focus {
-            Modifier::REVERSED
-        } else {
-            Modifier::ITALIC
-        })
-        .highlight_symbol("> ")
-        .add_modifier(modifier);
+        .style(value_style)
+        .highlight_style(highlight_style)
+        .highlight_symbol("> ");
 
     StatefulWidget::render(list, area, buf, &mut select.list_state);
 

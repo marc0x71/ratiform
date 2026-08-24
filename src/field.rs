@@ -1,7 +1,8 @@
 use ratatui::widgets::ListState;
 
-use crate::widget::{
-    check_box::CheckBoxStatus, select::SelectStatus, single_line::SingleLineStatus,
+use crate::{
+    style::{FieldState, FieldStyle},
+    widget::{check_box::CheckBoxStatus, select::SelectStatus, single_line::SingleLineStatus},
 };
 
 pub type Validator = Box<dyn Fn(&str) -> Result<(), String> + 'static>;
@@ -27,6 +28,19 @@ impl Default for FieldOptions {
             readonly: false,
             height: 1,
             validator: Vec::new(),
+        }
+    }
+}
+impl FieldOptions {
+    pub(crate) fn to_field_state(&self, has_focus: bool) -> FieldState {
+        if self.disabled {
+            FieldState::Disabled
+        } else if self.readonly {
+            FieldState::Readonly
+        } else if has_focus {
+            FieldState::Focused
+        } else {
+            FieldState::Normal
         }
     }
 }

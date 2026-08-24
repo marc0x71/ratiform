@@ -3,6 +3,7 @@ pub mod builder;
 mod event;
 mod field;
 mod render;
+mod style;
 mod widget;
 
 use std::{hash::Hash, marker::PhantomData};
@@ -16,7 +17,7 @@ use ratatui::{
     widgets::{Block, Paragraph, StatefulWidget, Widget},
 };
 
-use crate::event::handle_input_field;
+use crate::{event::handle_input_field, style::FormStyle};
 
 #[derive(Default, Clone, Copy)]
 pub enum FormResult {
@@ -116,12 +117,14 @@ impl<T: PartialEq> FormState<T> {
 }
 
 pub struct Form<T> {
+    style: FormStyle,
     _phantom: PhantomData<T>,
 }
 
 impl<T> Form<T> {
     pub fn new() -> Self {
         Self {
+            style: FormStyle::default(),
             _phantom: PhantomData,
         }
     }

@@ -124,29 +124,19 @@ pub(crate) fn render_singleline(
     area: Rect,
     buf: &mut Buffer,
     singleline: &mut SingleLineStatus,
-    has_focus: bool,
-    disabled: bool,
+    style: Style,
+    highlight_style: Style,
 ) -> Option<(u16, u16)> {
-    let modifier = if disabled {
-        Modifier::CROSSED_OUT
-    } else {
-        Modifier::default()
-    };
-    let style = if has_focus {
-        Style::default().fg(Color::Black).bg(Color::Gray)
-    } else {
-        Style::default().fg(Color::Gray)
-    };
-
-    let value = Paragraph::new(singleline.value.as_str())
-        .block(Block::default().style(style))
-        .add_modifier(modifier);
+    let value =
+        Paragraph::new(singleline.value.as_str()).block(Block::default().style(highlight_style));
 
     value.render(area, buf);
 
-    if has_focus {
-        Some((area.x + singleline.position, area.y))
-    } else {
-        None
-    }
+    // TODO: da fare
+    // if has_focus {
+    //     Some((area.x + singleline.position, area.y))
+    // } else {
+    //     None
+    // }
+    None
 }
