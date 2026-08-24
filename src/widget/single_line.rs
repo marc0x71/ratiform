@@ -251,3 +251,101 @@ mod masked_display_tests {
         assert_eq!(result.chars().count(), 2);
     }
 }
+
+#[cfg(test)]
+mod editing_tests {
+    use super::*;
+
+    fn make_status(value: &str, position: u16) -> SingleLineStatus {
+        SingleLineStatus {
+            label: "Test".to_owned(),
+            value: value.to_owned(),
+            position,
+            masked_with: None,
+            placeholder: None,
+        }
+    }
+
+    #[test]
+    fn insert_handles_unicode_content_correctly() {
+        // "città" = c-i-t-t-à, position 3 sits right before the second 't'.
+        let mut status = make_status("città", 3);
+        handle_input_singleline(KeyCode::Char('X'), &mut status);
+
+        assert_eq!(status.value, "citXtà");
+        assert_eq!(status.position, 4);
+    }
+
+    #[test]
+    fn backspace_removes_the_character_before_the_cursor() {
+        // Cursor at the end: backspace must remove the 'à' (multi-byte)
+        // as a whole character, not split it or remove the wrong byte.
+        let mut status = make_status("città", 5);
+        handle_input_singleline(KeyCode::Backspace, &mut status);
+
+        assert_eq!(status.value, "citt");
+        assert_eq!(status.position, 4);
+    }
+
+    #[test]
+    fn backspace_at_the_start_does_not_panic_or_change_anything() {
+        let mut status = make_status("città", 0);
+        handle_input_singleline(KeyCode::Backspace, &mut status);
+
+        assert_eq!(status.value, "città");
+        assert_eq!(status.position, 0);
+    }
+
+    #[test]
+    fn delete_removes_the_character_at_the_cursor() {
+        // Position 4 sits right before the 'à'. Delete must remove it.
+        let mut status = make_status("città", 4);
+        handle_input_singleline(KeyCode::Delete, &mut status);
+
+        assert_eq!(status.value, "citt");
+        assert_eq!(status.position, 4);
+    }
+
+    #[test]
+    fn delete_at_the_end_of_the_value_does_not_remove_anything() {
+        let mut status = make_status("citt", 4);
+        handle_input_singleline(KeyCode::Delete, &mut status);
+
+        assert_eq!(status.value, "citt");
+    }
+
+    #[test]
+    fn delete_on_an_empty_value_does_not_panic() {
+        let mut status = make_status("", 0);
+        handle_input_singleline(KeyCode::Delete, &mut status);
+
+        assert_eq!(status.value, "");
+        assert_eq!(status.position, 0);
+    }
+
+    #[test]
+    fn end_moves_the_cursor_to_the_character_count_not_the_byte_length() {
+        // "città" = 5 characters, 6 bytes: end() must stop at 5, not 6.
+        // A direct regression test for the very first bug found in this project.
+        let mut status = make_status("città", 0);
+        handle_input_singleline(KeyCode::End, &mut status);
+
+        assert_eq!(status.position, 5);
+    }
+
+    #[test]
+    fn left_does_not_go_below_zero() {
+        let mut status = make_status("ciao", 0);
+        handle_input_singleline(KeyCode::Left, &mut status);
+
+        assert_eq!(status.position, 0);
+    }
+
+    #[test]
+    fn right_does_not_go_past_the_end() {
+        let mut status = make_status("ciao", 4);
+        handle_input_singleline(KeyCode::Right, &mut status);
+
+        assert_eq!(status.position, 4);
+    }
+}
