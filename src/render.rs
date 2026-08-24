@@ -58,9 +58,7 @@ impl<T: PartialEq> StatefulWidget for Form<T> {
                 let len = message.chars().count() as u16;
                 let [_, right] =
                     Layout::horizontal([Constraint::Fill(1), Constraint::Length(len)]).areas(error);
-                let error_message = Paragraph::new(message.as_str())
-                    .style(self.style.error)
-                    .alignment(HorizontalAlignment::Right);
+                let error_message = Span::raw(message.as_str()).style(self.style.error);
                 error_message.render(right, buf);
             }
         }
