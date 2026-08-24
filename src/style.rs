@@ -12,6 +12,7 @@ pub struct FormStyle {
     pub label: FieldStyle,
     pub value: FieldStyle,
     pub highlight: FieldStyle,
+    pub placeholder: Style,
     pub error: Style,
 }
 impl FormStyle {
@@ -43,6 +44,7 @@ impl Default for FormStyle {
                     .build(),
             )
             .error(Style::default().fg(Color::Red).bold())
+            .placeholder(normal.italic())
             .build()
     }
 }
@@ -74,6 +76,7 @@ pub struct FormStyleBuilder {
     value: FieldStyle,
     highlight: FieldStyle,
     error: Style,
+    placeholder: Style,
 }
 
 impl FormStyleBuilder {
@@ -101,12 +104,18 @@ impl FormStyleBuilder {
         self
     }
 
+    pub fn placeholder(mut self, style: Style) -> Self {
+        self.placeholder = style;
+        self
+    }
+
     pub fn build(self) -> FormStyle {
         FormStyle {
             label: self.label,
             value: self.value,
             highlight: self.highlight,
             error: self.error,
+            placeholder: self.placeholder,
         }
     }
 }

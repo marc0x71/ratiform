@@ -16,14 +16,14 @@ fn main() -> std::io::Result<()> {
     let result = ratatui::run(|terminal| -> std::io::Result<_> {
         let mut state = FormBuilder::new()
             .single_line(1, "Nome")
-            .value("Mario")
+            .placeholder("Insersci il nome".to_owned())
             .validator(validators::min_length(
                 2,
                 "Il nome deve avere una lunghezza di almeno 2 caratteri".to_owned(),
             ))
             .required()
             .single_line(2, "Cognome")
-            .value("Rossi")
+            .placeholder("Insersci il cognome".to_owned())
             .validator(validators::min_length(
                 2,
                 "Il cognome deve avere una lunghezza di almeno 2 caratteri".to_owned(),
@@ -42,6 +42,7 @@ fn main() -> std::io::Result<()> {
             .checked(false)
             .optional()
             .single_line(5, "Password")
+            .placeholder("Insersci la password".to_owned())
             .masked_with('•')
             .required()
             .single_line(10, "Debug")
@@ -104,5 +105,6 @@ fn my_style() -> FormStyle {
                 .build(),
         )
         .error(Style::default().bg(Color::Red).fg(Color::White).bold())
+        .placeholder(normal.italic())
         .build()
 }

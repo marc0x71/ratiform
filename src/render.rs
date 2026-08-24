@@ -49,6 +49,7 @@ impl<T: PartialEq> StatefulWidget for Form<T> {
                 field,
                 self.style.value.style_for(&field_state),
                 self.style.highlight.style_for(&field_state),
+                self.style.placeholder,
             ) && has_focus
             {
                 state.cursor_position = Some(position);
@@ -71,11 +72,17 @@ pub fn render_field<T>(
     field: &mut Field<T>,
     value_style: Style,
     highlight_style: Style,
+    placeholder_style: Style,
 ) -> Option<(u16, u16)> {
     match field.kind {
-        FieldKind::SingleLine(ref mut single_line) => {
-            render_singleline(area, buf, single_line, value_style, highlight_style)
-        }
+        FieldKind::SingleLine(ref mut single_line) => render_singleline(
+            area,
+            buf,
+            single_line,
+            value_style,
+            highlight_style,
+            placeholder_style,
+        ),
         FieldKind::CheckBox(ref mut checkbox) => {
             render_checkbox(area, buf, checkbox, value_style, highlight_style)
         }

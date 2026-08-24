@@ -23,6 +23,7 @@ pub struct SingleLineBuilder<T> {
     pub(crate) value: String,
     pub(crate) options: FieldOptions,
     pub(crate) masked_with: Option<char>,
+    pub(crate) placeholder: Option<String>,
 }
 
 impl<T: PartialEq> SingleLineBuilder<T> {
@@ -41,6 +42,11 @@ impl<T: PartialEq> SingleLineBuilder<T> {
         self
     }
 
+    pub fn placeholder(mut self, placeholder: impl Into<String>) -> Self {
+        self.placeholder = Some(placeholder.into());
+        self
+    }
+
     fn finish(mut self) -> FormBuilder<T> {
         let position = self.value.len() as u16;
         self.form.fields.push(Field {
@@ -50,6 +56,7 @@ impl<T: PartialEq> SingleLineBuilder<T> {
                 value: self.value,
                 position,
                 masked_with: self.masked_with,
+                placeholder: self.placeholder,
             }),
             options: self.options,
             error: None,
@@ -66,6 +73,7 @@ pub struct SingleLineStatus {
     pub(crate) value: String,
     pub(crate) position: u16,
     pub(crate) masked_with: Option<char>,
+    pub(crate) placeholder: Option<String>,
 }
 
 impl SingleLineStatus {
@@ -141,10 +149,20 @@ pub(crate) fn render_singleline(
     singleline: &mut SingleLineStatus,
     value_style: Style,
     highlight_style: Style,
+    placeholder_style: Style,
 ) -> Option<(u16, u16)> {
-    let display = masked_display(singleline.value.as_str(), singleline.masked_with);
+    let mut style = value_style;
+
+    let mut display = masked_display(singleline.value.as_str(), singleline.masked_with);
+    if let Some(placeholder) = singleline.placeholder.as_ref()
+        && display.is_empty()
+    {
+        display = Cow::Borrowed(placeholder);
+        style = placeholder_style;
+    }
+
     let value = Paragraph::new(display)
-        .style(value_style)
+        .style(style)
         .block(Block::default().style(highlight_style));
 
     value.render(area, buf);

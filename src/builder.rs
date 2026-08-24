@@ -35,6 +35,7 @@ impl<T: PartialEq> FormBuilder<T> {
             value: String::new(),
             options: FieldOptions::default(),
             masked_with: None,
+            placeholder: None,
         }
     }
 
