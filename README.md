@@ -85,7 +85,7 @@ Example:
 ```rust
 .single_line(1, "Nome")
     .value("Mario")
-    .required()
+    .required("Il nome è obbligatorio".to_owned())
 ```
 
 The first argument is the field's **identifier** (see [Field identifiers](#field-identifiers) below).
@@ -97,10 +97,10 @@ For a password-style field, use `masked()` (the character typed is replaced with
 ```rust
 .single_line(5, "Password")
     .masked_with('•')
-    .required()
+    .required("La password non può essere vuota".to_owned())
 ```
 
-Masking only changes what's drawn on screen — the field's real value, `required()`, `validator(...)` and everything read back through `value()`/`values()` all still see (and act on) what the user actually typed, not the mask. The cursor stays correctly aligned regardless of the mask character or of multi-byte characters in the value, since the displayed string always has exactly as many characters as the real one.
+Masking only changes what's drawn on screen — the field's real value, the required check, `validator(...)` and everything read back through `value()`/`values()` all still see (and act on) what the user actually typed, not the mask. The cursor stays correctly aligned regardless of the mask character or of multi-byte characters in the value, since the displayed string always has exactly as many characters as the real one.
 
 #### Placeholder
 
@@ -109,10 +109,10 @@ Masking only changes what's drawn on screen — the field's real value, `require
 ```rust
 .single_line(1, "Nome")
     .placeholder("Inserisci il nome")
-    .required()
+    .required("Il nome è obbligatorio".to_owned())
 ```
 
-The placeholder disappears as soon as the user types anything, and is rendered with its own style (see [Theming](#theming)) so it doesn't get mistaken for real content. It's drawn in plain text even on a `masked_with(...)` field — masking a hint that isn't real input would just make it unreadable — and, like the mask itself, it has no effect on validation: a `required()` field showing a placeholder is still empty as far as `required()` and `values()` are concerned.
+The placeholder disappears as soon as the user types anything, and is rendered with its own style (see [Theming](#theming)) so it doesn't get mistaken for real content. It's drawn in plain text even on a `masked_with(...)` field — masking a hint that isn't real input would just make it unreadable — and, like the mask itself, it has no effect on validation: a required field showing a placeholder is still empty as far as the required check and `values()` are concerned.
 
 ### Checkbox
 
@@ -145,7 +145,7 @@ Example:
     ])
     .selected(1)
     .height(5)
-    .required()
+    .required("Seleziona un paese".to_owned())
 ```
 
 The first value in each pair is the value associated with the option, while the second is the text displayed to the user.
@@ -154,7 +154,7 @@ The first value in each pair is the value associated with the option, while the 
 
 Forms are created using a builder API. Fields can be chained together and configured with common options such as:
 
-* `required()` / `optional()`
+* `required(message)` / `optional()`
 * `disabled()`
 * `readonly()`
 * `height()`
@@ -190,7 +190,7 @@ let mut state = FormBuilder::new()
         2,
         "Il nome deve avere una lunghezza di almeno 2 caratteri".to_owned(),
     ))
-    .required()
+    .required("Il nome è obbligatorio".to_owned())
     .single_line(FormField::Cognome, "Cognome")
     .value("Rossi")
     .validator(validators::min_length(
@@ -201,7 +201,6 @@ let mut state = FormBuilder::new()
         10,
         "Il cognome deve avere una lunghezza massima di 10 caratteri".to_owned(),
     ))
-    .required()
     .select(FormField::Nazione, "Paese")
     .values_ref(&[
         ("I", "Italia"),
@@ -210,31 +209,30 @@ let mut state = FormBuilder::new()
     ])
     .selected(1)
     .height(5)
-    .required()
     .checkbox(FormField::Termini, "Accetto i termini")
     .checked(false)
     .optional()
     .build();
 ```
 
-Note the two `.validator(...)` calls chained on `Cognome`: both checks are kept, and are evaluated in that order (see [Validation](#validation) below).
+Note the two `.validator(...)` calls chained on `Cognome`: both checks are kept, and are evaluated in that order (see [Validation](#validation) below). Also note that `Cognome` and `Paese` never call `.required(...)` at all — every field is required by default (with a built-in message), so `.required(message)` is only needed when you want your *own* message; `.optional()` is what actually changes behavior, by opting a field out of the required check entirely.
 
 A field can be marked invalid in two ways:
 
-* **`required()`** — if the field is required and its current value is empty, it is automatically considered invalid, with a built-in message. This needs no extra configuration.
+* **Being required** — every field is required by default, and an empty required field is invalid with a built-in message. Call `.required(message)` to use your own message instead of the built-in one, or `.optional()` to opt the field out of this check entirely. Either way, this doesn't need `validator(...)`: internally, `.required(message)` is itself backed by a `Validator` (`ratiform::validators::required`, see [Built-in validators](#built-in-validators)), just kept in its own slot rather than the general list below.
 * **`validator(...)`** — a custom rule, `Fn(&str) -> Result<(), String> + 'static`. The closure receives the field's current value and returns `Err(message)` when the value is not acceptable. `validator(...)` can be called any number of times on the same field; each call adds one more check, evaluated in the order they were added.
 
 The two interact like this:
 
 | Field state | Result |
 | --- | --- |
-| `required()`, value empty | invalid, with the built-in required message — validators are **not** run |
+| required (default, or `.required(message)`), value empty | invalid, with the required message — validators are **not** run |
 | `optional()`, value empty | valid — validators are **not** run |
 | any value, non-empty | each validator runs in order; the first one that returns `Err` wins and its message is shown; if all of them return `Ok`, the field is valid |
 
-In other words, an empty value is never handed to a validator: `required()` decides on its own whether an empty field is acceptable, and only once a field actually has content do the custom validators get a say. This also means a validator doesn't need to special-case the empty string itself — that's `required()`/`optional()`'s job, not the validator's.
+In other words, an empty value is never handed to a validator: the required check decides on its own whether an empty field is acceptable, and only once a field actually has content do the custom validators get a say. This also means a validator doesn't need to special-case the empty string itself — that's the required check's job, not the validator's.
 
-Validation runs **in real time**: every time a keystroke changes a field's value, that field is immediately re-checked, not just when the form is submitted. When a field is invalid, its error message is rendered in red to the right of the field.
+Validation runs **in real time**: every time a keystroke changes a field's value, that field is immediately re-checked, not just when the form is submitted — and a field is validated once up front too, as soon as the form is built, so a field that starts out invalid (an initial `.value(...)` too short, or a required field left empty) shows its error from the very first render, not only after the user touches it. When a field is invalid, its error message is rendered next to the field, styled with `FormStyle`'s `error` (red and bold by default — see [Theming](#theming) to change it).
 
 While at least one field is invalid, pressing `Enter` has no effect: the form stays in `FormResult::Working` and is not submitted. Once every field passes validation, `Enter` submits the form as usual.
 
@@ -244,6 +242,7 @@ While at least one field is invalid, pressing `Enter` has no effect: the form st
 
 | Function | Checks that the value... | Notes |
 | --- | --- | --- |
+| `required(message)` | is not empty | this is what `.required(message)` uses internally — see [Validation](#validation) above. Rarely called directly, but it's a plain `Validator` like the rest, so you can compose it yourself if needed |
 | `min_length(len, message)` | has at least `len` characters | inclusive — `min_length(5, ..)` accepts a 5-character value |
 | `max_length(len, message)` | has at most `len` characters | inclusive — `max_length(10, ..)` accepts a 10-character value |
 | `is_numeric(message)` | consists only of ASCII digits (`0`–`9`) | no sign, no decimal point — `"-5"` and `"3.14"` are both rejected |
@@ -252,7 +251,7 @@ While at least one field is invalid, pressing `Enter` has no effect: the form st
 | `no_whitespace(message)` | contains no whitespace (spaces, tabs, newlines) | |
 | `parsable::<T>(message)` | parses as a `T` via `T: FromStr` | see below — needs the turbofish |
 
-`min_length`/`max_length` count Unicode characters, not bytes — `min_length(5, ..)` correctly accepts `"città"` (5 characters, 6 bytes in UTF-8). All six of the shape-based validators above (everything except `parsable`) pass on an empty string: they check *shape*, and an empty value has no character that violates the rule. In practice this rarely matters, because inside a `Field`, `required()`/`optional()` already decide whether an empty value is acceptable before any validator runs (see the table above) — but it's worth knowing if you call one of these functions directly, outside of a `Field`.
+`min_length`/`max_length` count Unicode characters, not bytes — `min_length(5, ..)` correctly accepts `"città"` (5 characters, 6 bytes in UTF-8). All the shape-based validators above (everything except `required` and `parsable`) pass on an empty string: they check *shape*, and an empty value has no character that violates the rule. In practice this rarely matters, because inside a `Field`, the required check already decides whether an empty value is acceptable before any of these run (see the table in [Validation](#validation)) — but it's worth knowing if you call one of these functions directly, outside of a `Field`.
 
 `parsable` is different from the rest: since `T` only appears in the function body, not in `Validator`'s return type, the compiler can't infer it — you always need the turbofish, `parsable::<i32>(message)`, `parsable::<f64>(message)`, and so on. Being generic over any `T: FromStr` also means it isn't limited to numbers: any type with a `FromStr` implementation works, including ones from other crates. For example, `chrono::NaiveDate` implements `FromStr` for the ISO `YYYY-MM-DD` format, so `parsable::<chrono::NaiveDate>("data non valida".to_owned())` gives you a correct date validator — leap years included — without `ratiform` itself depending on `chrono`. That dependency, if you want it, lives in your own `Cargo.toml`, not in `ratiform`'s.
 
@@ -291,10 +290,8 @@ fn main() -> std::io::Result<()> {
                     .then_some(())
                     .ok_or_else(|| "Il nome deve avere una lunghezza maggiore di 2".to_owned())
             })
-            .required()
             .single_line(FormField::Cognome, "Cognome")
             .value("Rossi")
-            .required()
             .select(FormField::Nazione, "Paese")
             .values_ref(&[
                 ("I", "Italia"),
@@ -303,7 +300,6 @@ fn main() -> std::io::Result<()> {
             ])
             .selected(1)
             .height(5)
-            .required()
             .checkbox(FormField::Termini, "Accetto i termini")
             .checked(false)
             .optional()
@@ -464,7 +460,7 @@ A couple of details worth knowing before you reach for this:
 
 * For a `Select` field, `set_value` matches against the **value** side of the pairs passed to `values_ref` (the first element, e.g. `"I"`, `"F"`, `"D"`), not the displayed label — the same convention `values_ref` itself already uses.
 * For a `Checkbox` field, the string is parsed as a `bool` (`"true"` / `"false"`); anything else is treated as `false`.
-* `set_value` triggers validation (see [Validation](#validation)) immediately, just like a keystroke would — so if the value you set fails `required()` or one of the field's validators, the field's error state is updated right away, before the next render.
+* `set_value` triggers validation (see [Validation](#validation)) immediately, just like a keystroke would — so if the value you set fails the required check or one of the field's validators, the field's error state is updated right away, before the next render.
 
 ### Focused field
 
@@ -486,7 +482,7 @@ This project is still in an early stage.
 
 The current implementation is intentionally small and focused on providing a basic form abstraction for Ratatui. APIs, behaviour and rendering may change as the project evolves.
 
-`required()`, `disabled()`, `readonly()` and `validator(...)` are now enforced, submitted values can be retrieved through `FormState::values()`, rendering can be themed through `FormStyle` (see [Theming](#theming)), and a handful of common checks are available in `ratiform::validators` (see [Built-in validators](#built-in-validators)). Behaviour and layout may still change as the project evolves.
+The required check, `disabled()`, `readonly()` and `validator(...)` are now enforced, submitted values can be retrieved through `FormState::values()`, rendering can be themed through `FormStyle` (see [Theming](#theming)), and a handful of common checks are available in `ratiform::validators` (see [Built-in validators](#built-in-validators)). Behaviour and layout may still change as the project evolves.
 
 Contributions, ideas and bug reports are welcome.
 
