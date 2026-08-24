@@ -63,7 +63,7 @@ impl<T: PartialEq> FormState<T> {
                 self.focus = self.focus.wrapping_add(1) % self.fields.len();
             }
             KeyCode::BackTab if !self.fields.is_empty() => {
-                self.focus = self.focus.wrapping_sub(1) % self.fields.len();
+                self.focus = (self.focus + self.fields.len() - 1) % self.fields.len();
             }
             _ => {
                 if !self.fields.is_empty()
