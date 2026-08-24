@@ -215,7 +215,7 @@ While at least one field is invalid, pressing `Enter` has no effect: the form st
 
 ## Usage
 
-A complete example is available in [`examples/simple.rs`](examples/simple.rs).
+A complete example is available in [`examples/simple-typed.rs`](examples/simple-typed.rs).
 
 The following is essentially the same example:
 
@@ -249,16 +249,6 @@ fn main() -> std::io::Result<()> {
             .required()
             .single_line(FormField::Cognome, "Cognome")
             .value("Rossi")
-            .validator(|value: &str| {
-                (value.len() > 2)
-                    .then_some(())
-                    .ok_or_else(|| "Il cognome deve avere una lunghezza maggiore di 2".to_owned())
-            })
-            .validator(|value: &str| {
-                (value.len() < 11)
-                    .then_some(())
-                    .ok_or_else(|| "Il cognome deve avere una lunghezza massima di 10".to_owned())
-            })
             .required()
             .select(FormField::Nazione, "Paese")
             .values_ref(&[
@@ -284,7 +274,7 @@ fn main() -> std::io::Result<()> {
                     .areas(frame.area());
 
                 frame.render_stateful_widget(
-                    Form::new(),
+                    Form::default(),
                     area,
                     &mut state,
                 );
@@ -315,6 +305,60 @@ fn main() -> std::io::Result<()> {
     Ok(())
 }
 ```
+
+`Form::default()` renders with the built-in theme; see [Theming](#theming) below for how to use your own.
+
+## Theming
+
+By default, `Form::default()` renders with a built-in gray/bold/reversed color scheme. To use your own, build a [`ratiform::style::FormStyle`](src/style.rs) and hand it to `Form::with_style(...)` instead of calling `Form::default()`:
+
+```rust
+use ratatui::style::{Color, Style};
+use ratiform::style::{FieldStyle, FormStyle};
+
+fn my_style() -> FormStyle {
+    let normal = Style::default().fg(Color::LightGreen);
+    FormStyle::builder()
+        .label(
+            FieldStyle::builder()
+                .normal(normal)
+                .focused(normal.bold())
+                .disabled(normal.crossed_out())
+                .build(),
+        )
+        .value(
+            FieldStyle::builder()
+                .normal(normal)
+                .focused(normal.bold())
+                .disabled(normal.crossed_out())
+                .build(),
+        )
+        .highlight(
+            FieldStyle::builder()
+                .normal(normal)
+                .focused(normal.reversed())
+                .disabled(normal.reversed().crossed_out())
+                .build(),
+        )
+        .error(Style::default().bg(Color::Red).fg(Color::White).bold())
+        .build()
+}
+```
+
+```rust
+frame.render_stateful_widget(Form::with_style(my_style()), area, &mut state);
+```
+
+`FormStyle` groups four areas:
+
+* **`label`** — the field's caption, on the left.
+* **`value`** — the field's own content: the text color of a `SingleLine` field, a `Select` field's list items, and a `Checkbox`'s `[✓]` / `[ ]` glyph.
+* **`highlight`** — emphasis for whatever is "active right now": the background box behind a `SingleLine` field, and the currently selected row of a `Select` list.
+* **`error`** — the validation error message shown under an invalid field. The error is rendered right-aligned in an area sized to the message itself, so a background color set here (like the white-on-red in the example above) hugs just the text rather than filling the whole row.
+
+Each of `label`, `value` and `highlight` is a [`FieldStyle`](src/style.rs), carrying one `Style` per state: `normal`, `focused`, `disabled`, `readonly`. You don't need to pick which one applies yourself — `FieldOptions` resolves it for you, with `disabled` taking priority over `readonly`, which takes priority over `focused`.
+
+A runnable variant of the earlier example with a custom `FormStyle` (plus a couple of debug fields exercising `set_value`/`focus_field`) is in [`examples/simple.rs`](examples/simple.rs).
 
 ### Keyboard navigation
 
@@ -395,7 +439,7 @@ This project is still in an early stage.
 
 The current implementation is intentionally small and focused on providing a basic form abstraction for Ratatui. APIs, behaviour and rendering may change as the project evolves.
 
-`required()`, `disabled()`, `readonly()` and `validator(...)` are now enforced, and submitted values can be retrieved through `FormState::values()`. Rendering and error reporting are still fairly basic (for instance, only single-line text fields can carry a custom validator's semantics meaningfully, and there is no built-in library of common validators yet), so behaviour and layout may still change as the project evolves.
+`required()`, `disabled()`, `readonly()` and `validator(...)` are now enforced, submitted values can be retrieved through `FormState::values()`, and rendering can be themed through `FormStyle` (see [Theming](#theming)). There is still no built-in library of common validators, so behaviour and layout may still change as the project evolves.
 
 Contributions, ideas and bug reports are welcome.
 
@@ -413,4 +457,3 @@ You may choose to use `ratiform` under the terms of either license.
 I used AI to help me write some of the tests and documentation for this project. Writing tests can be a bit tedious, and English isn't my native language, so AI has been a useful tool to speed things up and improve the documentation.
 
 I still review, adapt, and run the generated tests, but I prefer to be transparent about how AI was used in this project.
-
