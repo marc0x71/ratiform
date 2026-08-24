@@ -3,7 +3,7 @@ pub mod builder;
 mod event;
 mod field;
 mod render;
-mod style;
+pub mod style;
 mod widget;
 
 use std::{hash::Hash, marker::PhantomData};
@@ -122,9 +122,9 @@ pub struct Form<T> {
 }
 
 impl<T> Form<T> {
-    pub fn new() -> Self {
+    pub fn with_style(style: FormStyle) -> Self {
         Self {
-            style: FormStyle::default(),
+            style,
             _phantom: PhantomData,
         }
     }
@@ -132,6 +132,9 @@ impl<T> Form<T> {
 
 impl<T> Default for Form<T> {
     fn default() -> Self {
-        Self::new()
+        Self {
+            style: FormStyle::default(),
+            _phantom: PhantomData,
+        }
     }
 }

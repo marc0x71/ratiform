@@ -42,7 +42,7 @@ fn main() -> std::io::Result<()> {
             terminal.draw(|frame| {
                 let [area, _] = Layout::vertical([Constraint::Length(19), Constraint::Fill(1)])
                     .areas(frame.area());
-                frame.render_stateful_widget(Form::new(), area, &mut state);
+                frame.render_stateful_widget(Form::default(), area, &mut state);
                 if let Some(position) = state.cursor_position() {
                     frame.set_cursor_position(position);
                 }

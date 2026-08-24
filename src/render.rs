@@ -55,10 +55,13 @@ impl<T: PartialEq> StatefulWidget for Form<T> {
             }
 
             if let Some(message) = field.error.as_ref() {
+                let len = message.chars().count() as u16;
+                let [_, right] =
+                    Layout::horizontal([Constraint::Fill(1), Constraint::Length(len)]).areas(error);
                 let error_message = Paragraph::new(message.as_str())
-                    .red()
+                    .style(self.style.error)
                     .alignment(HorizontalAlignment::Right);
-                error_message.render(error, buf);
+                error_message.render(right, buf);
             }
         }
     }

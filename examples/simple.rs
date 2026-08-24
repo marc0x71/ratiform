@@ -3,8 +3,13 @@ use std::collections::HashMap;
 use ratatui::{
     crossterm::event::{self, Event},
     layout::{Constraint, Layout},
+    style::{Color, Style},
 };
-use ratiform::{Form, builder::FormBuilder};
+use ratiform::{
+    Form,
+    builder::FormBuilder,
+    style::{FieldStyle, FormStyle},
+};
 
 fn main() -> std::io::Result<()> {
     let result = ratatui::run(|terminal| -> std::io::Result<_> {
@@ -49,7 +54,7 @@ fn main() -> std::io::Result<()> {
             terminal.draw(|frame| {
                 let [area, _] = Layout::vertical([Constraint::Length(19), Constraint::Fill(1)])
                     .areas(frame.area());
-                frame.render_stateful_widget(Form::default(), area, &mut state);
+                frame.render_stateful_widget(Form::with_style(my_style()), area, &mut state);
                 if let Some(position) = state.cursor_position() {
                     frame.set_cursor_position(position);
                 }
@@ -71,4 +76,32 @@ fn main() -> std::io::Result<()> {
     })?;
     println!("got = {result:?}");
     Ok(())
+}
+
+fn my_style() -> FormStyle {
+    let normal = Style::default().fg(Color::LightGreen);
+    FormStyle::builder()
+        .label(
+            FieldStyle::builder()
+                .normal(normal)
+                .focused(normal.bold())
+                .disabled(normal.crossed_out())
+                .build(),
+        )
+        .value(
+            FieldStyle::builder()
+                .normal(normal)
+                .focused(normal.bold())
+                .disabled(normal.crossed_out())
+                .build(),
+        )
+        .highlight(
+            FieldStyle::builder()
+                .normal(normal)
+                .focused(normal.reversed())
+                .disabled(normal.reversed().crossed_out())
+                .build(),
+        )
+        .error(Style::default().bg(Color::Red).fg(Color::White).bold())
+        .build()
 }
