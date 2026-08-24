@@ -4,6 +4,9 @@ use crate::{
     widget::{check_box::CheckboxBuilder, select::SelectBuilder, single_line::SingleLineBuilder},
 };
 
+/// Entry point for building a form. Generic over `T`, the type used to
+/// identify each field — any type works, from a plain integer to your own
+/// `enum`; see the crate-level docs for why that matters.
 pub struct FormBuilder<T> {
     pub(crate) fields: Vec<Field<T>>,
 }
@@ -17,10 +20,12 @@ impl<T> Default for FormBuilder<T> {
 }
 
 impl<T: PartialEq> FormBuilder<T> {
+    /// Starts a new, empty form.
     pub fn new() -> Self {
         Self::default()
     }
 
+    /// Adds a single-line text field.
     pub fn single_line(self, id: T, label: impl Into<String>) -> SingleLineBuilder<T> {
         SingleLineBuilder {
             id,
@@ -33,6 +38,7 @@ impl<T: PartialEq> FormBuilder<T> {
         }
     }
 
+    /// Adds a checkbox field.
     pub fn checkbox(self, id: T, label: impl Into<String>) -> CheckboxBuilder<T> {
         CheckboxBuilder {
             id,
@@ -43,6 +49,9 @@ impl<T: PartialEq> FormBuilder<T> {
         }
     }
 
+    /// Adds a select field: a list of `(value, label)` pairs the user picks
+    /// from with the arrow keys. `value` is what `values()`/`value()`
+    /// return once selected; `label` is what's shown on screen.
     pub fn select(self, id: T, label: impl Into<String>) -> SelectBuilder<T> {
         SelectBuilder {
             id,
@@ -54,38 +63,73 @@ impl<T: PartialEq> FormBuilder<T> {
         }
     }
 
+    /// Builds the `FormState`. Every field is validated once immediately,
+    /// so a field that starts out invalid (an initial value too short, a
+    /// required field left empty) already carries its error before the
+    /// first render.
     pub fn build(self) -> FormState<T> {
         FormState::new(self.fields)
     }
 }
 
-// MACRO
+/// Generates the builder methods shared by every field kind: `required`,
+/// `optional`, `disabled`, `readonly`, `height`, `validator`, plus the
+/// chaining methods that let you add another field or call `build()`
+/// without breaking out of the current builder chain.
+///
+/// Invoked once per widget builder (see `single_line.rs`, `check_box.rs`,
+/// `select.rs`), so a new field kind gets all of this for free instead of
+/// reimplementing it.
 #[macro_export]
 macro_rules! field_builder_common {
     ($builder:ident<$generic:ident>) => {
         impl<$generic: PartialEq> $builder<$generic> {
-            // FieldOptions
+            /// Marks the field as required, using `message` as the error
+            /// shown when it's left empty. Every field is required by
+            /// default already, with a built-in message — call this only
+            /// when you want your own message instead. Calling it replaces
+            /// whatever required state the field had before, including a
+            /// prior `optional()`.
             pub fn required(mut self, message: String) -> Self {
                 self.options.required = Some($crate::validators::required(message));
                 self
             }
+
+            /// Opts the field out of the required check entirely: an empty
+            /// value is valid, and no validators run on it.
             pub fn optional(mut self) -> Self {
                 self.options.required = None;
                 self
             }
+
+            /// Disables the field: it stops responding to keyboard input.
             pub fn disabled(mut self) -> Self {
                 self.options.disabled = true;
                 self
             }
+
+            /// Makes the field readonly: like `disabled()`, it stops
+            /// responding to keyboard input.
             pub fn readonly(mut self) -> Self {
                 self.options.readonly = true;
                 self
             }
+
+            /// Sets the field's height in terminal rows, not counting the
+            /// row reserved for its error message (added automatically).
+            /// Defaults to 1; mainly useful for `Select`, to control how
+            /// many options are visible without scrolling.
             pub fn height(mut self, height: u16) -> Self {
                 self.options.height = height;
                 self
             }
 
+            /// Adds a validation rule, run whenever the field's value is
+            /// non-empty (an empty value is handled by the required check
+            /// instead, see `required`/`optional` above). Can be called
+            /// more than once on the same field: each call adds one more
+            /// check, run in the order they were added, and the field is
+            /// invalid as soon as one of them returns `Err`.
             pub fn validator<F>(mut self, function: F) -> Self
             where
                 F: Fn(&str) -> Result<(), String> + 'static,
@@ -95,6 +139,8 @@ macro_rules! field_builder_common {
             }
 
             // Builders
+            /// Finishes this field and starts a new single-line text field,
+            /// continuing the same builder chain.
             pub fn single_line(
                 self,
                 id: $generic,
@@ -102,6 +148,9 @@ macro_rules! field_builder_common {
             ) -> $crate::widget::single_line::SingleLineBuilder<$generic> {
                 self.finish().single_line(id, label)
             }
+
+            /// Finishes this field and starts a new checkbox field,
+            /// continuing the same builder chain.
             pub fn checkbox(
                 self,
                 id: $generic,
@@ -109,6 +158,9 @@ macro_rules! field_builder_common {
             ) -> $crate::widget::check_box::CheckboxBuilder<$generic> {
                 self.finish().checkbox(id, label)
             }
+
+            /// Finishes this field and starts a new select field,
+            /// continuing the same builder chain.
             pub fn select(
                 self,
                 id: $generic,
@@ -117,7 +169,8 @@ macro_rules! field_builder_common {
                 self.finish().select(id, label)
             }
 
-            //
+            /// Finishes this field and builds the `FormState` — see
+            /// `FormBuilder::build`.
             pub fn build(self) -> FormState<T> {
                 self.finish().build()
             }
