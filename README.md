@@ -13,6 +13,18 @@ Build forms with a typed field identity, keep the state in your application, and
 
 The project is dual-licensed under the **MIT License** and the **Apache License 2.0** (see [License](#license) below).
 
+## Why ratiform?
+
+I started this while building a different TUI application that needed a couple of text inputs. At first I wrote them the old-fashioned way: a `String` in my state, rendering and key handling done by hand, field by field. Fine for one input, a bit repetitive for two.
+
+Then I needed a third field, and hand-rolling focus management — which field is active, what `Tab` should do, how to keep three separate pieces of state in sync — stopped being worth it. [`tui-input`](https://github.com/sayanarijit/tui-input) looked like the natural next step, but it manages a single field; grouping several of them and moving focus between them was still on me.
+
+So I went looking for something closer to an actual *form*: own the fields, own the focus, hand me back what the user typed. I found [`ratatui-form`](https://github.com/DavidLiedle/ratatui-form), which does exactly that, and more than `ratiform` does today. What made me pause was how it hands the values back — serialized to JSON, keyed by field name as a string. I would have had to turn my own data into a serialization format, only to deserialize it again, to get data whose shape I already knew at compile time.
+
+That's the itch `ratiform` scratches: field identifiers stay real Rust types from the moment you create a field to the moment you read its value back. No string keys, no serialization round-trip, and no form framework trying to own your application's data.
+
+I doubt I'm the only one this has bothered — hence this project. 😅
+
 ## Design
 
 ```
@@ -401,3 +413,4 @@ You may choose to use `ratiform` under the terms of either license.
 I used AI to help me write some of the tests and documentation for this project. Writing tests can be a bit tedious, and English isn't my native language, so AI has been a useful tool to speed things up and improve the documentation.
 
 I still review, adapt, and run the generated tests, but I prefer to be transparent about how AI was used in this project.
+
