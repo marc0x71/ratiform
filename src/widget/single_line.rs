@@ -4,7 +4,7 @@ use ratatui::{
     buffer::Buffer,
     crossterm::event::KeyCode,
     layout::Rect,
-    style::{Color, Modifier, Style, Stylize},
+    style::Style,
     widgets::{Block, Paragraph, Widget},
 };
 

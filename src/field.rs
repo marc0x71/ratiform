@@ -1,7 +1,5 @@
-use ratatui::widgets::ListState;
-
 use crate::{
-    style::{FieldState, FieldStyle},
+    style::FieldState,
     validators,
     widget::{check_box::CheckBoxStatus, select::SelectStatus, single_line::SingleLineStatus},
 };

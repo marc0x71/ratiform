@@ -1,13 +1,7 @@
-use ratatui::widgets::ListState;
-
 use crate::{
     FormState,
-    field::{Field, FieldKind, FieldOptions},
-    widget::{
-        check_box::{CheckBoxStatus, CheckboxBuilder},
-        select::{SelectBuilder, SelectStatus},
-        single_line::{SingleLineBuilder, SingleLineStatus},
-    },
+    field::{Field, FieldOptions},
+    widget::{check_box::CheckboxBuilder, select::SelectBuilder, single_line::SingleLineBuilder},
 };
 
 pub struct FormBuilder<T> {

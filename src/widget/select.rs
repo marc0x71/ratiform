@@ -1,10 +1,8 @@
-use std::clone;
-
 use ratatui::{
     buffer::Buffer,
     crossterm::event::KeyCode,
     layout::Rect,
-    style::{Color, Modifier, Style, Stylize},
+    style::Style,
     widgets::{List, ListState, StatefulWidget},
 };
 
@@ -137,7 +135,7 @@ pub(crate) fn render_select(
     value_style: Style,
     highlight_style: Style,
 ) -> Option<(u16, u16)> {
-    let items: Vec<_> = select.values.iter().map(|(k, v)| v.as_str()).collect();
+    let items: Vec<_> = select.values.iter().map(|(_, v)| v.as_str()).collect();
 
     let list = List::new(items)
         .style(value_style)

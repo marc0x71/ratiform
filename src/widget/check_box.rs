@@ -1,9 +1,5 @@
 use ratatui::{
-    buffer::Buffer,
-    crossterm::event::KeyCode,
-    layout::Rect,
-    style::{Color, Modifier, Style, Stylize},
-    text::Span,
+    buffer::Buffer, crossterm::event::KeyCode, layout::Rect, style::Style, text::Span,
     widgets::Widget,
 };
 

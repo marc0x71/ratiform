@@ -1,15 +1,14 @@
 use ratatui::{
     buffer::Buffer,
-    layout::{Constraint, HorizontalAlignment, Layout, Rect},
-    style::{Modifier, Style, Stylize},
+    layout::{Constraint, Layout, Rect},
+    style::Style,
     text::Span,
-    widgets::{Block, Paragraph, StatefulWidget, Widget},
+    widgets::{StatefulWidget, Widget},
 };
 
 use crate::{
     Form, FormState,
     field::{Field, FieldKind},
-    style::FieldState,
     widget::{check_box::render_checkbox, select::render_select, single_line::render_singleline},
 };
 
@@ -103,7 +102,7 @@ fn scroll_offset(heights: &[u16], viewport_height: u16, focus: usize) -> (usize,
         weights.push((current, current + h));
         current += h;
     }
-    let (left, right) = weights.get(focus).unwrap();
+    let (_, right) = weights.get(focus).unwrap();
 
     let min = right.saturating_sub(viewport_height);
 
@@ -177,12 +176,6 @@ mod tests {
     }
 
     #[test]
-    fn no_snap_needed_when_raw_offset_already_a_field_boundary() {
-        let heights = [2, 2, 6, 2];
-        let (lower, _) = scroll_offset(&heights, 9, 3);
-    }
-
-    #[test]
     fn focus_already_visible_from_zero_no_snap_penalty() {
         let heights = [2, 2, 6, 2];
         assert_eq!(scroll_offset(&heights, 9, 0), (0, 2));
@@ -190,8 +183,6 @@ mod tests {
 
     #[test]
     fn bottom_can_still_be_cut_in_half() {
-        let heights = [5, 10, 5, 5];
-        let (_, highest) = scroll_offset(&heights, 10, 2);
         let heights2 = [3, 3, 3, 3];
         let (_, highest2) = scroll_offset(&heights2, 8, 0);
         assert_eq!(highest2, 2);

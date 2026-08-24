@@ -1,4 +1,4 @@
-use ratatui::crossterm::event::{KeyCode, KeyEvent};
+use ratatui::crossterm::event::KeyCode;
 
 use crate::{
     field::{Field, FieldKind},

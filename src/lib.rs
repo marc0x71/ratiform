@@ -1,4 +1,3 @@
-#![allow(unused)]
 pub mod builder;
 mod event;
 mod field;
@@ -7,16 +6,10 @@ pub mod style;
 pub mod validators;
 mod widget;
 
-use std::{hash::Hash, marker::PhantomData};
+use std::marker::PhantomData;
 
 use field::Field;
-use ratatui::{
-    crossterm::event::{KeyCode, KeyEvent, KeyEventKind},
-    layout::{Constraint, Layout},
-    style::Stylize,
-    text::Span,
-    widgets::{Block, Paragraph, StatefulWidget, Widget},
-};
+use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyEventKind};
 
 use crate::{event::handle_input_field, style::FormStyle};
 
@@ -57,10 +50,6 @@ impl<T: PartialEq> FormState<T> {
 
     pub fn cursor_position(&self) -> Option<(u16, u16)> {
         self.cursor_position
-    }
-
-    pub(crate) fn set_cursor_position(&mut self, cursor_position: Option<(u16, u16)>) {
-        self.cursor_position = cursor_position;
     }
 
     pub fn handle_input(&mut self, key_event: KeyEvent) {
@@ -113,7 +102,7 @@ impl<T: PartialEq> FormState<T> {
         }
     }
 
-    pub fn focus_field(&self) -> Option<&T> {
+    pub fn focused_field(&self) -> Option<&T> {
         self.fields.get(self.focus).map(|f| &f.id)
     }
 }

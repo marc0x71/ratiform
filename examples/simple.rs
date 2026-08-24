@@ -49,7 +49,7 @@ fn main() -> std::io::Result<()> {
 
         loop {
             state.set_value(&4, "true");
-            let f = format!("focus={:?}", state.focus_field());
+            let f = format!("focus={:?}", state.focused_field());
             state.set_value(&10, &f);
             terminal.draw(|frame| {
                 let [area, _] = Layout::vertical([Constraint::Length(19), Constraint::Fill(1)])
