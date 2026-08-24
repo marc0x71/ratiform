@@ -9,6 +9,7 @@ use ratiform::{
     Form,
     builder::FormBuilder,
     style::{FieldStyle, FormStyle},
+    validator,
 };
 
 fn main() -> std::io::Result<()> {
@@ -16,24 +17,21 @@ fn main() -> std::io::Result<()> {
         let mut state = FormBuilder::new()
             .single_line(1, "Nome")
             .value("Mario")
-            .validator(Box::new(|value: &str| {
-                (value.len() > 2)
-                    .then_some(())
-                    .ok_or_else(|| "Il nome deve avere una lunghezza maggiore di 2".to_owned())
-            }))
+            .validator(validator::min_length(
+                2,
+                "Il nome deve avere una lunghezza di almeno 2 caratteri".to_owned(),
+            ))
             .required()
             .single_line(2, "Cognome")
             .value("Rossi")
-            .validator(|value: &str| {
-                (value.len() > 2)
-                    .then_some(())
-                    .ok_or_else(|| "Il nome deve avere una lunghezza maggiore di 2".to_owned())
-            })
-            .validator(|value: &str| {
-                (value.len() < 11)
-                    .then_some(())
-                    .ok_or_else(|| "Il nome deve avere una lunghezza massima di 10".to_owned())
-            })
+            .validator(validator::min_length(
+                2,
+                "Il cognome deve avere una lunghezza di almeno 2 caratteri".to_owned(),
+            ))
+            .validator(validator::max_length(
+                10,
+                "Il cognome deve avere una lunghezza massima di 10 caratteri".to_owned(),
+            ))
             .required()
             .select(3, "Paese")
             .values_ref(&[("I", "Italia"), ("F", "Francia"), ("D", "Germania")])
