@@ -9,7 +9,7 @@ use ratiform::{
     Form,
     builder::FormBuilder,
     style::{FieldStyle, FormStyle},
-    validator,
+    validators,
 };
 
 fn main() -> std::io::Result<()> {
@@ -17,18 +17,18 @@ fn main() -> std::io::Result<()> {
         let mut state = FormBuilder::new()
             .single_line(1, "Nome")
             .value("Mario")
-            .validator(validator::min_length(
+            .validator(validators::min_length(
                 2,
                 "Il nome deve avere una lunghezza di almeno 2 caratteri".to_owned(),
             ))
             .required()
             .single_line(2, "Cognome")
             .value("Rossi")
-            .validator(validator::min_length(
+            .validator(validators::min_length(
                 2,
                 "Il cognome deve avere una lunghezza di almeno 2 caratteri".to_owned(),
             ))
-            .validator(validator::max_length(
+            .validator(validators::max_length(
                 10,
                 "Il cognome deve avere una lunghezza massima di 10 caratteri".to_owned(),
             ))

@@ -168,27 +168,26 @@ Since fields are looked up by id (see [Reading and writing a single field](#read
 With `FormField` in scope, a complete form looks like this:
 
 ```rust
+use ratiform::validators;
+
 let mut state = FormBuilder::new()
     .single_line(FormField::Nome, "Nome")
     .value("Mario")
-    .validator(|value: &str| {
-        (value.len() > 2)
-            .then_some(())
-            .ok_or_else(|| "Il nome deve avere una lunghezza maggiore di 2".to_owned())
-    })
+    .validator(validators::min_length(
+        2,
+        "Il nome deve avere una lunghezza di almeno 2 caratteri".to_owned(),
+    ))
     .required()
     .single_line(FormField::Cognome, "Cognome")
     .value("Rossi")
-    .validator(|value: &str| {
-        (value.len() > 2)
-            .then_some(())
-            .ok_or_else(|| "Il cognome deve avere una lunghezza maggiore di 2".to_owned())
-    })
-    .validator(|value: &str| {
-        (value.len() < 11)
-            .then_some(())
-            .ok_or_else(|| "Il cognome deve avere una lunghezza massima di 10".to_owned())
-    })
+    .validator(validators::min_length(
+        2,
+        "Il cognome deve avere una lunghezza di almeno 2 caratteri".to_owned(),
+    ))
+    .validator(validators::max_length(
+        10,
+        "Il cognome deve avere una lunghezza massima di 10 caratteri".to_owned(),
+    ))
     .required()
     .select(FormField::Nazione, "Paese")
     .values_ref(&[
@@ -225,6 +224,26 @@ In other words, an empty value is never handed to a validator: `required()` deci
 Validation runs **in real time**: every time a keystroke changes a field's value, that field is immediately re-checked, not just when the form is submitted. When a field is invalid, its error message is rendered in red to the right of the field.
 
 While at least one field is invalid, pressing `Enter` has no effect: the form stays in `FormResult::Working` and is not submitted. Once every field passes validation, `Enter` submits the form as usual.
+
+### Built-in validators
+
+`validator(...)` accepts any closure, so you can always write your own check from scratch — but the `ratiform::validators` module ships a handful of common ones, each taking the error message to show and returning a ready-to-use `Validator`:
+
+| Function | Checks that the value... | Notes |
+| --- | --- | --- |
+| `min_length(len, message)` | has at least `len` characters | inclusive — `min_length(5, ..)` accepts a 5-character value |
+| `max_length(len, message)` | has at most `len` characters | inclusive — `max_length(10, ..)` accepts a 10-character value |
+| `is_numeric(message)` | consists only of ASCII digits (`0`–`9`) | no sign, no decimal point — `"-5"` and `"3.14"` are both rejected |
+| `alphabetic(message)` | consists only of letters | Unicode-aware — accented letters like `à` count as letters |
+| `alphanumeric(message)` | consists only of letters and digits | same Unicode-awareness as `alphabetic` |
+| `no_whitespace(message)` | contains no whitespace (spaces, tabs, newlines) | |
+| `parsable::<T>(message)` | parses as a `T` via `T: FromStr` | see below — needs the turbofish |
+
+`min_length`/`max_length` count Unicode characters, not bytes — `min_length(5, ..)` correctly accepts `"città"` (5 characters, 6 bytes in UTF-8). All six of the shape-based validators above (everything except `parsable`) pass on an empty string: they check *shape*, and an empty value has no character that violates the rule. In practice this rarely matters, because inside a `Field`, `required()`/`optional()` already decide whether an empty value is acceptable before any validator runs (see the table above) — but it's worth knowing if you call one of these functions directly, outside of a `Field`.
+
+`parsable` is different from the rest: since `T` only appears in the function body, not in `Validator`'s return type, the compiler can't infer it — you always need the turbofish, `parsable::<i32>(message)`, `parsable::<f64>(message)`, and so on. Being generic over any `T: FromStr` also means it isn't limited to numbers: any type with a `FromStr` implementation works, including ones from other crates. For example, `chrono::NaiveDate` implements `FromStr` for the ISO `YYYY-MM-DD` format, so `parsable::<chrono::NaiveDate>("data non valida".to_owned())` gives you a correct date validator — leap years included — without `ratiform` itself depending on `chrono`. That dependency, if you want it, lives in your own `Cargo.toml`, not in `ratiform`'s.
+
+For anything these don't cover — a different date format, a regex pattern, a check across multiple fields — `.validator(...)` still takes a plain closure exactly as before; the built-ins are a convenience on top of that, not a replacement for it.
 
 ## Usage
 
@@ -452,7 +471,7 @@ This project is still in an early stage.
 
 The current implementation is intentionally small and focused on providing a basic form abstraction for Ratatui. APIs, behaviour and rendering may change as the project evolves.
 
-`required()`, `disabled()`, `readonly()` and `validator(...)` are now enforced, submitted values can be retrieved through `FormState::values()`, and rendering can be themed through `FormStyle` (see [Theming](#theming)). There is still no built-in library of common validators, so behaviour and layout may still change as the project evolves.
+`required()`, `disabled()`, `readonly()` and `validator(...)` are now enforced, submitted values can be retrieved through `FormState::values()`, rendering can be themed through `FormStyle` (see [Theming](#theming)), and a handful of common checks are available in `ratiform::validators` (see [Built-in validators](#built-in-validators)). Behaviour and layout may still change as the project evolves.
 
 Contributions, ideas and bug reports are welcome.
 

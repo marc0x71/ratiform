@@ -4,7 +4,7 @@ mod event;
 mod field;
 mod render;
 pub mod style;
-pub mod validator;
+pub mod validators;
 mod widget;
 
 use std::{hash::Hash, marker::PhantomData};
