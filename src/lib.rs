@@ -49,8 +49,8 @@ impl<T: PartialEq> FormState<T> {
     pub(crate) fn max_label_length(&self) -> usize {
         self.fields
             .iter()
-            .max_by_key(|c| c.label().len())
-            .map(|f| f.label().len())
+            .max_by_key(|c| c.label().chars().count())
+            .map(|f| f.label().chars().count())
             .unwrap_or_default()
     }
 
