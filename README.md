@@ -1,6 +1,5 @@
 # ratiform
 [![CI](https://github.com/marc0x71/ratiform/actions/workflows/ci.yml/badge.svg)](https://github.com/marc0x71/ratiform/actions/workflows/ci.yml)
-
 A small, composable, stateful form widget for [Ratatui](https://github.com/ratatui/ratatui).
 
 Build forms with a typed field identity, keep the state in your application, and render them like any other Ratatui widget.
@@ -12,6 +11,8 @@ Build forms with a typed field identity, keep the state in your application, and
 `ratiform` provides a small, builder-based form component for [Ratatui](https://github.com/ratatui/ratatui), with keyboard navigation and a few basic input widgets.
 
 The project is dual-licensed under the **MIT License** and the **Apache License 2.0** (see [License](#license) below).
+
+<img width="1000" height="600" alt="ratiform" src="https://github.com/user-attachments/assets/1652a596-cbf9-4cd1-b58c-cd9f2815a0f7" />
 
 ## Why ratiform?
 
