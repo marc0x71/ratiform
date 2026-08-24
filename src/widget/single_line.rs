@@ -124,11 +124,12 @@ pub(crate) fn render_singleline(
     area: Rect,
     buf: &mut Buffer,
     singleline: &mut SingleLineStatus,
-    style: Style,
+    value_style: Style,
     highlight_style: Style,
 ) -> Option<(u16, u16)> {
-    let value =
-        Paragraph::new(singleline.value.as_str()).block(Block::default().style(highlight_style));
+    let value = Paragraph::new(singleline.value.as_str())
+        .style(value_style)
+        .block(Block::default().style(highlight_style));
 
     value.render(area, buf);
 
