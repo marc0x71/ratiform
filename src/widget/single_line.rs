@@ -11,7 +11,7 @@ use ratatui::{
 use crate::{
     FormState,
     builder::FormBuilder,
-    field::{Field, FieldKind, FieldOptions, Requirement},
+    field::{Field, FieldKind, FieldOptions},
     field_builder_common,
 };
 

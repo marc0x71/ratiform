@@ -2,18 +2,14 @@ use ratatui::widgets::ListState;
 
 use crate::{
     style::{FieldState, FieldStyle},
+    validators,
     widget::{check_box::CheckBoxStatus, select::SelectStatus, single_line::SingleLineStatus},
 };
 
 pub type Validator = Box<dyn Fn(&str) -> Result<(), String> + 'static>;
 
-pub enum Requirement {
-    Required,
-    Optional,
-}
-
 pub struct FieldOptions {
-    pub(crate) required: Requirement,
+    pub(crate) required: Option<Validator>, // None = optional
     pub(crate) disabled: bool,
     pub(crate) readonly: bool,
     pub(crate) height: u16,
@@ -23,7 +19,7 @@ pub struct FieldOptions {
 impl Default for FieldOptions {
     fn default() -> Self {
         Self {
-            required: Requirement::Required,
+            required: Some(validators::required("<*>".to_string())),
             disabled: false,
             readonly: false,
             height: 1,
@@ -67,12 +63,11 @@ impl<T> Field<T> {
     }
 
     pub(crate) fn validate(&mut self) {
-        self.error = if matches!(self.options.required, Requirement::Required)
-            && self.kind.get().is_empty()
-        {
-            Some("<*>".to_owned())
+        let value = self.kind.get();
+        let required_error = self.options.required.as_ref().and_then(|f| f(&value).err());
+        self.error = if let Some(error) = required_error {
+            Some(error)
         } else {
-            let value = self.kind.get();
             if !value.is_empty() {
                 self.options.validator.iter().find_map(|f| f(&value).err())
             } else {

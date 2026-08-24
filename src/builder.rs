@@ -2,7 +2,7 @@ use ratatui::widgets::ListState;
 
 use crate::{
     FormState,
-    field::{Field, FieldKind, FieldOptions, Requirement},
+    field::{Field, FieldKind, FieldOptions},
     widget::{
         check_box::{CheckBoxStatus, CheckboxBuilder},
         select::{SelectBuilder, SelectStatus},
@@ -71,12 +71,12 @@ macro_rules! field_builder_common {
     ($builder:ident<$generic:ident>) => {
         impl<$generic: PartialEq> $builder<$generic> {
             // FieldOptions
-            pub fn required(mut self) -> Self {
-                self.options.required = $crate::field::Requirement::Required;
+            pub fn required(mut self, message: String) -> Self {
+                self.options.required = Some($crate::validators::required(message));
                 self
             }
             pub fn optional(mut self) -> Self {
-                self.options.required = $crate::field::Requirement::Optional;
+                self.options.required = None;
                 self
             }
             pub fn disabled(mut self) -> Self {

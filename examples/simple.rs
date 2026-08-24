@@ -21,7 +21,7 @@ fn main() -> std::io::Result<()> {
                 2,
                 "Il nome deve avere una lunghezza di almeno 2 caratteri".to_owned(),
             ))
-            .required()
+            .required("Campo obbligatorio".to_owned())
             .single_line(2, "Cognome")
             .placeholder("Insersci il cognome".to_owned())
             .validator(validators::min_length(
@@ -32,19 +32,17 @@ fn main() -> std::io::Result<()> {
                 10,
                 "Il cognome deve avere una lunghezza massima di 10 caratteri".to_owned(),
             ))
-            .required()
             .select(3, "Paese")
             .values_ref(&[("I", "Italia"), ("F", "Francia"), ("D", "Germania")])
             .selected(1)
             .height(5)
-            .required()
             .checkbox(4, "Accetto i termini")
             .checked(false)
             .optional()
             .single_line(5, "Password")
             .placeholder("Insersci la password".to_owned())
             .masked_with('•')
-            .required()
+            .required("La password non può essere vuota".to_owned())
             .single_line(10, "Debug")
             .disabled()
             .build();

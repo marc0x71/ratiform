@@ -37,7 +37,8 @@ pub struct FormState<T> {
 }
 
 impl<T: PartialEq> FormState<T> {
-    pub(crate) fn new(fields: Vec<Field<T>>) -> Self {
+    pub(crate) fn new(mut fields: Vec<Field<T>>) -> Self {
+        fields.iter_mut().for_each(|f| f.validate());
         Self {
             fields,
             focus: 0,

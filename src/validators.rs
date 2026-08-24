@@ -2,6 +2,13 @@ use std::str::FromStr;
 
 use crate::field::Validator;
 
+pub fn required(message: String) -> Validator {
+    Box::new(move |value: &str| {
+        (!value.is_empty())
+            .then_some(())
+            .ok_or_else(|| message.clone())
+    })
+}
 pub fn min_length(len: usize, message: String) -> Validator {
     Box::new(move |value: &str| {
         (value.chars().count() >= len)
