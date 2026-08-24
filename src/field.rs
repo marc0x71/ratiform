@@ -80,7 +80,7 @@ impl<T> Field<T> {
     }
 
     pub fn is_dirty(&self) -> bool {
-        self.kind.get() == self.initial_value
+        self.kind.get() != self.initial_value
     }
 
     pub(crate) fn reset(&mut self) {

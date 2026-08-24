@@ -401,7 +401,7 @@ frame.render_stateful_widget(Form::with_style(my_style()), area, &mut state);
 
 Each of `label`, `value` and `highlight` is a [`FieldStyle`](src/style.rs), carrying one `Style` per state: `normal`, `focused`, `disabled`, `readonly`. You don't need to pick which one applies yourself — `FieldOptions` resolves it for you, with `disabled` taking priority over `readonly`, which takes priority over `focused`. `error` and `placeholder` are plain `Style`s instead — unlike the other three, they're not tied to focus/disabled/readonly, they simply apply whenever an error or a placeholder is shown.
 
-A runnable variant of the earlier example with a custom `FormStyle`, placeholders on every text field, a masked `Password` field, and a couple of debug fields exercising `set_value`/`focus_field`, is in [`examples/simple.rs`](examples/simple.rs).
+A runnable variant of the earlier example with a custom `FormStyle`, placeholders on every text field, a masked `Password` field, and a couple of debug fields exercising `set_value`/`focused_field`, is in [`examples/simple.rs`](examples/simple.rs).
 
 ### Keyboard navigation
 
@@ -464,7 +464,25 @@ A couple of details worth knowing before you reach for this:
 
 ### Focused field
 
-`FormState::focus_field(&self) -> Option<&T>` returns the id of the field that currently has focus (`None` only if the form has no fields at all). It's handy for anything that needs to react to "which field is the user on right now" — for instance, showing contextual help for the focused field elsewhere on screen.
+`FormState::focused_field(&self) -> Option<&T>` returns the id of the field that currently has focus (`None` only if the form has no fields at all). It's handy for anything that needs to react to "which field is the user on right now" — for instance, showing contextual help for the focused field elsewhere on screen.
+
+### Dirty state and resetting
+
+Every field remembers the value it was built with — whatever `.value(...)`, `.checked(...)` or `.selected(...)` set, or the default if none of those were called. "Dirty" means the current value no longer matches that original one:
+
+* **`FormState::is_dirty(&self) -> bool`** — `true` if at least one field has been changed since the form was built.
+* **`FormState::is_field_dirty(&self, id: &T) -> Option<bool>`** — the same check for a single field, `None` if no field has that id (same convention as `value()`).
+* **`FormState::reset(&mut self)`** — restores every field to its original value, and re-validates each one against it, so the error state after a reset matches the restored values rather than whatever was on screen a moment before.
+
+```rust
+if state.is_dirty() {
+    // warn the user before discarding their changes, for example
+}
+
+state.reset();
+```
+
+`set_value(...)` counts as a change here too, exactly as if the user had typed it — it updates a field's dirty state the same way a keystroke would, since it goes through the same underlying value.
 
 ### Retrieving the submitted values
 
@@ -482,7 +500,7 @@ This project is still in an early stage.
 
 The current implementation is intentionally small and focused on providing a basic form abstraction for Ratatui. APIs, behaviour and rendering may change as the project evolves.
 
-The required check, `disabled()`, `readonly()` and `validator(...)` are now enforced, submitted values can be retrieved through `FormState::values()`, rendering can be themed through `FormStyle` (see [Theming](#theming)), and a handful of common checks are available in `ratiform::validators` (see [Built-in validators](#built-in-validators)). Behaviour and layout may still change as the project evolves.
+The required check, `disabled()`, `readonly()` and `validator(...)` are now enforced, submitted values can be retrieved through `FormState::values()`, rendering can be themed through `FormStyle` (see [Theming](#theming)), a handful of common checks are available in `ratiform::validators` (see [Built-in validators](#built-in-validators)), and forms can track unsaved changes and roll them back through `is_dirty()`/`is_field_dirty()`/`reset()` (see [Dirty state and resetting](#dirty-state-and-resetting)). Behaviour and layout may still change as the project evolves.
 
 Contributions, ideas and bug reports are welcome.
 
