@@ -154,7 +154,7 @@ pub(crate) fn render_singleline(
 
 fn masked_display(value: &str, mask: Option<char>) -> Cow<'_, str> {
     if let Some(c) = mask {
-        let s = value.chars().map(|v| c).collect();
+        let s = value.chars().map(|_| c).collect();
         Cow::Owned(s)
     } else {
         Cow::Borrowed(value)

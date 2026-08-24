@@ -77,6 +77,7 @@ It supports:
 * cursor movement with `Left` / `Right`
 * `Home` / `End`
 * an initial value
+* masking (for password-like fields)
 
 Example:
 
@@ -87,6 +88,18 @@ Example:
 ```
 
 The first argument is the field's **identifier** (see [Field identifiers](#field-identifiers) below).
+
+#### Masked fields
+
+For a password-style field, use `masked()` (the character typed is replaced with `*`) or `masked_with(c)` to pick your own mask character:
+
+```rust
+.single_line(5, "Password")
+    .masked_with('•')
+    .required()
+```
+
+Masking only changes what's drawn on screen — the field's real value, `required()`, `validator(...)` and everything read back through `value()`/`values()` all still see (and act on) what the user actually typed, not the mask. The cursor stays correctly aligned regardless of the mask character or of multi-byte characters in the value, since the displayed string always has exactly as many characters as the real one.
 
 ### Checkbox
 
@@ -358,7 +371,7 @@ frame.render_stateful_widget(Form::with_style(my_style()), area, &mut state);
 
 Each of `label`, `value` and `highlight` is a [`FieldStyle`](src/style.rs), carrying one `Style` per state: `normal`, `focused`, `disabled`, `readonly`. You don't need to pick which one applies yourself — `FieldOptions` resolves it for you, with `disabled` taking priority over `readonly`, which takes priority over `focused`.
 
-A runnable variant of the earlier example with a custom `FormStyle` (plus a couple of debug fields exercising `set_value`/`focus_field`) is in [`examples/simple.rs`](examples/simple.rs).
+A runnable variant of the earlier example with a custom `FormStyle`, a masked `Password` field, and a couple of debug fields exercising `set_value`/`focus_field`, is in [`examples/simple.rs`](examples/simple.rs).
 
 ### Keyboard navigation
 
