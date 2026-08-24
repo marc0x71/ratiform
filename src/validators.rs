@@ -1,7 +1,22 @@
+//! A handful of common, general-purpose [`Validator`]s for use with
+//! [`crate::builder`]'s `.validator(...)`.
+//!
+//! Every function here takes the error message to show when the check
+//! fails, and returns a `Validator` ready to pass to `.validator(...)`.
+//! None of them special-case the empty string on their own — inside a
+//! `Field`, the required check already decides whether an empty value is
+//! acceptable before any of these run, so they never see one there. Calling
+//! them directly, outside of a `Field`, is a different story: see each
+//! function's notes below.
+
 use std::str::FromStr;
 
 use crate::field::Validator;
 
+/// Rejects an empty value. This is what `.required(message)` uses
+/// internally (see [`crate::builder`]) — you'll rarely call it directly,
+/// but it's a plain `Validator` like the rest, so nothing stops you from
+/// composing it yourself if you need to.
 pub fn required(message: String) -> Validator {
     Box::new(move |value: &str| {
         (!value.is_empty())
@@ -9,6 +24,13 @@ pub fn required(message: String) -> Validator {
             .ok_or_else(|| message.clone())
     })
 }
+
+/// Rejects a value shorter than `len` characters. The bound is inclusive:
+/// `min_length(5, ..)` accepts a value that is exactly 5 characters long.
+///
+/// Counts Unicode characters, not bytes — `"città"` is 5 characters even
+/// though it's 6 bytes in UTF-8. Passes on an empty value when called
+/// directly (see the module-level note above).
 pub fn min_length(len: usize, message: String) -> Validator {
     Box::new(move |value: &str| {
         (value.chars().count() >= len)
@@ -16,6 +38,11 @@ pub fn min_length(len: usize, message: String) -> Validator {
             .ok_or_else(|| message.clone())
     })
 }
+
+/// Rejects a value longer than `len` characters. The bound is inclusive:
+/// `max_length(10, ..)` accepts a value that is exactly 10 characters long.
+///
+/// Counts Unicode characters, not bytes, same as [`min_length`].
 pub fn max_length(len: usize, message: String) -> Validator {
     Box::new(move |value: &str| {
         (value.chars().count() <= len)
@@ -23,6 +50,12 @@ pub fn max_length(len: usize, message: String) -> Validator {
             .ok_or_else(|| message.clone())
     })
 }
+
+/// Rejects a value that isn't made up entirely of ASCII digits (`0`–`9`).
+///
+/// No sign and no decimal point are accepted — `"-5"` and `"3.14"` are both
+/// rejected. For a value that must actually parse as a number (including
+/// negative or floating-point ones), use [`parsable`] instead.
 pub fn is_numeric(message: String) -> Validator {
     Box::new(move |value: &str| {
         (value.chars().all(|c| c.is_ascii_digit()))
@@ -30,6 +63,11 @@ pub fn is_numeric(message: String) -> Validator {
             .ok_or_else(|| message.clone())
     })
 }
+
+/// Rejects a value that isn't made up entirely of letters.
+///
+/// Unicode-aware: accented letters such as `à` count as letters, this is
+/// not limited to ASCII.
 pub fn alphabetic(message: String) -> Validator {
     Box::new(move |value: &str| {
         (value.chars().all(|c| c.is_alphabetic()))
@@ -37,6 +75,10 @@ pub fn alphabetic(message: String) -> Validator {
             .ok_or_else(|| message.clone())
     })
 }
+
+/// Rejects a value that isn't made up entirely of letters and digits.
+///
+/// Unicode-aware for letters, same as [`alphabetic`].
 pub fn alphanumeric(message: String) -> Validator {
     Box::new(move |value: &str| {
         (value.chars().all(|c| c.is_alphanumeric()))
@@ -44,6 +86,9 @@ pub fn alphanumeric(message: String) -> Validator {
             .ok_or_else(|| message.clone())
     })
 }
+
+/// Rejects a value that contains any whitespace — spaces, tabs, newlines,
+/// or any other character `char::is_whitespace` considers whitespace.
 pub fn no_whitespace(message: String) -> Validator {
     Box::new(move |value: &str| {
         (value.chars().all(|c| !c.is_whitespace()))
@@ -51,6 +96,27 @@ pub fn no_whitespace(message: String) -> Validator {
             .ok_or_else(|| message.clone())
     })
 }
+
+/// Rejects a value that doesn't parse as a `T` via `T: FromStr`.
+///
+/// Unlike the other validators in this module, `T` only appears in the
+/// function body, not in `Validator`'s return type, so the compiler can't
+/// infer it — the turbofish is required:
+///
+/// ```text
+/// validators::parsable::<i32>("not a valid number".to_owned())
+/// ```
+///
+/// This isn't limited to numbers: any type with a `FromStr` implementation
+/// works, including ones from other crates. For example, `chrono::NaiveDate`
+/// implements `FromStr` for the ISO `YYYY-MM-DD` format, so
+/// `parsable::<chrono::NaiveDate>(..)` gives a correct, leap-year-aware date
+/// validator without `ratiform` itself depending on `chrono` — that
+/// dependency, if you want it, lives in your own `Cargo.toml`.
+///
+/// Note that, unlike the shape-based validators above, an empty value is
+/// never valid here: `"".parse::<i32>()` fails, same as any other malformed
+/// input.
 pub fn parsable<T: FromStr>(message: String) -> Validator {
     Box::new(move |value: &str| value.parse::<T>().map(|_| ()).map_err(|_| message.clone()))
 }
