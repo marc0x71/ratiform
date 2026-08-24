@@ -78,6 +78,7 @@ It supports:
 * `Home` / `End`
 * an initial value
 * masking (for password-like fields)
+* a placeholder shown while the value is empty
 
 Example:
 
@@ -100,6 +101,18 @@ For a password-style field, use `masked()` (the character typed is replaced with
 ```
 
 Masking only changes what's drawn on screen — the field's real value, `required()`, `validator(...)` and everything read back through `value()`/`values()` all still see (and act on) what the user actually typed, not the mask. The cursor stays correctly aligned regardless of the mask character or of multi-byte characters in the value, since the displayed string always has exactly as many characters as the real one.
+
+#### Placeholder
+
+`placeholder(text)` shows a hint whenever the field's value is empty:
+
+```rust
+.single_line(1, "Nome")
+    .placeholder("Inserisci il nome")
+    .required()
+```
+
+The placeholder disappears as soon as the user types anything, and is rendered with its own style (see [Theming](#theming)) so it doesn't get mistaken for real content. It's drawn in plain text even on a `masked_with(...)` field — masking a hint that isn't real input would just make it unreadable — and, like the mask itself, it has no effect on validation: a `required()` field showing a placeholder is still empty as far as `required()` and `values()` are concerned.
 
 ### Checkbox
 
@@ -373,6 +386,7 @@ fn my_style() -> FormStyle {
                 .build(),
         )
         .error(Style::default().bg(Color::Red).fg(Color::White).bold())
+        .placeholder(normal.italic())
         .build()
 }
 ```
@@ -381,16 +395,17 @@ fn my_style() -> FormStyle {
 frame.render_stateful_widget(Form::with_style(my_style()), area, &mut state);
 ```
 
-`FormStyle` groups four areas:
+`FormStyle` groups five areas:
 
 * **`label`** — the field's caption, on the left.
 * **`value`** — the field's own content: the text color of a `SingleLine` field, a `Select` field's list items, and a `Checkbox`'s `[✓]` / `[ ]` glyph.
 * **`highlight`** — emphasis for whatever is "active right now": the background box behind a `SingleLine` field, and the currently selected row of a `Select` list.
 * **`error`** — the validation error message shown under an invalid field. The error is rendered right-aligned in an area sized to the message itself, so a background color set here (like the white-on-red in the example above) hugs just the text rather than filling the whole row.
+* **`placeholder`** — a `SingleLine` field's [placeholder text](#placeholder), shown in place of `value`'s style while the field is empty.
 
-Each of `label`, `value` and `highlight` is a [`FieldStyle`](src/style.rs), carrying one `Style` per state: `normal`, `focused`, `disabled`, `readonly`. You don't need to pick which one applies yourself — `FieldOptions` resolves it for you, with `disabled` taking priority over `readonly`, which takes priority over `focused`.
+Each of `label`, `value` and `highlight` is a [`FieldStyle`](src/style.rs), carrying one `Style` per state: `normal`, `focused`, `disabled`, `readonly`. You don't need to pick which one applies yourself — `FieldOptions` resolves it for you, with `disabled` taking priority over `readonly`, which takes priority over `focused`. `error` and `placeholder` are plain `Style`s instead — unlike the other three, they're not tied to focus/disabled/readonly, they simply apply whenever an error or a placeholder is shown.
 
-A runnable variant of the earlier example with a custom `FormStyle`, a masked `Password` field, and a couple of debug fields exercising `set_value`/`focus_field`, is in [`examples/simple.rs`](examples/simple.rs).
+A runnable variant of the earlier example with a custom `FormStyle`, placeholders on every text field, a masked `Password` field, and a couple of debug fields exercising `set_value`/`focus_field`, is in [`examples/simple.rs`](examples/simple.rs).
 
 ### Keyboard navigation
 
