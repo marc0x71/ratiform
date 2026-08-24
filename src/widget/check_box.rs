@@ -58,7 +58,7 @@ impl CheckBoxStatus {
     }
 
     pub(crate) fn set(&mut self, value: &str) {
-        self.checked = value.parse().unwrap_or_default();
+        self.checked = value.to_lowercase().parse().unwrap_or_default();
     }
 }
 
@@ -84,4 +84,51 @@ pub(crate) fn render_checkbox(
     value.render(area, buf);
 
     None
+}
+
+#[cfg(test)]
+mod checkbox_tests {
+    use super::*;
+
+    fn make_checkbox(checked: bool) -> CheckBoxStatus {
+        CheckBoxStatus {
+            label: "Test".to_owned(),
+            checked,
+        }
+    }
+
+    #[test]
+    fn set_with_an_invalid_string_resets_to_false_rather_than_keeping_the_old_value() {
+        // bool::from_str fails on anything other than "true"/"false", and
+        // .unwrap_or_default() falls back to `false` — it does NOT leave
+        // the previous value untouched. Starting from `true` on purpose,
+        // so a wrong implementation that just ignores bad input would fail
+        // this test.
+        let mut checkbox = make_checkbox(true);
+        checkbox.set("yes");
+        assert!(!checkbox.checked);
+    }
+
+    #[test]
+    fn set_is_case_insensitive() {
+        let mut checkbox = make_checkbox(true);
+        checkbox.set("True");
+        assert!(checkbox.checked);
+    }
+
+    #[test]
+    fn space_toggles_the_checkbox() {
+        let mut checkbox = make_checkbox(false);
+        handle_input_checkbox(KeyCode::Char(' '), &mut checkbox);
+        assert!(checkbox.checked);
+    }
+
+    #[test]
+    fn other_keys_do_not_toggle_the_checkbox() {
+        let mut checkbox = make_checkbox(false);
+        handle_input_checkbox(KeyCode::Char('a'), &mut checkbox);
+        handle_input_checkbox(KeyCode::Enter, &mut checkbox);
+        handle_input_checkbox(KeyCode::Left, &mut checkbox);
+        assert!(!checkbox.checked);
+    }
 }
