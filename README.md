@@ -7,7 +7,7 @@ Build forms with a typed field identity, keep the state in your application, and
 
 > **⚠️ Work in progress**
 >
-> `ratiform` is currently under active development. The API may change, and the project should be considered experimental for now.
+> `ratiform` is currently under active development. Breaking changes are still possible before a stable release, so pin a specific commit if you depend on it.
 
 `ratiform` provides a small, builder-based form component for [Ratatui](https://github.com/ratatui/ratatui), with keyboard navigation and a few basic input widgets.
 
@@ -44,7 +44,7 @@ I doubt I'm the only one this has bothered — hence this project. 😅
 * The form doesn't decide what your UI looks like.
 * The form handles input, focus, validation and rendering.
 
-`FormBuilder` produces a `FormState<T>`, which your application owns for as long as the form is active — there is no hidden global state, no callback registry, nothing running in the background. `Form<T>` is a stateless `StatefulWidget`: you render it against that state exactly like you would any other Ratatui widget, in whichever `Rect`, frame, and event loop your application already has.
+`FormBuilder` produces a `FormState<T>`, which your application owns for as long as the form is active — there is no hidden global state, no callback registry, nothing running in the background. `Form<T>` is a stateless `StatefulWidget`: you render it against that state exactly like you would any other Ratatui widget, in whichever `Rect`, frame, and event loop your application already has. That includes composing it with other widgets — wrapping it in a titled `Block`, for instance, needs no support from `ratiform` at all (see [`examples/login-form.rs`](examples/login-form.rs)).
 
 The `T` here is the type of your field identifiers — see [Field identifiers](#field-identifiers) below, which is where most of what makes `ratiform` different from other form widgets actually lives.
 
@@ -348,6 +348,17 @@ fn main() -> std::io::Result<()> {
 ```
 
 `Form::default()` renders with the built-in theme; see [Theming](#theming) below for how to use your own.
+
+## More examples
+
+A few more programs live in [`examples/`](examples), each built around a specific situation rather than a feature tour:
+
+* [`examples/simple.rs`](examples/simple.rs) — the same form as above, rendered with a custom `FormStyle` (see [Theming](#theming)), plus a couple of debug fields exercising `set_value`/`focused_field`.
+* [`examples/login-form.rs`](examples/login-form.rs) — a login screen: a required username with a minimum length, a masked password with a custom strength check, an optional "remember me" checkbox, and the form itself rendered inside a titled, centered `Block` rather than filling the whole screen.
+* [`examples/connections.rs`](examples/connections.rs) — a connection settings form: `validators::parsable::<u16>` to validate a port number, a `Select` for the protocol, and a mix of required and optional fields side by side.
+* [`examples/anagrafica.rs`](examples/anagrafica.rs) — forcing a field to stay uppercase or lowercase as the user types, using `value()`/`set_value()` in the event loop rather than any dedicated feature of the library.
+
+Run any of them with `cargo run --example <name>` (e.g. `cargo run --example login-form`).
 
 ## Theming
 
