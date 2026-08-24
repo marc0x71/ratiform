@@ -44,6 +44,7 @@ pub struct Field<T> {
     pub(crate) kind: FieldKind,
     pub(crate) options: FieldOptions,
     pub(crate) error: Option<String>,
+    pub(crate) initial_value: String,
 }
 
 impl<T> Field<T> {
@@ -76,6 +77,15 @@ impl<T> Field<T> {
 
     pub(crate) fn has_error(&self) -> bool {
         self.error.is_some()
+    }
+
+    pub fn is_dirty(&self) -> bool {
+        self.kind.get() == self.initial_value
+    }
+
+    pub(crate) fn reset(&mut self) {
+        self.kind.set(&self.initial_value);
+        self.validate();
     }
 }
 

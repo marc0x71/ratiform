@@ -105,6 +105,21 @@ impl<T: PartialEq> FormState<T> {
     pub fn focused_field(&self) -> Option<&T> {
         self.fields.get(self.focus).map(|f| &f.id)
     }
+
+    pub fn reset(&mut self) {
+        self.fields.iter_mut().for_each(|f| f.reset());
+    }
+
+    pub fn is_dirty(&self) -> bool {
+        self.fields.iter().any(|f| f.is_dirty())
+    }
+
+    pub fn is_field_dirty(&self, id: &T) -> Option<bool> {
+        self.fields
+            .iter()
+            .find(|f| f.id == *id)
+            .map(|f| f.is_dirty())
+    }
 }
 
 pub struct Form<T> {

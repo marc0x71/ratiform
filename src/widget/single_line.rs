@@ -49,6 +49,7 @@ impl<T: PartialEq> SingleLineBuilder<T> {
 
     fn finish(mut self) -> FormBuilder<T> {
         let position = self.value.len() as u16;
+        let initial_value = self.value.clone();
         self.form.fields.push(Field {
             id: self.id,
             kind: FieldKind::SingleLine(SingleLineStatus {
@@ -60,6 +61,7 @@ impl<T: PartialEq> SingleLineBuilder<T> {
             }),
             options: self.options,
             error: None,
+            initial_value,
         });
 
         self.form

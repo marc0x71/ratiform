@@ -53,6 +53,11 @@ impl<T: PartialEq> SelectBuilder<T> {
     }
 
     fn finish(mut self) -> FormBuilder<T> {
+        let initial_value = self
+            .values
+            .get(self.selected)
+            .map(|(k, _)| k.clone())
+            .unwrap_or_default();
         self.form.fields.push(Field {
             id: self.id,
             kind: FieldKind::Select(SelectStatus {
@@ -62,6 +67,7 @@ impl<T: PartialEq> SelectBuilder<T> {
             }),
             options: self.options,
             error: None,
+            initial_value,
         });
 
         self.form

@@ -26,6 +26,7 @@ impl<T: PartialEq> CheckboxBuilder<T> {
     }
 
     fn finish(mut self) -> FormBuilder<T> {
+        let initial_value = self.checked.to_string();
         self.form.fields.push(Field {
             id: self.id,
             kind: FieldKind::CheckBox(CheckBoxStatus {
@@ -34,6 +35,7 @@ impl<T: PartialEq> CheckboxBuilder<T> {
             }),
             options: self.options,
             error: None,
+            initial_value,
         });
 
         self.form
