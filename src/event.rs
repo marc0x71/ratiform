@@ -18,3 +18,51 @@ pub fn handle_input_field<T>(key_code: KeyCode, field: &mut Field<T>) {
     }
     field.validate();
 }
+
+#[cfg(test)]
+mod handle_input_field_tests {
+    use super::*;
+    use crate::{field::FieldOptions, validators, widget::single_line::SingleLineStatus};
+
+    fn make_field(value: &str, required: Option<crate::field::Validator>) -> Field<i32> {
+        Field {
+            id: 1,
+            kind: FieldKind::SingleLine(SingleLineStatus {
+                label: "Test".to_owned(),
+                value: value.to_owned(),
+                position: value.chars().count() as u16,
+                masked_with: None,
+                placeholder: None,
+            }),
+            options: FieldOptions {
+                required,
+                disabled: false,
+                readonly: false,
+                height: 1,
+                validator: vec![],
+            },
+            error: None,
+            initial_value: value.to_owned(),
+        }
+    }
+
+    #[test]
+    fn handle_input_field_revalidates_when_a_keystroke_makes_the_value_invalid() {
+        let mut field = make_field("A", Some(validators::required("Obbligatorio".to_owned())));
+
+        // Backspace on a 1-character field with the cursor at the end
+        // empties it, which should immediately turn the field invalid.
+        handle_input_field(KeyCode::Backspace, &mut field);
+
+        assert_eq!(field.error, Some("Obbligatorio".to_owned()));
+    }
+
+    #[test]
+    fn handle_input_field_revalidates_when_a_keystroke_makes_the_value_valid_again() {
+        let mut field = make_field("", Some(validators::required("Obbligatorio".to_owned())));
+
+        handle_input_field(KeyCode::Char('A'), &mut field);
+
+        assert_eq!(field.error, None);
+    }
+}
