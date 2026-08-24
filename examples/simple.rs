@@ -43,6 +43,9 @@ fn main() -> std::io::Result<()> {
             .checkbox(4, "Accetto i termini")
             .checked(false)
             .optional()
+            .single_line(5, "Password")
+            .masked_with('•')
+            .required()
             .single_line(10, "Debug")
             .disabled()
             .build();

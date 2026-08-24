@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use ratatui::{
     buffer::Buffer,
     crossterm::event::KeyCode,
@@ -20,11 +22,22 @@ pub struct SingleLineBuilder<T> {
     pub(crate) label: String,
     pub(crate) value: String,
     pub(crate) options: FieldOptions,
+    pub(crate) masked_with: Option<char>,
 }
 
 impl<T: PartialEq> SingleLineBuilder<T> {
     pub fn value(mut self, value: impl Into<String>) -> Self {
         self.value = value.into();
+        self
+    }
+
+    pub fn masked_with(mut self, c: char) -> Self {
+        self.masked_with = Some(c);
+        self
+    }
+
+    pub fn masked(mut self) -> Self {
+        self.masked_with = Some('*');
         self
     }
 
@@ -36,6 +49,7 @@ impl<T: PartialEq> SingleLineBuilder<T> {
                 label: self.label,
                 value: self.value,
                 position,
+                masked_with: self.masked_with,
             }),
             options: self.options,
             error: None,
@@ -51,6 +65,7 @@ pub struct SingleLineStatus {
     pub(crate) label: String,
     pub(crate) value: String,
     pub(crate) position: u16,
+    pub(crate) masked_with: Option<char>,
 }
 
 impl SingleLineStatus {
@@ -127,11 +142,92 @@ pub(crate) fn render_singleline(
     value_style: Style,
     highlight_style: Style,
 ) -> Option<(u16, u16)> {
-    let value = Paragraph::new(singleline.value.as_str())
+    let display = masked_display(singleline.value.as_str(), singleline.masked_with);
+    let value = Paragraph::new(display)
         .style(value_style)
         .block(Block::default().style(highlight_style));
 
     value.render(area, buf);
 
     Some((area.x + singleline.position, area.y))
+}
+
+fn masked_display(value: &str, mask: Option<char>) -> Cow<'_, str> {
+    if let Some(c) = mask {
+        let s = value.chars().map(|v| c).collect();
+        Cow::Owned(s)
+    } else {
+        Cow::Borrowed(value)
+    }
+}
+
+#[cfg(test)]
+mod masked_display_tests {
+    use super::*;
+    use std::borrow::Cow;
+
+    #[test]
+    fn no_mask_returns_the_value_unchanged() {
+        let result = masked_display("ciao", None);
+        assert_eq!(result, "ciao");
+    }
+
+    #[test]
+    fn no_mask_does_not_allocate() {
+        // Se in futuro qualcuno "semplifica" la funzione facendola sempre
+        // allocare, questo test deve rompersi anche se il contenuto resta corretto.
+        let result = masked_display("ciao", None);
+        assert!(matches!(result, Cow::Borrowed(_)));
+    }
+
+    #[test]
+    fn no_mask_on_empty_value_returns_empty_borrowed() {
+        let result = masked_display("", None);
+        assert_eq!(result, "");
+        assert!(matches!(result, Cow::Borrowed(_)));
+    }
+
+    #[test]
+    fn mask_replaces_every_character_with_the_mask_char() {
+        let result = masked_display("ciao", Some('•'));
+        assert_eq!(result, "••••");
+    }
+
+    #[test]
+    fn mask_on_empty_value_returns_empty_owned() {
+        let result = masked_display("", Some('•'));
+        assert_eq!(result, "");
+        assert!(matches!(result, Cow::Owned(_)));
+    }
+
+    #[test]
+    fn mask_counts_characters_not_bytes() {
+        // "città" = 5 caratteri, 6 byte (la 'à' occupa 2 byte in UTF-8).
+        // Il caso che frega chi usa .len() invece di .chars().count().
+        let result = masked_display("città", Some('•'));
+        assert_eq!(result, "•••••");
+        assert_eq!(result.chars().count(), 5);
+    }
+
+    #[test]
+    fn mask_counts_multibyte_grapheme_as_one_character() {
+        // Un'emoji come "🎉" è un solo char logico ma 4 byte in UTF-8.
+        let result = masked_display("🎉hi", Some('•'));
+        assert_eq!(result, "•••");
+    }
+
+    #[test]
+    fn a_different_mask_char_is_respected() {
+        let result = masked_display("hi", Some('*'));
+        assert_eq!(result, "**");
+    }
+
+    #[test]
+    fn mask_char_itself_can_be_multibyte() {
+        // Il carattere di mascheramento può a sua volta essere multi-byte:
+        // non deve influire sul conteggio delle ripetizioni.
+        let result = masked_display("hi", Some('★'));
+        assert_eq!(result, "★★");
+        assert_eq!(result.chars().count(), 2);
+    }
 }
