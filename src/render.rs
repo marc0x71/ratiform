@@ -32,7 +32,7 @@ impl<T: PartialEq> StatefulWidget for Form<T> {
         for (idx, field) in state.fields[from_field..=to_field].iter_mut().enumerate() {
             let has_focus = (idx + from_field) == state.focus;
             let field_state = field.options.to_field_state(has_focus);
-            // for (idx, field) in state.fields.iter_mut().enumerate() {
+
             let [row, error] =
                 Layout::vertical([Constraint::Fill(1), Constraint::Length(1)]).areas(rows[idx]);
 
@@ -49,7 +49,8 @@ impl<T: PartialEq> StatefulWidget for Form<T> {
                 field,
                 self.style.value.style_for(&field_state),
                 self.style.highlight.style_for(&field_state),
-            ) {
+            ) && has_focus
+            {
                 state.cursor_position = Some(position);
             }
 

@@ -132,11 +132,5 @@ pub(crate) fn render_singleline(
 
     value.render(area, buf);
 
-    // TODO: da fare
-    // if has_focus {
-    //     Some((area.x + singleline.position, area.y))
-    // } else {
-    //     None
-    // }
-    None
+    Some((area.x + singleline.position, area.y))
 }
