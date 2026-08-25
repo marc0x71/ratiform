@@ -14,6 +14,11 @@ use crate::{
 };
 
 // BUILDER
+/// Builder for a select field: a list of options the user picks from with
+/// the arrow keys. Started with
+/// [`FormBuilder::select`](crate::builder::FormBuilder::select). For the
+/// options shared with every other field kind, see
+/// [`field_builder_common`](crate::field_builder_common).
 pub struct SelectBuilder<T> {
     pub(crate) id: T,
     pub(crate) form: FormBuilder<T>,
@@ -24,11 +29,19 @@ pub struct SelectBuilder<T> {
 }
 
 impl<T: PartialEq> SelectBuilder<T> {
+    /// Sets which option is selected initially, by index into the list of
+    /// values.
     pub fn selected(mut self, selected: usize) -> Self {
         self.selected = selected;
         self
     }
 
+    /// Sets the list of `(value, label)` pairs from a slice of borrowed
+    /// strings — the ergonomic choice for a literal list, e.g.
+    /// `&[("I", "Italia"), ("F", "Francia")]`. `value` is what
+    /// `value()`/`values()` return once selected; `label` is what's shown
+    /// on screen. See [`SelectBuilder::values`] for owned or dynamically
+    /// built data.
     pub fn values_ref(mut self, input: &[(&str, &str)]) -> Self {
         self.values = input
             .iter()
@@ -38,6 +51,11 @@ impl<T: PartialEq> SelectBuilder<T> {
         self
     }
 
+    /// Sets the list of `(value, label)` pairs from any iterator of
+    /// owned-or-convertible pairs — a `Vec<(String, String)>`, a
+    /// `HashMap`, or anything else `IntoIterator`. Prefer
+    /// [`SelectBuilder::values_ref`] for a literal list of borrowed
+    /// strings.
     pub fn values<I, K, V>(mut self, input: I) -> Self
     where
         I: IntoIterator<Item = (K, V)>,

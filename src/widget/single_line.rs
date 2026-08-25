@@ -16,6 +16,11 @@ use crate::{
 };
 
 // BUILDER
+/// Builder for a single-line text field, started with
+/// [`FormBuilder::single_line`](crate::builder::FormBuilder::single_line).
+/// For the options shared with every other field kind (`required`,
+/// `optional`, `disabled`, `readonly`, `height`, `validator`), see
+/// [`field_builder_common`](crate::field_builder_common).
 pub struct SingleLineBuilder<T> {
     pub(crate) id: T,
     pub(crate) form: FormBuilder<T>,
@@ -27,21 +32,31 @@ pub struct SingleLineBuilder<T> {
 }
 
 impl<T: PartialEq> SingleLineBuilder<T> {
+    /// Sets the field's initial value.
     pub fn value(mut self, value: impl Into<String>) -> Self {
         self.value = value.into();
         self
     }
 
+    /// Masks the field's displayed content with the given character —
+    /// useful for password-style fields. Only affects rendering: the real
+    /// value, validation, and everything read back through
+    /// `value()`/`values()` all still see what the user actually typed.
     pub fn masked_with(mut self, c: char) -> Self {
         self.masked_with = Some(c);
         self
     }
 
+    /// Equivalent to `masked_with('*')`.
     pub fn masked(mut self) -> Self {
         self.masked_with = Some('*');
         self
     }
 
+    /// Sets a hint shown while the field is empty, styled with
+    /// `FormStyle::placeholder`. Disappears as soon as the user types
+    /// anything, and has no effect on validation: a required field
+    /// showing a placeholder is still considered empty.
     pub fn placeholder(mut self, placeholder: impl Into<String>) -> Self {
         self.placeholder = Some(placeholder.into());
         self

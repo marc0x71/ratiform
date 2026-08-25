@@ -11,6 +11,10 @@ use crate::{
 };
 
 // BUILDER
+/// Builder for a checkbox field, started with
+/// [`FormBuilder::checkbox`](crate::builder::FormBuilder::checkbox). For
+/// the options shared with every other field kind, see
+/// [`field_builder_common`](crate::field_builder_common).
 pub struct CheckboxBuilder<T> {
     pub(crate) id: T,
     pub(crate) form: FormBuilder<T>,
@@ -20,6 +24,7 @@ pub struct CheckboxBuilder<T> {
 }
 
 impl<T: PartialEq> CheckboxBuilder<T> {
+    /// Sets whether the checkbox starts out checked.
     pub fn checked(mut self, checked: bool) -> Self {
         self.checked = checked;
         self
