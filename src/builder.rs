@@ -74,8 +74,6 @@ impl<T: PartialEq> FormBuilder<T> {
             label: label.into(),
             value: String::new(),
             options: FieldOptions::default(),
-            masked_with: None,
-            placeholder: None,
         }
     }
 

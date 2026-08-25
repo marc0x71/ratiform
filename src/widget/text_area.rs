@@ -1,4 +1,5 @@
 #![allow(unused)]
+
 use ratatui::{
     buffer::Buffer,
     crossterm::event::KeyCode,
@@ -13,7 +14,6 @@ use crate::{
     builder::FormBuilder,
     field::{Field, FieldKind, FieldOptions},
     field_builder_common,
-    widget::text_area,
 };
 
 // BUILDER
@@ -23,8 +23,6 @@ pub struct TextAreaBuilder<T> {
     pub(crate) label: String,
     pub(crate) value: String,
     pub(crate) options: FieldOptions,
-    pub(crate) masked_with: Option<char>,
-    pub(crate) placeholder: Option<String>,
 }
 
 impl<T: PartialEq> TextAreaBuilder<T> {
@@ -43,8 +41,7 @@ impl<T: PartialEq> TextAreaBuilder<T> {
                 label: self.label,
                 value: self.value,
                 position,
-                masked_with: self.masked_with,
-                placeholder: self.placeholder,
+                lines: Vec::new(),
             }),
             options: self.options,
             error: None,
@@ -61,8 +58,7 @@ pub struct TextAreaStatus {
     pub(crate) label: String,
     pub(crate) value: String,
     pub(crate) position: u16,
-    pub(crate) masked_with: Option<char>,
-    pub(crate) placeholder: Option<String>,
+    pub(crate) lines: Vec<(usize, String)>,
 }
 
 impl TextAreaStatus {
@@ -110,6 +106,18 @@ impl TextAreaStatus {
     fn end(&mut self) {
         self.position = self.value.chars().count() as u16
     }
+    fn up(&mut self) {
+        let (x, mut y) = calculate_coordinate(self);
+        y = y.saturating_sub(1);
+        self.position = calculate_position(self, x, y);
+    }
+    fn down(&mut self) {
+        let (x, mut y) = calculate_coordinate(self);
+        if y < self.lines.len() as u16 {
+            y += 1;
+        }
+        self.position = calculate_position(self, x, y);
+    }
     fn insert(&mut self, c: char) {
         let byte_idx = self.byte_position(self.position, self.value.len());
         self.value.insert(byte_idx, c);
@@ -126,6 +134,8 @@ pub(crate) fn handle_input_textarea(key_code: KeyCode, text_area: &mut TextAreaS
         KeyCode::Home => text_area.home(),
         KeyCode::End => text_area.end(),
         KeyCode::Delete => text_area.delete(),
+        KeyCode::Up => text_area.up(),
+        KeyCode::Down => text_area.down(),
         KeyCode::Char(c) => text_area.insert(c),
         _ => {}
     }
@@ -138,30 +148,35 @@ pub(crate) fn render_textarea(
     text_area: &mut TextAreaStatus,
     value_style: Style,
     highlight_style: Style,
-    placeholder_style: Style,
+    _placeholder_style: Style,
 ) -> Option<(u16, u16)> {
-    let lines = wrap_text(&text_area.value, area.width as usize);
+    let style = value_style;
 
-    let display = lines
+    text_area.lines = wrap_text(&text_area.value, area.width as usize);
+
+    let display = text_area
+        .lines
         .iter()
         .map(|(_, line)| Line::from(line.clone()))
         .collect::<Vec<_>>();
 
+    // TODO: da fare placeholder
+
     let value = Paragraph::new(display)
-        .style(value_style)
+        .style(style)
         .block(Block::default().style(highlight_style));
 
     value.render(area, buf);
 
-    let (x, y) = calculate_position(text_area, &lines);
+    let (x, y) = calculate_coordinate(text_area);
     Some((area.x + x, area.y + y - 1))
 }
 
-fn calculate_position(text_area: &TextAreaStatus, lines: &[(usize, String)]) -> (u16, u16) {
+fn calculate_coordinate(text_area: &TextAreaStatus) -> (u16, u16) {
     let mut y: u16 = 0;
     let mut begin: u16 = 0;
 
-    for (start, _) in lines {
+    for (start, _) in &text_area.lines {
         if *start as u16 > text_area.position {
             break;
         }
@@ -170,6 +185,15 @@ fn calculate_position(text_area: &TextAreaStatus, lines: &[(usize, String)]) -> 
     }
     let x = text_area.position - begin;
     (x, y)
+}
+
+fn calculate_position(text_area: &TextAreaStatus, x: u16, y: u16) -> u16 {
+    let start = text_area
+        .lines
+        .iter()
+        .take(y as usize)
+        .fold(0, |acc, (start, _)| acc + start) as u16;
+    start + x
 }
 
 fn wrap_text(text: &str, width: usize) -> Vec<(usize, String)> {
