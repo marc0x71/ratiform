@@ -514,7 +514,7 @@ The current implementation is intentionally small and focused on providing a bas
 
 The required check, `disabled()`, `readonly()` and `validator(...)` are now enforced, submitted values can be retrieved through `FormState::values()`, rendering can be themed through `FormStyle` (see [Theming](#theming)), a handful of common checks are available in `ratiform::validators` (see [Built-in validators](#built-in-validators)), and forms can track unsaved changes and roll them back through `is_dirty()`/`is_field_dirty()`/`reset()` (see [Dirty state and resetting](#dirty-state-and-resetting)). Behaviour and layout may still change as the project evolves.
 
-Contributions, ideas and bug reports are welcome.
+Contributions, ideas and bug reports are welcome. If you're thinking about adding a new field kind, see [`docs/adding-a-widget.md`](docs/adding-a-widget.md) for the wiring points and conventions the existing three (`SingleLine`, `Checkbox`, `Select`) already follow.
 
 ## License
 
