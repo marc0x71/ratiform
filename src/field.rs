@@ -1,7 +1,10 @@
 use crate::{
     style::FieldState,
     validators,
-    widget::{check_box::CheckBoxStatus, select::SelectStatus, single_line::SingleLineStatus},
+    widget::{
+        check_box::CheckBoxStatus, select::SelectStatus, single_line::SingleLineStatus,
+        text_area::TextAreaStatus,
+    },
 };
 
 pub type Validator = Box<dyn Fn(&str) -> Result<(), String> + 'static>;
@@ -93,6 +96,7 @@ pub enum FieldKind {
     SingleLine(SingleLineStatus),
     CheckBox(CheckBoxStatus),
     Select(SelectStatus),
+    TextArea(TextAreaStatus),
 }
 
 impl FieldKind {
@@ -101,6 +105,7 @@ impl FieldKind {
             FieldKind::SingleLine(k) => k.label.as_str(),
             FieldKind::CheckBox(k) => k.label.as_str(),
             FieldKind::Select(k) => k.label.as_str(),
+            FieldKind::TextArea(k) => k.label.as_str(),
         }
     }
     pub fn get(&self) -> String {
@@ -108,6 +113,7 @@ impl FieldKind {
             FieldKind::SingleLine(k) => k.get(),
             FieldKind::CheckBox(k) => k.get(),
             FieldKind::Select(k) => k.get(),
+            FieldKind::TextArea(k) => k.get(),
         }
     }
     pub fn set(&mut self, value: &str) {
@@ -115,6 +121,7 @@ impl FieldKind {
             FieldKind::SingleLine(k) => k.set(value),
             FieldKind::CheckBox(k) => k.set(value),
             FieldKind::Select(k) => k.set(value),
+            FieldKind::TextArea(k) => k.set(value),
         }
     }
 }

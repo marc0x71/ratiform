@@ -4,7 +4,7 @@ use crate::{
     field::{Field, FieldKind},
     widget::{
         check_box::handle_input_checkbox, select::handle_input_select,
-        single_line::handle_input_singleline,
+        single_line::handle_input_singleline, text_area::handle_input_textarea,
     },
 };
 
@@ -15,6 +15,7 @@ pub fn handle_input_field<T>(key_code: KeyCode, field: &mut Field<T>) {
         }
         FieldKind::CheckBox(ref mut check_box) => handle_input_checkbox(key_code, check_box),
         FieldKind::Select(ref mut select) => handle_input_select(key_code, select),
+        FieldKind::TextArea(ref mut text_area) => handle_input_textarea(key_code, text_area),
     }
     field.validate();
 }

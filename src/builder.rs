@@ -1,7 +1,10 @@
 use crate::{
     FormState,
     field::{Field, FieldOptions},
-    widget::{check_box::CheckboxBuilder, select::SelectBuilder, single_line::SingleLineBuilder},
+    widget::{
+        check_box::CheckboxBuilder, select::SelectBuilder, single_line::SingleLineBuilder,
+        text_area::TextAreaBuilder,
+    },
 };
 
 /// Entry point for building a form. Generic over `T`, the type used to
@@ -60,6 +63,19 @@ impl<T: PartialEq> FormBuilder<T> {
             values: Vec::new(),
             options: FieldOptions::default(),
             selected: 0,
+        }
+    }
+
+    /// Adds a text-area field.
+    pub fn text_area(self, id: T, label: impl Into<String>) -> TextAreaBuilder<T> {
+        TextAreaBuilder {
+            id,
+            form: self,
+            label: label.into(),
+            value: String::new(),
+            options: FieldOptions::default(),
+            masked_with: None,
+            placeholder: None,
         }
     }
 
@@ -169,6 +185,13 @@ macro_rules! field_builder_common {
                 self.finish().select(id, label)
             }
 
+            pub fn text_area(
+                self,
+                id: $generic,
+                label: impl Into<String>,
+            ) -> $crate::widget::text_area::TextAreaBuilder<$generic> {
+                self.finish().text_area(id, label)
+            }
             /// Finishes this field and builds the `FormState` — see
             /// `FormBuilder::build`.
             pub fn build(self) -> FormState<T> {

@@ -9,7 +9,10 @@ use ratatui::{
 use crate::{
     Form, FormState,
     field::{Field, FieldKind},
-    widget::{check_box::render_checkbox, select::render_select, single_line::render_singleline},
+    widget::{
+        check_box::render_checkbox, select::render_select, single_line::render_singleline,
+        text_area::render_textarea,
+    },
 };
 
 impl<T: PartialEq> StatefulWidget for Form<T> {
@@ -88,6 +91,14 @@ pub fn render_field<T>(
         FieldKind::Select(ref mut select) => {
             render_select(area, buf, select, value_style, highlight_style)
         }
+        FieldKind::TextArea(ref mut text_area) => render_textarea(
+            area,
+            buf,
+            text_area,
+            value_style,
+            highlight_style,
+            placeholder_style,
+        ),
     }
 }
 
