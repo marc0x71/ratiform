@@ -1,3 +1,15 @@
+//! A small, composable, stateful form widget for [Ratatui](https://github.com/ratatui/ratatui).
+//!
+//! Build forms with a typed field identity, keep the state in your own
+//! application, and render them like any other Ratatui widget. Start with
+//! [`builder::FormBuilder`] to build a form; [`FormState`] is what you keep
+//! around and drive once it's built, and [`Form`] is the widget you render
+//! it with.
+//!
+//! For the full story — design philosophy, a walkthrough, theming,
+//! built-in validators — see the
+//! [project README](https://github.com/marc0x71/ratiform).
+
 pub mod builder;
 mod event;
 mod field;
@@ -13,14 +25,23 @@ use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyEventKind};
 
 use crate::{event::handle_input_field, style::FormStyle};
 
+/// The form's current state, returned by [`FormState::result`].
 #[derive(Default, Clone, Copy)]
 pub enum FormResult {
+    /// The user pressed `Enter` while every field was valid.
     Submitted,
+    /// The user pressed `Esc`.
     Cancelled,
+    /// The form is still being filled in — the default state.
     #[default]
     Working,
 }
 
+/// The live state of a form: which field has focus, the current value and
+/// validation state of each field, and whether the form has been submitted
+/// or cancelled. Built with [`builder::FormBuilder`], owned by your
+/// application for as long as the form is active, and driven by feeding it
+/// key events through [`handle_input`](FormState::handle_input).
 #[derive(Default)]
 pub struct FormState<T> {
     fields: Vec<Field<T>>,
@@ -48,10 +69,30 @@ impl<T: PartialEq> FormState<T> {
             .unwrap_or_default()
     }
 
+    /// The absolute screen position the text cursor should be drawn at,
+    /// if the currently focused field has a cursor at all (a `Select` or
+    /// `Checkbox` never does). Pass this straight to Ratatui's
+    /// `Frame::set_cursor_position`.
     pub fn cursor_position(&self) -> Option<(u16, u16)> {
         self.cursor_position
     }
 
+    /// Feeds one key event to the form. Only [`KeyEventKind::Press`]
+    /// events are handled; anything else (e.g. `Release`, reported by some
+    /// terminals) is ignored, to avoid acting on the same key twice.
+    ///
+    /// A handful of keys are handled globally, regardless of which field
+    /// has focus:
+    ///
+    /// | Key | Effect |
+    /// | --- | --- |
+    /// | `Tab` / `BackTab` | Move focus to the next / previous field, wrapping around |
+    /// | `Enter` | Submit the form, unless some field is currently invalid |
+    /// | `Esc` | Cancel the form |
+    ///
+    /// Every other key is routed to the focused field — unless it's
+    /// `disabled()`/`readonly()`, in which case the key is dropped and
+    /// nothing happens.
     pub fn handle_input(&mut self, key_event: KeyEvent) {
         if key_event.kind != KeyEventKind::Press {
             return;
@@ -77,6 +118,7 @@ impl<T: PartialEq> FormState<T> {
         }
     }
 
+    /// The form's current state — see [`FormResult`].
     pub fn result(&self) -> FormResult {
         self.result
     }
@@ -85,6 +127,10 @@ impl<T: PartialEq> FormState<T> {
         self.fields.iter().any(|f| f.has_error())
     }
 
+    /// Consumes the form and returns an iterator of `(id, value)` pairs,
+    /// one per field — the usual way to collect the results after the form
+    /// has been [`Submitted`](FormResult::Submitted) or
+    /// [`Cancelled`](FormResult::Cancelled).
     pub fn values(self) -> impl Iterator<Item = (T, String)> {
         self.fields.into_iter().map(|f| {
             let value = f.get();
@@ -92,24 +138,37 @@ impl<T: PartialEq> FormState<T> {
         })
     }
 
+    /// The current value of the field with the given id, or `None` if no
+    /// field has it. Unlike [`values`](FormState::values), this can be
+    /// called at any point while the form is still active.
     pub fn value(&self, id: &T) -> Option<String> {
         self.fields.iter().find(|&f| f.id == *id).map(|f| f.get())
     }
 
+    /// Overwrites the value of the field with the given id, if one exists.
+    /// Triggers validation immediately, exactly as if the user had typed
+    /// it, so the field's error state is up to date before the next
+    /// render. Does nothing if no field has that id.
     pub fn set_value(&mut self, id: &T, value: &str) {
         if let Some(f) = self.fields.iter_mut().find(|f| f.id == *id) {
             f.set(value);
         }
     }
 
+    /// The id of the field that currently has focus, or `None` only if the
+    /// form has no fields at all.
     pub fn focused_field(&self) -> Option<&T> {
         self.fields.get(self.focus).map(|f| &f.id)
     }
 
+    /// Restores every field to the value it had when the form was built,
+    /// and re-validates each one against the restored value.
     pub fn reset(&mut self) {
         self.fields.iter_mut().for_each(|f| f.reset());
     }
 
+    /// Whether the value of the field with the given id has changed since
+    /// the form was built, or `None` if no field has that id.
     pub fn is_dirty(&self) -> bool {
         self.fields.iter().any(|f| f.is_dirty())
     }
@@ -122,12 +181,18 @@ impl<T: PartialEq> FormState<T> {
     }
 }
 
+/// The widget that renders a [`FormState`]. Stateless and cheap to
+/// construct — build one fresh on every frame, exactly like any other
+/// Ratatui widget, and pass it to `Frame::render_stateful_widget` together
+/// with the `FormState` you want it to draw.
 pub struct Form<T> {
     style: FormStyle,
     _phantom: PhantomData<T>,
 }
 
 impl<T> Form<T> {
+    /// Renders with a custom [`FormStyle`] instead of the built-in theme.
+    /// See the project README's Theming section for a full example.
     pub fn with_style(style: FormStyle) -> Self {
         Self {
             style,
@@ -137,6 +202,8 @@ impl<T> Form<T> {
 }
 
 impl<T> Default for Form<T> {
+    /// Renders with the built-in theme. Equivalent to
+    /// `Form::with_style(FormStyle::default())`.
     fn default() -> Self {
         Self {
             style: FormStyle::default(),
