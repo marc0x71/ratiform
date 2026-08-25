@@ -7,20 +7,41 @@ pub(crate) enum FieldState {
     Readonly,
 }
 
+/// The color/style theme for a [`crate::Form`], applied via
+/// [`crate::Form::with_style`]. Build one with [`FormStyle::builder`], or
+/// use [`FormStyle::default`] for the built-in theme.
 #[derive(Debug, Clone, Copy)]
 pub struct FormStyle {
+    /// The field's caption, on the left.
     pub label: FieldStyle,
+    /// The field's own content: the text color of a `SingleLine` field, a
+    /// `Select` field's list items, and a `Checkbox`'s `[✓]`/`[ ]` glyph.
     pub value: FieldStyle,
+    /// Emphasis for whatever is "active right now": the background box
+    /// behind a `SingleLine` field, and the currently selected row of a
+    /// `Select` list.
     pub highlight: FieldStyle,
+    /// Placeholder/hint text style, shown in place of `value`'s style
+    /// while a field is empty. Used today by `SingleLine`'s placeholder
+    /// text.
     pub placeholder: Style,
+    /// The validation error message shown under an invalid field.
     pub error: Style,
 }
 impl FormStyle {
+    /// Starts building a `FormStyle` from scratch — every area is
+    /// `Style::default()`/`FieldStyle::default()` until you set it.
     pub fn builder() -> FormStyleBuilder {
         FormStyleBuilder::default()
     }
 }
 impl Default for FormStyle {
+    /// The built-in theme: gray text everywhere, bold when a field has
+    /// focus. `label` also crosses out on `disabled()` fields. Errors are
+    /// red and bold; placeholders are gray and italic. Not every state is
+    /// covered for every area — `readonly`, for instance, isn't styled
+    /// differently from `normal` here — build your own with
+    /// [`FormStyle::builder`] for full control.
     fn default() -> Self {
         let normal = Style::default().fg(Color::Gray);
         FormStyle::builder()
@@ -49,6 +70,10 @@ impl Default for FormStyle {
     }
 }
 
+/// One `Style` per field state, used for the `label`, `value` and
+/// `highlight` areas of a [`FormStyle`]. You don't need to pick which one
+/// applies yourself — it's resolved automatically, with `disabled` taking
+/// priority over `readonly`, which takes priority over `focused`.
 #[derive(Debug, Clone, Copy, Default)]
 pub struct FieldStyle {
     pub normal: Style,
@@ -56,7 +81,10 @@ pub struct FieldStyle {
     pub disabled: Style,
     pub readonly: Style,
 }
+
 impl FieldStyle {
+    /// Starts building a `FieldStyle` from scratch — every state is
+    /// `Style::default()` until you set it.
     pub fn builder() -> FieldStyleBuilder {
         FieldStyleBuilder::default()
     }
@@ -80,35 +108,42 @@ pub struct FormStyleBuilder {
 }
 
 impl FormStyleBuilder {
+    /// Equivalent to [`FormStyle::builder`].
     pub fn new() -> Self {
         Self::default()
     }
 
+    /// Sets the `label` area — see [`FormStyle::label`].
     pub fn label(mut self, style: FieldStyle) -> Self {
         self.label = style;
         self
     }
 
+    /// Sets the `value` area — see [`FormStyle::value`].
     pub fn value(mut self, style: FieldStyle) -> Self {
         self.value = style;
         self
     }
 
+    /// Sets the `highlight` area — see [`FormStyle::highlight`].
     pub fn highlight(mut self, style: FieldStyle) -> Self {
         self.highlight = style;
         self
     }
 
+    /// Sets the `error` area — see [`FormStyle::error`].
     pub fn error(mut self, style: Style) -> Self {
         self.error = style;
         self
     }
 
+    /// Sets the `placeholder` area — see [`FormStyle::placeholder`].
     pub fn placeholder(mut self, style: Style) -> Self {
         self.placeholder = style;
         self
     }
 
+    /// Finishes building the `FormStyle`.
     pub fn build(self) -> FormStyle {
         FormStyle {
             label: self.label,
@@ -120,6 +155,7 @@ impl FormStyleBuilder {
     }
 }
 
+/// Builder for a [`FieldStyle`]. Start with [`FieldStyle::builder`].
 #[derive(Debug, Clone, Copy, Default)]
 pub struct FieldStyleBuilder {
     normal: Style,
@@ -129,30 +165,37 @@ pub struct FieldStyleBuilder {
 }
 
 impl FieldStyleBuilder {
+    /// Equivalent to [`FieldStyle::builder`].
     pub fn new() -> Self {
         Self::default()
     }
 
+    /// Sets the style for a field with no other state — see
+    /// [`FieldStyle::normal`].
     pub fn normal(mut self, style: Style) -> Self {
         self.normal = style;
         self
     }
 
+    /// Sets the style for the focused field — see [`FieldStyle::focused`].
     pub fn focused(mut self, style: Style) -> Self {
         self.focused = style;
         self
     }
 
+    /// Sets the style for a disabled field — see [`FieldStyle::disabled`].
     pub fn disabled(mut self, style: Style) -> Self {
         self.disabled = style;
         self
     }
 
+    /// Sets the style for a readonly field — see [`FieldStyle::readonly`].
     pub fn readonly(mut self, style: Style) -> Self {
         self.readonly = style;
         self
     }
 
+    /// Finishes building the `FieldStyle`.
     pub fn build(self) -> FieldStyle {
         FieldStyle {
             normal: self.normal,
