@@ -25,6 +25,11 @@ use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyEventKind};
 
 use crate::{event::handle_input_field, style::FormStyle};
 
+pub use field::Validator;
+pub use widget::{
+    check_box::CheckboxBuilder, select::SelectBuilder, single_line::SingleLineBuilder,
+};
+
 /// The form's current state, returned by [`FormState::result`].
 #[derive(Default, Clone, Copy)]
 pub enum FormResult {
