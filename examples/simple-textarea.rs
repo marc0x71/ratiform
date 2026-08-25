@@ -12,11 +12,18 @@ use ratiform::{
 };
 
 fn main() -> std::io::Result<()> {
+    let testo = String::from(
+        r#"Lorem ipsum dolor sit amet, consectetur adipiscing elit.
+Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
+Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris
+nisi ut aliquip ex ea commodo consequat."#,
+    );
     let result = ratatui::run(|terminal| -> std::io::Result<_> {
         let mut state = FormBuilder::new()
             .single_line(1, "Titolo")
             .required("Campo obbligatorio".to_owned())
             .text_area(2, "Articolo")
+            .value(testo)
             .height(5)
             .checkbox(4, "Accetto i termini")
             .checked(false)

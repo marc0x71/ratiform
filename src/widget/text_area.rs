@@ -1,5 +1,12 @@
 #![allow(unused)]
-use ratatui::{buffer::Buffer, crossterm::event::KeyCode, layout::Rect, style::Style};
+use ratatui::{
+    buffer::Buffer,
+    crossterm::event::KeyCode,
+    layout::Rect,
+    style::Style,
+    text::Line,
+    widgets::{Block, Paragraph, Widget},
+};
 
 use crate::{
     FormState,
@@ -21,6 +28,12 @@ pub struct TextAreaBuilder<T> {
 }
 
 impl<T: PartialEq> TextAreaBuilder<T> {
+    /// Sets the field's initial value.
+    pub fn value(mut self, value: impl Into<String>) -> Self {
+        self.value = value.into();
+        self
+    }
+
     fn finish(mut self) -> FormBuilder<T> {
         let initial_value = self.value.to_string();
         let position = self.value.len() as u16;
@@ -127,21 +140,52 @@ pub(crate) fn render_textarea(
     highlight_style: Style,
     placeholder_style: Style,
 ) -> Option<(u16, u16)> {
-    todo!()
+    let lines = wrap_text(&text_area.value, area.width as usize);
+
+    let display = lines
+        .iter()
+        .map(|(_, line)| Line::from(line.clone()))
+        .collect::<Vec<_>>();
+
+    let value = Paragraph::new(display)
+        .style(value_style)
+        .block(Block::default().style(highlight_style));
+
+    value.render(area, buf);
+
+    let (x, y) = calculate_position(text_area, &lines);
+    Some((area.x + x, area.y + y - 1))
 }
 
-fn wrap_text(text: &str, width: usize) -> Vec<String> {
+fn calculate_position(text_area: &TextAreaStatus, lines: &[(usize, String)]) -> (u16, u16) {
+    let mut y: u16 = 0;
+    let mut begin: u16 = 0;
+
+    for (start, _) in lines {
+        if *start as u16 > text_area.position {
+            break;
+        }
+        begin = *start as u16;
+        y += 1;
+    }
+    let x = text_area.position - begin;
+    (x, y)
+}
+
+fn wrap_text(text: &str, width: usize) -> Vec<(usize, String)> {
     let mut lines = Vec::new();
     let mut current = String::new();
+    let mut pos = 0;
 
     for word in text.split_whitespace() {
-        dbg!(word);
         let word_len = word.chars().count();
 
         // too long word
         if word_len >= width {
             if !current.is_empty() {
-                lines.push(std::mem::take(&mut current));
+                let new_pos = pos + current.chars().count() + 1;
+                lines.push((0, std::mem::take(&mut current)));
+                pos = new_pos;
             }
 
             let chars: Vec<char> = word.chars().collect();
@@ -153,7 +197,9 @@ fn wrap_text(text: &str, width: usize) -> Vec<String> {
                 let block: String = block.iter().collect();
                 if !block.is_empty() {
                     // ma serve?!?!!?
-                    lines.push(block);
+                    let new_pos = pos + block.chars().count();
+                    lines.push((pos, block));
+                    pos = new_pos;
                 }
             }
             continue;
@@ -161,7 +207,9 @@ fn wrap_text(text: &str, width: usize) -> Vec<String> {
 
         // check length
         if current.len() + word_len + 1 > width {
-            lines.push(current);
+            let new_pos = pos + current.chars().count() + 1;
+            lines.push((pos, current));
+            pos = new_pos;
             current = word.to_owned();
             continue;
         }
@@ -172,8 +220,9 @@ fn wrap_text(text: &str, width: usize) -> Vec<String> {
         }
         current.push_str(word);
     }
+
     if !current.is_empty() {
-        lines.push(current);
+        lines.push((pos, current));
     }
     lines
 }
@@ -182,52 +231,56 @@ fn wrap_text(text: &str, width: usize) -> Vec<String> {
 mod wrap_text_tests {
     use super::*;
 
+    fn assert_at_positions(s: &str, checks: &[(usize, String)]) {
+        for (pos, expected) in checks {
+            let actual = s.get(*pos..*pos + expected.len());
+
+            assert_eq!(
+                actual,
+                Some(expected.as_str()),
+                "position {pos} expected {:?}, got {:?}",
+                expected,
+                actual
+            );
+        }
+    }
+
     #[test]
     fn empty_string() {
         let result = wrap_text("", 10);
-        assert_eq!(result, Vec::<String>::new());
+        assert_eq!(result, Vec::<(usize, String)>::new());
     }
 
     #[test]
     fn only_whitespace() {
         let result = wrap_text("     ", 10);
-        assert_eq!(result, Vec::<String>::new());
+        assert_eq!(result, Vec::<(usize, String)>::new());
     }
 
     #[test]
     fn single_short_word() {
         let result = wrap_text("hello", 10);
-        assert_eq!(result, vec!["hello"]);
+        assert_eq!(result, vec![(0usize, "hello".to_owned())]);
     }
 
     #[test]
     fn simple_wrapping() {
-        let result = wrap_text("the quick brown fox jumps over", 10);
-        assert_eq!(result, vec!["the quick", "brown fox", "jumps over"]);
+        let s = "the quick brown fox jumps over";
+        let result = wrap_text(s, 10);
+        assert_at_positions(s, &result);
     }
 
     #[test]
     fn isolated_word_longer_than_width() {
-        let result = wrap_text("supercalifragilisticexpialidocious", 10);
-        assert_eq!(
-            result,
-            vec!["supercalif", "ragilistic", "expialidoc", "ious"]
-        );
+        let s = "supercalifragilisticexpialidocious";
+        let result = wrap_text(s, 10);
+        assert_at_positions(s, &result);
     }
 
     #[test]
     fn long_word_surrounded_by_normal_words() {
-        let result = wrap_text("hi supercalifragilisticexpialidocious to all", 10);
-        assert_eq!(
-            result,
-            vec![
-                "hi",
-                "supercalif",
-                "ragilistic",
-                "expialidoc",
-                "ious to",
-                "all"
-            ]
-        );
+        let s = "hi supercalifragilisticexpialidocious to all";
+        let result = wrap_text(s, 10);
+        assert_at_positions(s, &result);
     }
 }
