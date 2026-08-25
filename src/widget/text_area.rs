@@ -227,69 +227,6 @@ fn wrap_text(text: &str, width: usize) -> Vec<(usize, String)> {
     lines
 }
 
-// fn wrap_text__(text: &str, width: usize) -> Vec<(usize, String)> {
-//     let mut lines = Vec::new();
-//     let mut pos = 0;
-//     dbg!(&text, width);
-//
-//     for row in text.lines() {
-//         let mut line = String::new();
-//         for word in row.split_whitespace() {
-//             let word_len = word.chars().count();
-//
-//             // too long word
-//             if word_len >= width {
-//                 if !line.is_empty() {
-//                     let new_pos = pos + line.chars().count() + 1;
-//                     lines.push((pos, std::mem::take(&mut line)));
-//                     pos = new_pos;
-//                 }
-//
-//                 let chars: Vec<char> = word.chars().collect();
-//                 for block in chars.chunks(width) {
-//                     if block.len() < width {
-//                         line = block.iter().collect();
-//                         break;
-//                     }
-//                     let block: String = block.iter().collect();
-//                     if !block.is_empty() {
-//                         // ma serve?!?!!?
-//                         let new_pos = pos + block.chars().count();
-//                         lines.push((pos, block));
-//                         pos = new_pos;
-//                     }
-//                 }
-//                 continue;
-//             }
-//
-//             // check length
-//             let delta = if line.is_empty() { 0 } else { 1 };
-//             if line.chars().count() + word_len + delta > width {
-//                 let new_pos = pos + line.chars().count() + delta;
-//                 lines.push((pos, line));
-//                 pos = new_pos;
-//                 line = word.to_owned();
-//                 continue;
-//             }
-//
-//             // append
-//             if !line.is_empty() {
-//                 line.push(' ');
-//             }
-//             line.push_str(word);
-//         }
-//
-//         if !line.is_empty() {
-//             let new_pos = pos + line.chars().count();
-//             lines.push((pos, line));
-//             pos = new_pos;
-//         }
-//         pos += 1;
-//     }
-//     dbg!(&lines);
-//     lines
-// }
-
 #[cfg(test)]
 mod tests_wrap_text {
     use super::*;
