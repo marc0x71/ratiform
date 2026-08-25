@@ -21,7 +21,7 @@ mod widget;
 use std::marker::PhantomData;
 
 use field::Field;
-use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyEventKind};
+use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 
 use crate::{event::handle_input_field, style::FormStyle};
 
@@ -102,16 +102,23 @@ impl<T: PartialEq> FormState<T> {
         if key_event.kind != KeyEventKind::Press {
             return;
         }
-        match key_event.code {
-            KeyCode::Enter if !self.has_errors() => self.result = FormResult::Submitted,
-            KeyCode::Esc => self.result = FormResult::Cancelled,
-            KeyCode::Tab if !self.fields.is_empty() => {
+        match (key_event.modifiers, key_event.code) {
+            (KeyModifiers::CONTROL, KeyCode::Enter) if !self.has_errors() => {
+                self.result = FormResult::Submitted
+            }
+            (_, KeyCode::Enter)
+                if !self.has_errors() && !self.focused_handle_key(KeyCode::Enter) =>
+            {
+                self.result = FormResult::Submitted
+            }
+            (_, KeyCode::Esc) => self.result = FormResult::Cancelled,
+            (_, KeyCode::Tab) if !self.fields.is_empty() => {
                 self.focus = self.focus.wrapping_add(1) % self.fields.len();
             }
-            KeyCode::BackTab if !self.fields.is_empty() => {
+            (_, KeyCode::BackTab) if !self.fields.is_empty() => {
                 self.focus = (self.focus + self.fields.len() - 1) % self.fields.len();
             }
-            _ => {
+            (_, _) => {
                 if !self.fields.is_empty()
                     && let Some(field) = self.fields.get_mut(self.focus)
                     && !field.options.disabled
@@ -183,6 +190,13 @@ impl<T: PartialEq> FormState<T> {
             .iter()
             .find(|f| f.id == *id)
             .map(|f| f.is_dirty())
+    }
+
+    fn focused_handle_key(&self, code: KeyCode) -> bool {
+        self.fields
+            .get(self.focus)
+            .map(|f| f.special_key_handled().contains(&code))
+            .unwrap_or(false)
     }
 }
 

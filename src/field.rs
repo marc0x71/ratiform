@@ -1,3 +1,5 @@
+use ratatui::crossterm::event::KeyCode;
+
 use crate::{
     style::FieldState,
     validators,
@@ -90,6 +92,10 @@ impl<T> Field<T> {
         self.kind.set(&self.initial_value);
         self.validate();
     }
+
+    pub fn special_key_handled(&self) -> Vec<KeyCode> {
+        self.kind.special_key_handled()
+    }
 }
 
 pub enum FieldKind {
@@ -122,6 +128,12 @@ impl FieldKind {
             FieldKind::CheckBox(k) => k.set(value),
             FieldKind::Select(k) => k.set(value),
             FieldKind::TextArea(k) => k.set(value),
+        }
+    }
+    pub fn special_key_handled(&self) -> Vec<KeyCode> {
+        match self {
+            FieldKind::TextArea(_) => vec![KeyCode::Enter],
+            _ => Vec::new(),
         }
     }
 }

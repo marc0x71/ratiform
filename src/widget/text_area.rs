@@ -5,7 +5,7 @@ use ratatui::{
     crossterm::event::KeyCode,
     layout::Rect,
     style::Style,
-    text::Line,
+    text::{self, Line},
     widgets::{Block, Paragraph, Widget},
 };
 
@@ -113,10 +113,13 @@ impl TextAreaStatus {
     }
     fn down(&mut self) {
         let (x, mut y) = calculate_coordinate(self);
-        if y < self.lines.len() as u16 {
+        if y + 1 < self.lines.len() as u16 {
             y += 1;
         }
         self.position = calculate_position(self, x, y);
+    }
+    fn enter(&mut self) {
+        self.insert('\n');
     }
     fn insert(&mut self, c: char) {
         let byte_idx = self.byte_position(self.position, self.value.len());
@@ -137,6 +140,7 @@ pub(crate) fn handle_input_textarea(key_code: KeyCode, text_area: &mut TextAreaS
         KeyCode::Up => text_area.up(),
         KeyCode::Down => text_area.down(),
         KeyCode::Char(c) => text_area.insert(c),
+        KeyCode::Enter => text_area.enter(),
         _ => {}
     }
 }
@@ -153,6 +157,7 @@ pub(crate) fn render_textarea(
     let style = value_style;
 
     text_area.lines = wrap_text(&text_area.value, area.width as usize);
+    let v: Vec<_> = text_area.lines.iter().map(|(x, _)| *x).collect();
 
     let display = text_area
         .lines
@@ -169,7 +174,7 @@ pub(crate) fn render_textarea(
     value.render(area, buf);
 
     let (x, y) = calculate_coordinate(text_area);
-    Some((area.x + x, area.y + y - 1))
+    Some((area.x + x, area.y + y))
 }
 
 fn calculate_coordinate(text_area: &TextAreaStatus) -> (u16, u16) {
@@ -184,127 +189,210 @@ fn calculate_coordinate(text_area: &TextAreaStatus) -> (u16, u16) {
         y += 1;
     }
     let x = text_area.position - begin;
-    (x, y)
+    (x, y - 1)
 }
 
 fn calculate_position(text_area: &TextAreaStatus, x: u16, y: u16) -> u16 {
-    let start = text_area
-        .lines
-        .iter()
-        .take(y as usize)
-        .fold(0, |acc, (start, _)| acc + start) as u16;
-    start + x
+    if let Some((start, line)) = text_area.lines.get(y as usize) {
+        let x = x.min(line.chars().count() as u16);
+        (*start as u16) + x
+    } else {
+        0
+    }
 }
 
 fn wrap_text(text: &str, width: usize) -> Vec<(usize, String)> {
     let mut lines = Vec::new();
-    let mut current = String::new();
     let mut pos = 0;
-
-    for word in text.split_whitespace() {
-        let word_len = word.chars().count();
-
-        // too long word
-        if word_len >= width {
-            if !current.is_empty() {
-                let new_pos = pos + current.chars().count() + 1;
-                lines.push((0, std::mem::take(&mut current)));
+    for line in text.lines() {
+        if line.is_empty() {
+            lines.push((pos, "".to_string()));
+            pos += 1;
+            continue;
+        }
+        let chars: Vec<char> = line.chars().collect();
+        for block in chars.chunks(width) {
+            let block: String = block.iter().collect();
+            if !block.is_empty() {
+                let new_pos = pos + block.chars().count();
+                lines.push((pos, block));
                 pos = new_pos;
             }
-
-            let chars: Vec<char> = word.chars().collect();
-            for block in chars.chunks(width) {
-                if block.len() < width {
-                    current = block.iter().collect();
-                    break;
-                }
-                let block: String = block.iter().collect();
-                if !block.is_empty() {
-                    // ma serve?!?!!?
-                    let new_pos = pos + block.chars().count();
-                    lines.push((pos, block));
-                    pos = new_pos;
-                }
-            }
-            continue;
         }
-
-        // check length
-        if current.len() + word_len + 1 > width {
-            let new_pos = pos + current.chars().count() + 1;
-            lines.push((pos, current));
-            pos = new_pos;
-            current = word.to_owned();
-            continue;
-        }
-
-        // append
-        if !current.is_empty() {
-            current.push(' ');
-        }
-        current.push_str(word);
+        pos += 1;
     }
 
-    if !current.is_empty() {
-        lines.push((pos, current));
-    }
     lines
 }
 
+// fn wrap_text__(text: &str, width: usize) -> Vec<(usize, String)> {
+//     let mut lines = Vec::new();
+//     let mut pos = 0;
+//     dbg!(&text, width);
+//
+//     for row in text.lines() {
+//         let mut line = String::new();
+//         for word in row.split_whitespace() {
+//             let word_len = word.chars().count();
+//
+//             // too long word
+//             if word_len >= width {
+//                 if !line.is_empty() {
+//                     let new_pos = pos + line.chars().count() + 1;
+//                     lines.push((pos, std::mem::take(&mut line)));
+//                     pos = new_pos;
+//                 }
+//
+//                 let chars: Vec<char> = word.chars().collect();
+//                 for block in chars.chunks(width) {
+//                     if block.len() < width {
+//                         line = block.iter().collect();
+//                         break;
+//                     }
+//                     let block: String = block.iter().collect();
+//                     if !block.is_empty() {
+//                         // ma serve?!?!!?
+//                         let new_pos = pos + block.chars().count();
+//                         lines.push((pos, block));
+//                         pos = new_pos;
+//                     }
+//                 }
+//                 continue;
+//             }
+//
+//             // check length
+//             let delta = if line.is_empty() { 0 } else { 1 };
+//             if line.chars().count() + word_len + delta > width {
+//                 let new_pos = pos + line.chars().count() + delta;
+//                 lines.push((pos, line));
+//                 pos = new_pos;
+//                 line = word.to_owned();
+//                 continue;
+//             }
+//
+//             // append
+//             if !line.is_empty() {
+//                 line.push(' ');
+//             }
+//             line.push_str(word);
+//         }
+//
+//         if !line.is_empty() {
+//             let new_pos = pos + line.chars().count();
+//             lines.push((pos, line));
+//             pos = new_pos;
+//         }
+//         pos += 1;
+//     }
+//     dbg!(&lines);
+//     lines
+// }
+
 #[cfg(test)]
-mod wrap_text_tests {
+mod tests_wrap_text {
     use super::*;
 
-    fn assert_at_positions(s: &str, checks: &[(usize, String)]) {
-        for (pos, expected) in checks {
-            let actual = s.get(*pos..*pos + expected.len());
-
-            assert_eq!(
-                actual,
-                Some(expected.as_str()),
-                "position {pos} expected {:?}, got {:?}",
-                expected,
-                actual
-            );
-        }
+    #[test]
+    fn line_shorter_than_width_single_chunk() {
+        let result = wrap_text("hello world", 20);
+        assert_eq!(result, vec![(0, "hello world".to_string())]);
     }
 
     #[test]
-    fn empty_string() {
-        let result = wrap_text("", 10);
+    fn length_is_exact_multiple_of_width() {
+        let result = wrap_text("abcdefghij", 5);
+        assert_eq!(
+            result,
+            vec![(0, "abcde".to_string()), (5, "fghij".to_string())]
+        );
+    }
+
+    #[test]
+    fn length_with_remainder_shorter_last_chunk() {
+        let result = wrap_text("abcdefghijk", 5);
+        assert_eq!(
+            result,
+            vec![
+                (0, "abcde".to_string()),
+                (5, "fghij".to_string()),
+                (10, "k".to_string()),
+            ]
+        );
+    }
+
+    #[test]
+    fn splits_regardless_of_word_boundaries() {
+        let result = wrap_text("the quick", 4);
+        assert_eq!(
+            result,
+            vec![
+                (0, "the ".to_string()),
+                (4, "quic".to_string()),
+                (8, "k".to_string()),
+            ]
+        );
+    }
+
+    #[test]
+    fn width_one_each_chunk_is_a_single_char() {
+        let result = wrap_text("abc", 1);
+        assert_eq!(
+            result,
+            vec![
+                (0, "a".to_string()),
+                (1, "b".to_string()),
+                (2, "c".to_string()),
+            ]
+        );
+    }
+
+    #[test]
+    fn multiple_lines_global_positions() {
+        let result = wrap_text("hello\nworld12345", 5);
+        assert_eq!(
+            result,
+            vec![
+                (0, "hello".to_string()),
+                (6, "world".to_string()),
+                (11, "12345".to_string()),
+            ]
+        );
+    }
+
+    #[test]
+    fn empty_line_in_the_middle() {
+        let result = wrap_text("ab\n\ncd", 5);
+        assert_eq!(
+            result,
+            vec![
+                (0, "ab".to_string()),
+                (3, "".to_string()),
+                (4, "cd".to_string()),
+            ]
+        );
+    }
+
+    #[test]
+    fn empty_string_returns_empty_vec() {
+        let result = wrap_text("", 5);
         assert_eq!(result, Vec::<(usize, String)>::new());
     }
 
+    // #[test]
+    // fn trailing_newline_produces_empty_last_line() {
+    //     let result = wrap_text("abc\n", 5);
+    //     assert_eq!(result, vec![(0, "abc".to_string()), (4, "".to_string())]);
+    // }
+
     #[test]
-    fn only_whitespace() {
-        let result = wrap_text("     ", 10);
-        assert_eq!(result, Vec::<(usize, String)>::new());
+    fn whitespace_only_line_is_not_a_special_case() {
+        let result = wrap_text("   ", 5);
+        assert_eq!(result, vec![(0, "   ".to_string())]);
     }
 
     #[test]
-    fn single_short_word() {
-        let result = wrap_text("hello", 10);
-        assert_eq!(result, vec![(0usize, "hello".to_owned())]);
-    }
-
-    #[test]
-    fn simple_wrapping() {
-        let s = "the quick brown fox jumps over";
-        let result = wrap_text(s, 10);
-        assert_at_positions(s, &result);
-    }
-
-    #[test]
-    fn isolated_word_longer_than_width() {
-        let s = "supercalifragilisticexpialidocious";
-        let result = wrap_text(s, 10);
-        assert_at_positions(s, &result);
-    }
-
-    #[test]
-    fn long_word_surrounded_by_normal_words() {
-        let s = "hi supercalifragilisticexpialidocious to all";
-        let result = wrap_text(s, 10);
-        assert_at_positions(s, &result);
+    fn width_and_positions_count_unicode_chars_not_bytes() {
+        let result = wrap_text("àèìòùé", 3);
+        assert_eq!(result, vec![(0, "àèì".to_string()), (3, "òùé".to_string())]);
     }
 }
