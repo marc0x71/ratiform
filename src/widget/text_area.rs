@@ -34,7 +34,7 @@ impl<T: PartialEq> TextAreaBuilder<T> {
 
     fn finish(mut self) -> FormBuilder<T> {
         let initial_value = self.value.to_string();
-        let position = self.value.len() as u16;
+        let position = self.value.chars().count() as u16;
         self.form.fields.push(Field {
             id: self.id,
             kind: FieldKind::TextArea(TextAreaStatus {
@@ -67,7 +67,8 @@ impl TextAreaStatus {
     }
 
     pub(crate) fn set(&mut self, value: &str) {
-        self.value = value.to_owned()
+        self.value = value.to_owned();
+        self.position = self.value.chars().count() as u16;
     }
 
     fn byte_position(&self, position: u16, default: usize) -> usize {
@@ -166,6 +167,7 @@ pub(crate) fn render_textarea(
         .collect::<Vec<_>>();
 
     // TODO: da fare placeholder
+    // TODO: scrolling
 
     let value = Paragraph::new(display)
         .style(style)
@@ -189,7 +191,7 @@ fn calculate_coordinate(text_area: &TextAreaStatus) -> (u16, u16) {
         y += 1;
     }
     let x = text_area.position - begin;
-    (x, y - 1)
+    (x, y.saturating_sub(1))
 }
 
 fn calculate_position(text_area: &TextAreaStatus, x: u16, y: u16) -> u16 {
@@ -394,5 +396,70 @@ mod tests_wrap_text {
     fn width_and_positions_count_unicode_chars_not_bytes() {
         let result = wrap_text("àèìòùé", 3);
         assert_eq!(result, vec![(0, "àèì".to_string()), (3, "òùé".to_string())]);
+    }
+}
+
+#[cfg(test)]
+mod coordinate_tests {
+    use super::*;
+
+    fn make_text_area(lines: &[(usize, &str)], position: u16) -> TextAreaStatus {
+        TextAreaStatus {
+            label: "Test".to_owned(),
+            value: String::new(),
+            position,
+            lines: lines
+                .iter()
+                .map(|(start, line)| (*start, (*line).to_owned()))
+                .collect(),
+        }
+    }
+
+    #[test]
+    fn coordinate_in_the_middle_of_the_second_line() {
+        // "hello" (0..5) wrapped into "world" (5..10): position 7 is the
+        // third character of the second line.
+        let text_area = make_text_area(&[(0, "hello"), (5, "world")], 7);
+        assert_eq!(calculate_coordinate(&text_area), (2, 1));
+    }
+
+    #[test]
+    fn coordinate_exactly_on_a_line_boundary_belongs_to_the_next_line() {
+        // Position 5 is "5 characters to the left of the cursor" -- i.e.
+        // right after a 5-character first line, which is the START of the
+        // second line, not the end of the first.
+        let text_area = make_text_area(&[(0, "hello"), (5, "world")], 5);
+        assert_eq!(calculate_coordinate(&text_area), (0, 1));
+    }
+
+    #[test]
+    fn coordinate_does_not_panic_when_lines_is_empty() {
+        // `lines` starts empty in `finish()` and is only populated by the
+        // first render -- if `Up`/`Down` is ever handled before the first
+        // render, this must not panic (it does today: `y - 1` underflows
+        // on `u16` when the loop never runs).
+        let text_area = make_text_area(&[], 0);
+        assert_eq!(calculate_coordinate(&text_area), (0, 0));
+    }
+
+    #[test]
+    fn position_clamps_x_to_the_length_of_the_target_line() {
+        // Asking for column 10 on a 5-character line should clamp to the
+        // end of that line, not walk off the end of the string.
+        let text_area = make_text_area(&[(0, "hello"), (5, "hi")], 0);
+        assert_eq!(calculate_position(&text_area, 10, 1), 7);
+    }
+
+    #[test]
+    fn position_returns_zero_for_a_row_beyond_the_last_line() {
+        let text_area = make_text_area(&[(0, "hello")], 0);
+        assert_eq!(calculate_position(&text_area, 0, 5), 0);
+    }
+
+    #[test]
+    fn coordinate_and_position_round_trip_for_an_in_bounds_value() {
+        let text_area = make_text_area(&[(0, "hello"), (5, "world")], 8);
+        let (x, y) = calculate_coordinate(&text_area);
+        assert_eq!(calculate_position(&text_area, x, y), 8);
     }
 }

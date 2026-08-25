@@ -63,7 +63,7 @@ impl<T: PartialEq> SingleLineBuilder<T> {
     }
 
     fn finish(mut self) -> FormBuilder<T> {
-        let position = self.value.len() as u16;
+        let position = self.value.chars().count() as u16;
         let initial_value = self.value.clone();
         self.form.fields.push(Field {
             id: self.id,
@@ -100,6 +100,7 @@ impl SingleLineStatus {
 
     pub(crate) fn set(&mut self, value: &str) {
         self.value = value.to_string();
+        self.position = self.value.chars().count() as u16;
     }
 
     fn byte_position(&self, position: u16, default: usize) -> usize {
