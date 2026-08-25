@@ -179,13 +179,19 @@ pub(crate) fn render_singleline(
         style = placeholder_style;
     }
 
+    let scroll_x = singleline.position.saturating_sub(area.width);
+
     let value = Paragraph::new(display)
         .style(style)
-        .block(Block::default().style(highlight_style));
+        .block(Block::default().style(highlight_style))
+        .scroll((0, scroll_x));
 
     value.render(area, buf);
 
-    Some((area.x + singleline.position, area.y))
+    Some((
+        area.x + singleline.position.saturating_sub(scroll_x),
+        area.y,
+    ))
 }
 
 fn masked_display(value: &str, mask: Option<char>) -> Cow<'_, str> {
