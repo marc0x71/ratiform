@@ -80,6 +80,7 @@ It supports:
 * an initial value
 * masking (for password-like fields)
 * a placeholder shown while the value is empty
+* restricting which characters can be typed at all
 
 Example:
 
@@ -114,6 +115,19 @@ Masking only changes what's drawn on screen — the field's real value, the requ
 ```
 
 The placeholder disappears as soon as the user types anything, and is rendered with its own style (see [Theming](#theming)) so it doesn't get mistaken for real content. It's drawn in plain text even on a `masked_with(...)` field — masking a hint that isn't real input would just make it unreadable — and, like the mask itself, it has no effect on validation: a required field showing a placeholder is still empty as far as the required check and `values()` are concerned.
+
+#### Allowed characters
+
+`alphabet(chars)` restricts what can be typed into the field to the characters present in `chars` — anything else is rejected at the keystroke, before it ever becomes part of the value:
+
+```rust
+.single_line(1, "Codice")
+    .alphabet("0123456789")
+```
+
+Unlike `validator(...)`, which flags an already-typed value as invalid, `alphabet` prevents the disallowed character from being entered in the first place — there's no error message to show, because there's nothing to reject after the fact. The two compose naturally: `alphabet` keeps the *shape* of what can be typed narrow, `validator(...)` still checks the *result* (a length, a range, anything `alphabet` alone can't express).
+
+The restriction applies everywhere a value can enter the field, not just typing — an initial `.value(...)` that contains a disallowed character is filtered the same way, and so is anything written later through `set_value`.
 
 ### Checkbox
 

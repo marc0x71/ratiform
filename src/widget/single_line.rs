@@ -63,6 +63,13 @@ impl<T: PartialEq> SingleLineBuilder<T> {
         self
     }
 
+    /// Restricts which characters can be typed into the field to those
+    /// present in `alphabet` — a character not in it is silently rejected
+    /// at the keystroke, never entering the value at all. Also filters the
+    /// initial value passed to [`value`](SingleLineBuilder::value) and any
+    /// value written later through `set_value`, so the field's content
+    /// never contains a character outside `alphabet` regardless of how it
+    /// got there.
     pub fn alphabet(mut self, alphabet: impl Into<String>) -> Self {
         self.alphabet = Some(alphabet.into());
         self
