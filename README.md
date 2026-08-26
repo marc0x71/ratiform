@@ -500,6 +500,16 @@ A couple of details worth knowing before you reach for this:
 * For a `Checkbox` field, the string is parsed as a `bool` (`"true"` / `"false"`); anything else is treated as `false`.
 * `set_value` triggers validation (see [Validation](#validation)) immediately, just like a keystroke would — so if the value you set fails the required check or one of the field's validators, the field's error state is updated right away, before the next render.
 
+`FormState::value_as::<V>(&self, id: &T) -> Option<Result<V, V::Err>>` parses the current value of a field as any type implementing `FromStr`:
+
+```rust
+if let Some(Ok(port)) = state.value_as::<u16>(&ConnectionField::Port) {
+    // ...
+}
+```
+
+It pairs naturally with a `validators::parsable::<V>(..)` on the same field, so a successful parse is expected rather than merely possible — but `value_as` doesn't check for that validator, or that the `V` you ask for here matches the one you validated with: request a different type, or one with no `parsable` validator at all, and it simply fails to parse.
+
 ### Focused field
 
 `FormState::focused_field(&self) -> Option<&T>` returns the id of the field that currently has focus (`None` only if the form has no fields at all). It's handy for anything that needs to react to "which field is the user on right now" — for instance, showing contextual help for the focused field elsewhere on screen.

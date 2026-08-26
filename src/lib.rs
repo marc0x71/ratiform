@@ -18,7 +18,7 @@ pub mod style;
 pub mod validators;
 mod widget;
 
-use std::marker::PhantomData;
+use std::{marker::PhantomData, str::FromStr};
 
 use field::Field;
 use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
@@ -157,6 +157,19 @@ impl<T: PartialEq> FormState<T> {
     /// called at any point while the form is still active.
     pub fn value(&self, id: &T) -> Option<String> {
         self.fields.iter().find(|&f| f.id == *id).map(|f| f.get())
+    }
+
+    /// Parses the current value of the field with the given id as any
+    /// type implementing `FromStr`, or `None` if no field has that id.
+    ///
+    /// Pairs naturally with a
+    /// [`validators::parsable::<V>`](crate::validators::parsable) on the
+    /// same field, so a successful parse is expected rather than merely
+    /// possible — but `value_as` itself doesn't check for that validator,
+    /// or that the `V` you ask for here matches the one you validated
+    /// with.
+    pub fn value_as<V: FromStr>(&self, id: &T) -> Option<Result<V, V::Err>> {
+        self.value(id).map(|s| s.parse::<V>())
     }
 
     /// Overwrites the value of the field with the given id, if one exists.
