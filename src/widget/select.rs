@@ -104,9 +104,11 @@ pub struct SelectStatus {
 
 impl SelectStatus {
     pub(crate) fn get(&self) -> String {
+        let last = self.values.len().saturating_sub(1);
         self.list_state
             .selected()
-            .and_then(|idx| self.values.get(idx).map(|(k, _)| k.clone()))
+            .and_then(|idx| self.values.get(idx.min(last)))
+            .map(|(k, _)| k.clone())
             .unwrap_or_default()
     }
 
