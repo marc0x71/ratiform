@@ -185,15 +185,17 @@ pub(crate) fn render_textarea(
 fn calculate_coordinate(text_area: &TextAreaStatus) -> (u16, u16) {
     let mut row: u16 = 0;
     let mut begin: u16 = 0;
+    let mut max_length: u16 = 0;
 
-    for (start, _) in &text_area.lines {
+    for (start, line) in &text_area.lines {
         if *start as u16 > text_area.position {
             break;
         }
         begin = *start as u16;
+        max_length = line.chars().count() as u16;
         row += 1;
     }
-    let col = text_area.position - begin;
+    let col = (text_area.position.saturating_sub(begin)).min(max_length);
     (col, row.saturating_sub(1))
 }
 
@@ -225,6 +227,12 @@ fn wrap_text(text: &str, width: usize) -> Vec<(usize, String)> {
             }
         }
         pos += 1;
+    }
+
+    if let Some(c) = text.chars().last()
+        && c == '\n'
+    {
+        lines.push((pos, "".to_string()));
     }
 
     lines
@@ -336,6 +344,39 @@ mod tests_wrap_text {
     fn width_and_positions_count_unicode_chars_not_bytes() {
         let result = wrap_text("àèìòùé", 3);
         assert_eq!(result, vec![(0, "àèì".to_string()), (3, "òùé".to_string())]);
+    }
+
+    #[test]
+    fn multiple_trailing_empty_lines() {
+        let result = wrap_text("abc\n\n\n", 5);
+        assert_eq!(
+            result,
+            vec![
+                (0, "abc".to_string()),
+                (4, "".to_string()),
+                (5, "".to_string()),
+                (6, "".to_string()),
+            ]
+        );
+    }
+
+    #[test]
+    fn leading_empty_line() {
+        let result = wrap_text("\nabc", 5);
+        assert_eq!(result, vec![(0, "".to_string()), (1, "abc".to_string())]);
+    }
+
+    #[test]
+    fn text_made_only_of_newlines() {
+        let result = wrap_text("\n\n", 5);
+        assert_eq!(
+            result,
+            vec![
+                (0, "".to_string()),
+                (1, "".to_string()),
+                (2, "".to_string()),
+            ]
+        );
     }
 }
 
