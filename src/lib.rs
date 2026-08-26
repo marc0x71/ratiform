@@ -28,6 +28,7 @@ use crate::{event::handle_input_field, style::FormStyle};
 pub use field::Validator;
 pub use widget::{
     check_box::CheckboxBuilder, select::SelectBuilder, single_line::SingleLineBuilder,
+    text_area::TextAreaBuilder,
 };
 
 /// The form's current state, returned by [`FormState::result`].
@@ -92,7 +93,8 @@ impl<T: PartialEq> FormState<T> {
     /// | Key | Effect |
     /// | --- | --- |
     /// | `Tab` / `BackTab` | Move focus to the next / previous field, wrapping around |
-    /// | `Enter` | Submit the form, unless some field is currently invalid |
+    /// | `Ctrl+Enter` | Submit the form, unless some field is currently invalid |
+    /// | `Enter` | Same as `Ctrl+Enter`, unless the focused field claims `Enter` for itself (a `TextArea` uses it to insert a newline instead) |
     /// | `Esc` | Cancel the form |
     ///
     /// Every other key is routed to the focused field — unless it's

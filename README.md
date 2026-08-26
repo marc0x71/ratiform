@@ -151,6 +151,31 @@ Example:
 
 The first value in each pair is the value associated with the option, while the second is the text displayed to the user.
 
+### Text area
+
+A multi-line text field.
+
+It supports:
+
+* text insertion, including newlines
+* `Backspace` / `Delete`
+* cursor movement with `Left` / `Right` / `Up` / `Down`
+* `Home` / `End`, which jump to the start/end of the current visual line; `Ctrl+Home` / `Ctrl+End` jump to the start/end of the whole text
+* `PageUp` / `PageDown`
+* a placeholder and an initial value, same as `SingleLine`
+
+Example:
+
+```rust
+.text_area(2, "Note")
+    .placeholder("Scrivi qui...")
+    .height(5)
+```
+
+Long lines wrap automatically to fit the field's width — at the character level, not at word boundaries (the same default `vim` uses), so a long word can be split across two lines rather than pushed entirely to the next one.
+
+Since `Enter` inserts a newline instead of submitting the form, submitting while a `TextArea` has focus needs `Ctrl+Enter` — see [Keyboard navigation](#keyboard-navigation) below for the full picture.
+
 ## Form builder
 
 Forms are created using a builder API. Fields can be chained together and configured with common options such as:
@@ -163,7 +188,7 @@ Forms are created using a builder API. Fields can be chained together and config
 
 ### Field identifiers
 
-Every field is created together with an **identifier**, which is the first argument passed to `single_line()`, `checkbox()` and `select()`. `FormBuilder`, `FormState` and `Form` are all generic over the type of this identifier — it doesn't have to be a string or an integer, it can be your own `enum`:
+Every field is created together with an **identifier**, which is the first argument passed to `single_line()`, `checkbox()`, `select()` and `text_area()`. `FormBuilder`, `FormState` and `Form` are all generic over the type of this identifier — it doesn't have to be a string or an integer, it can be your own `enum`:
 
 ```rust
 #[derive(Debug, Hash, Eq, PartialEq)]
@@ -423,12 +448,13 @@ The form handles a few global keys automatically:
 | ----------- | -------------------------- |
 | `Tab`       | Move to the next field     |
 | `Shift+Tab` | Move to the previous field |
-| `Enter`     | Submit the form, unless some field is currently invalid |
+| `Ctrl+Enter`| Submit the form, unless some field is currently invalid |
+| `Enter`     | Same as `Ctrl+Enter`, unless the focused field claims `Enter` for itself — a `TextArea` uses it to insert a newline instead |
 | `Esc`       | Cancel the form            |
 
 The keys specific to each widget are handled by the currently focused field.
 
-For example, `Space` toggles a checkbox, while the arrow keys navigate a select field.
+For example, `Space` toggles a checkbox, while the arrow keys navigate a select field or move the cursor around a text area.
 
 ## Form result
 

@@ -1,11 +1,9 @@
-#![allow(unused)]
-
 use ratatui::{
     buffer::Buffer,
     crossterm::event::{KeyCode, KeyEvent, KeyModifiers},
     layout::Rect,
-    style::{Modifier, Style},
-    text::{self, Line},
+    style::Style,
+    text::Line,
     widgets::{Block, Paragraph, Widget},
 };
 
@@ -17,6 +15,10 @@ use crate::{
 };
 
 // BUILDER
+/// Builder for a multi-line text field, started with
+/// [`FormBuilder::text_area`](crate::builder::FormBuilder::text_area). For
+/// the options shared with every other field kind, see
+/// [`field_builder_common`](crate::field_builder_common).
 pub struct TextAreaBuilder<T> {
     pub(crate) id: T,
     pub(crate) form: FormBuilder<T>,
@@ -33,6 +35,9 @@ impl<T: PartialEq> TextAreaBuilder<T> {
         self
     }
 
+    /// Sets a hint shown while the field is empty, styled with
+    /// `FormStyle::placeholder`. Disappears as soon as the user types
+    /// anything, and has no effect on validation
     pub fn placeholder(mut self, placeholder: impl Into<String>) -> Self {
         self.placeholder = Some(placeholder.into());
         self
@@ -40,6 +45,9 @@ impl<T: PartialEq> TextAreaBuilder<T> {
 
     fn finish(mut self) -> FormBuilder<T> {
         let initial_value = self.value.to_string();
+        // Starts at the beginning, not the end (unlike SingleLine): with a
+        // long, pre-filled, multi-line value, starting at the end could
+        // land the cursor scrolled past content the user hasn't seen yet.
         let position = 0;
         self.form.fields.push(Field {
             id: self.id,
@@ -202,8 +210,6 @@ pub(crate) fn render_textarea(
     text_area.lines = wrap_text(&text_area.value, area.width as usize);
 
     text_area.visible_height = area.height;
-
-    let v: Vec<_> = text_area.lines.iter().map(|(x, _)| *x).collect();
 
     let mut display = text_area
         .lines
@@ -445,7 +451,7 @@ mod coordinate_tests {
                 .map(|(start, line)| (*start, (*line).to_owned()))
                 .collect(),
             placeholder: None,
-            visible_height: 0,
+            visible_height: 5,
         }
     }
 

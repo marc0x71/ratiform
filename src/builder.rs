@@ -184,6 +184,8 @@ macro_rules! field_builder_common {
                 self.finish().select(id, label)
             }
 
+            /// Finishes this field and starts a new multi-line text field,
+            /// continuing the same builder chain.
             pub fn text_area(
                 self,
                 id: $generic,
