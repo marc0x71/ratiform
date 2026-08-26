@@ -82,6 +82,7 @@ impl<T: PartialEq> SelectBuilder<T> {
                 label: self.label,
                 values: self.values,
                 list_state: ListState::default().with_selected(Some(self.selected)),
+                height: self.options.height,
             }),
             options: self.options,
             error: None,
@@ -98,6 +99,7 @@ pub struct SelectStatus {
     pub(crate) label: String,
     pub(crate) values: Vec<(String, String)>,
     pub(crate) list_state: ListState,
+    pub(crate) height: u16,
 }
 
 impl SelectStatus {
@@ -130,11 +132,12 @@ impl SelectStatus {
     }
 
     fn page_up(&mut self) {
-        self.list_state.scroll_up_by(8);
+        self.list_state.scroll_up_by(self.height.saturating_sub(1));
     }
 
     fn page_down(&mut self) {
-        self.list_state.scroll_down_by(8);
+        self.list_state
+            .scroll_down_by(self.height.saturating_sub(1));
     }
 }
 
@@ -186,6 +189,7 @@ mod select_tests {
                 Some(idx) => ListState::default().with_selected(Some(idx)),
                 None => ListState::default(),
             },
+            height: 5,
         }
     }
 
