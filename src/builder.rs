@@ -52,6 +52,7 @@ impl<T: PartialEq> FormBuilder<T> {
             options: FieldOptions::default(),
             masked_with: None,
             placeholder: None,
+            alphabet: None,
         }
     }
 

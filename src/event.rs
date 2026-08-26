@@ -36,6 +36,7 @@ mod handle_input_field_tests {
                 position: value.chars().count() as u16,
                 masked_with: None,
                 placeholder: None,
+                alphabet: None,
             }),
             options: FieldOptions {
                 required,

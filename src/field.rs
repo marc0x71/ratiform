@@ -156,6 +156,7 @@ mod validate_tests {
                 position: 0,
                 masked_with: None,
                 placeholder: None,
+                alphabet: None,
             }),
             options: FieldOptions {
                 required,

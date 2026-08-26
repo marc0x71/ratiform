@@ -23,6 +23,7 @@ fn main() -> std::io::Result<()> {
             .value("localhost")
             .required("L'host è obbligatorio".to_owned())
             .single_line(ConnectionField::Port, "Porta")
+            .alphabet("0123456789")
             .value("5432")
             .validator(validators::parsable::<u16>(
                 "La porta deve essere un numero tra 0 e 65535".to_owned(),

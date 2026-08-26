@@ -29,6 +29,7 @@ pub struct SingleLineBuilder<T> {
     pub(crate) options: FieldOptions,
     pub(crate) masked_with: Option<char>,
     pub(crate) placeholder: Option<String>,
+    pub(crate) alphabet: Option<String>,
 }
 
 impl<T: PartialEq> SingleLineBuilder<T> {
@@ -62,17 +63,24 @@ impl<T: PartialEq> SingleLineBuilder<T> {
         self
     }
 
+    pub fn alphabet(mut self, alphabet: impl Into<String>) -> Self {
+        self.alphabet = Some(alphabet.into());
+        self
+    }
+
     fn finish(mut self) -> FormBuilder<T> {
-        let position = self.value.chars().count() as u16;
-        let initial_value = self.value.clone();
+        let value = filter_by(&self.value, self.alphabet.as_ref());
+        let position = value.chars().count() as u16;
+        let initial_value = value.clone();
         self.form.fields.push(Field {
             id: self.id,
             kind: FieldKind::SingleLine(SingleLineStatus {
                 label: self.label,
-                value: self.value,
+                value,
                 position,
                 masked_with: self.masked_with,
                 placeholder: self.placeholder,
+                alphabet: self.alphabet,
             }),
             options: self.options,
             error: None,
@@ -82,6 +90,7 @@ impl<T: PartialEq> SingleLineBuilder<T> {
         self.form
     }
 }
+
 field_builder_common!(SingleLineBuilder<T>);
 
 // STATUS
@@ -91,6 +100,7 @@ pub struct SingleLineStatus {
     pub(crate) position: u16,
     pub(crate) masked_with: Option<char>,
     pub(crate) placeholder: Option<String>,
+    pub(crate) alphabet: Option<String>,
 }
 
 impl SingleLineStatus {
@@ -99,7 +109,7 @@ impl SingleLineStatus {
     }
 
     pub(crate) fn set(&mut self, value: &str) {
-        self.value = value.to_string();
+        self.value = filter_by(value, self.alphabet.as_ref());
         self.position = self.value.chars().count() as u16;
     }
 
@@ -140,6 +150,11 @@ impl SingleLineStatus {
         self.position = self.value.chars().count() as u16
     }
     fn insert(&mut self, c: char) {
+        if let Some(alphabet) = &self.alphabet
+            && !alphabet.contains(c)
+        {
+            return;
+        }
         let byte_idx = self.byte_position(self.position, self.value.len());
         self.value.insert(byte_idx, c);
         self.position += 1;
@@ -192,6 +207,14 @@ pub(crate) fn render_singleline(
         area.x + singleline.position.saturating_sub(scroll_x),
         area.y,
     ))
+}
+
+fn filter_by(input: &str, alphabet: Option<&String>) -> String {
+    if let Some(alphabet) = alphabet {
+        input.chars().filter(|c| alphabet.contains(*c)).collect()
+    } else {
+        input.to_owned()
+    }
 }
 
 fn masked_display(value: &str, mask: Option<char>) -> Cow<'_, str> {
@@ -287,6 +310,7 @@ mod editing_tests {
             position,
             masked_with: None,
             placeholder: None,
+            alphabet: None,
         }
     }
 
