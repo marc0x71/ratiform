@@ -186,6 +186,19 @@ Forms are created using a builder API. Fields can be chained together and config
 * `height()`
 * `validator(...)`
 
+### Label width
+
+By default, every field shares a single label column, sized automatically to fit the widest label across all of them, capped to a third of the available area. A label too long for that cap wraps onto a second line rather than pushing the shared column — and every other field's label with it — off to the side. Wrapping only affects that field's own row height; the column width stays the same for every field regardless of whether its own label needed to wrap. Wrapping breaks on whole words, the same way Ratatui's own text wrapping does; a single word longer than the column still isn't split.
+
+Call `.label_width(n)` on the builder to fix the column at `n` characters instead of computing it automatically. An explicit width is **not** capped — if you ask for more than the terminal can comfortably show, you get exactly what you asked for:
+
+```rust
+.single_line(1, "Nome")
+    .label_width(20)
+```
+
+`FormState::label_width(&mut self, width: u16)` sets the same thing after the form has already been built, for cases where the right width is only known once the form is running (in response to a resize, for instance).
+
 ### Field identifiers
 
 Every field is created together with an **identifier**, which is the first argument passed to `single_line()`, `checkbox()`, `select()` and `text_area()`. `FormBuilder`, `FormState` and `Form` are all generic over the type of this identifier — it doesn't have to be a string or an integer, it can be your own `enum`:

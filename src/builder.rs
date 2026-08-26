@@ -30,6 +30,13 @@ impl<T: PartialEq> FormBuilder<T> {
         Self::default()
     }
 
+    /// Fixes the label column at `width` characters (plus one for
+    /// breathing room between label and value), instead of letting it be
+    /// computed automatically from the widest label. Unlike the automatic
+    /// calculation — which caps itself to a third of the available area —
+    /// an explicit `label_width` is not capped: if you set it, you're
+    /// asking for exactly that, regardless of how much space is actually
+    /// available.
     pub fn label_width(mut self, width: u16) -> FormBuilder<T> {
         self.label_width = Some(width);
         self
@@ -201,6 +208,8 @@ macro_rules! field_builder_common {
                 self.finish().text_area(id, label)
             }
 
+            /// Finishes this field and sets the form's label column width — see
+            /// `FormBuilder::label_width`.
             pub fn label_width(self, width: u16) -> FormBuilder<T> {
                 self.finish().label_width(width)
             }

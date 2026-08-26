@@ -251,6 +251,11 @@ impl<T: PartialEq> FormState<T> {
             .unwrap_or(false)
     }
 
+    /// Overrides the label column width after the form has already been
+    /// built — the runtime equivalent of
+    /// [`FormBuilder::label_width`](crate::builder::FormBuilder::label_width),
+    /// for cases where you only know the right width once the form is
+    /// already running (e.g. in response to a resize).
     pub fn label_width(&mut self, width: u16) {
         self.label_width = Some(width);
     }
