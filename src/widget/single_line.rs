@@ -421,3 +421,92 @@ mod editing_tests {
         assert_eq!(status.position, 4);
     }
 }
+
+#[cfg(test)]
+mod alphabet_tests {
+    use ratatui::crossterm::event::KeyModifiers;
+
+    use super::*;
+    use crate::builder::FormBuilder;
+
+    fn make_status(value: &str, position: u16, alphabet: Option<&str>) -> SingleLineStatus {
+        SingleLineStatus {
+            label: "Test".to_owned(),
+            value: value.to_owned(),
+            position,
+            masked_with: None,
+            placeholder: None,
+            alphabet: alphabet.map(|a| a.to_owned()),
+        }
+    }
+
+    #[test]
+    fn insert_rejects_a_character_not_in_the_alphabet() {
+        let mut status = make_status("123", 3, Some("0123456789"));
+        handle_input_singleline(
+            KeyEvent::new(KeyCode::Char('a'), KeyModifiers::NONE),
+            &mut status,
+        );
+
+        assert_eq!(status.value, "123");
+        assert_eq!(status.position, 3);
+    }
+
+    #[test]
+    fn insert_accepts_a_character_in_the_alphabet() {
+        let mut status = make_status("123", 3, Some("0123456789"));
+        handle_input_singleline(
+            KeyEvent::new(KeyCode::Char('4'), KeyModifiers::NONE),
+            &mut status,
+        );
+
+        assert_eq!(status.value, "1234");
+        assert_eq!(status.position, 4);
+    }
+
+    #[test]
+    fn insert_with_no_alphabet_accepts_any_character() {
+        let mut status = make_status("123", 3, None);
+        handle_input_singleline(
+            KeyEvent::new(KeyCode::Char('a'), KeyModifiers::NONE),
+            &mut status,
+        );
+
+        assert_eq!(status.value, "123a");
+        assert_eq!(status.position, 4);
+    }
+
+    #[test]
+    fn set_filters_the_new_value_too() {
+        let mut status = make_status("", 0, Some("0123456789"));
+        status.set("12a3");
+
+        assert_eq!(status.value, "123");
+        assert_eq!(status.position, 3);
+    }
+
+    #[test]
+    fn finish_derives_position_and_initial_value_from_the_filtered_value() {
+        // This is the regression test for the ordering bug: position and
+        // initial_value must come from the filtered value ("123"), not
+        // from the raw one ("12a3") -- otherwise is_dirty() would report
+        // `true` immediately after build, and reset() would bring the
+        // filtered-out character back.
+        let builder = SingleLineBuilder {
+            id: 1,
+            form: FormBuilder::new(),
+            label: "Test".to_owned(),
+            value: "12a3".to_owned(),
+            options: FieldOptions::default(),
+            masked_with: None,
+            placeholder: None,
+            alphabet: Some("0123456789".to_owned()),
+        };
+
+        let form = builder.finish();
+        let field = &form.fields[0];
+
+        assert_eq!(field.get(), "123");
+        assert!(!field.is_dirty());
+    }
+}
