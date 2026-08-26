@@ -115,10 +115,10 @@ impl<T: PartialEq> FormState<T> {
             }
             (_, KeyCode::Esc) => self.result = FormResult::Cancelled,
             (_, KeyCode::Tab) if !self.fields.is_empty() => {
-                self.focus = self.focus.wrapping_add(1) % self.fields.len();
+                self.focus = self.next_in_focus();
             }
             (_, KeyCode::BackTab) if !self.fields.is_empty() => {
-                self.focus = (self.focus + self.fields.len() - 1) % self.fields.len();
+                self.focus = self.prev_in_focus();
             }
             (_, _) => {
                 if !self.fields.is_empty()
@@ -139,6 +139,41 @@ impl<T: PartialEq> FormState<T> {
 
     fn has_errors(&self) -> bool {
         self.fields.iter().any(|f| f.has_error())
+    }
+
+    fn prev_in_focus(&self) -> usize {
+        let mut prev = self.focus;
+        let start = prev;
+        loop {
+            prev = (prev + self.fields.len() - 1) % self.fields.len();
+            if let Some(f) = self.fields.get(prev)
+                && !f.options.disabled
+            {
+                break;
+            }
+            if start == prev {
+                break;
+            }
+        }
+        prev
+    }
+
+    fn next_in_focus(&self) -> usize {
+        let mut next = self.focus;
+        let start = next;
+        loop {
+            next = next.wrapping_add(1) % self.fields.len();
+            if let Some(f) = self.fields.get(next)
+                && !f.options.disabled
+            {
+                break;
+            }
+
+            if start == next {
+                break;
+            }
+        }
+        next
     }
 
     /// Consumes the form and returns an iterator of `(id, value)` pairs,
