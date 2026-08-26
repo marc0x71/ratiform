@@ -3,7 +3,7 @@ use ratatui::{
     layout::{Constraint, Layout, Rect},
     style::Style,
     text::Span,
-    widgets::{StatefulWidget, Widget},
+    widgets::{Paragraph, StatefulWidget, Widget, Wrap},
 };
 
 use crate::{
@@ -19,16 +19,19 @@ impl<T: PartialEq> StatefulWidget for Form<T> {
     type State = FormState<T>;
 
     fn render(self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {
-        // Block::default().on_light_yellow().render(area, buf);
-        let heights: Vec<_> = state.fields.iter().map(|f| f.options.height + 1).collect();
+        let label_width = state.max_label_length() as u16 + 2;
+        let label_width = label_width.min(area.width / 3);
+
+        let heights: Vec<u16> = compute_heights(&state.fields, label_width);
+
         let (from_field, to_field) = scroll_offset(&heights, area.height, state.focus);
 
-        let constraints: Vec<_> = state.fields[from_field..=to_field]
+        let constraints: Vec<_> = heights[from_field..=to_field]
             .iter()
-            .map(|f| Constraint::Length(f.options.height + 1))
+            .map(|f| Constraint::Length(*f))
             .collect();
         let rows = Layout::vertical(constraints).split(area);
-        let label_width = state.max_label_length() as u16 + 2;
+
         state.cursor_position = None;
 
         for (idx, field) in state.fields[from_field..=to_field].iter_mut().enumerate() {
@@ -42,7 +45,9 @@ impl<T: PartialEq> StatefulWidget for Form<T> {
                 Layout::horizontal([Constraint::Length(label_width), Constraint::Fill(1)])
                     .areas(row);
 
-            let label = Span::raw(field.label()).style(self.style.label.style_for(&field_state));
+            let label = Paragraph::new(field.label())
+                .style(self.style.label.style_for(&field_state))
+                .wrap(Wrap { trim: true });
             label.render(left, buf);
 
             if let Some(position) = render_field(
@@ -68,6 +73,38 @@ impl<T: PartialEq> StatefulWidget for Form<T> {
     }
 }
 
+fn compute_heights<T: PartialEq>(fields: &[Field<T>], width: u16) -> Vec<u16> {
+    let mut heights = Vec::new();
+    for field in fields {
+        let height = field.options.height.max(count_lines(field.label(), width)) + 1;
+        heights.push(height);
+    }
+    heights
+}
+
+fn count_lines(text: &str, max_width: u16) -> u16 {
+    if text.is_empty() || max_width == 0 {
+        return 0;
+    }
+
+    let mut lines = 1;
+    let mut current_width = 0;
+
+    for word in text.split_whitespace() {
+        let word_width = word.chars().count() as u16;
+
+        if current_width == 0 {
+            current_width = word_width;
+        } else if current_width + 1 + word_width <= max_width {
+            current_width += 1 + word_width;
+        } else {
+            lines += 1;
+            current_width = word_width;
+        }
+    }
+
+    lines
+}
 pub fn render_field<T>(
     area: Rect,
     buf: &mut Buffer,
