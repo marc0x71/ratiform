@@ -445,6 +445,7 @@ mod coordinate_tests {
                 .map(|(start, line)| (*start, (*line).to_owned()))
                 .collect(),
             placeholder: None,
+            visible_height: 0,
         }
     }
 
