@@ -2,9 +2,9 @@
 
 use ratatui::{
     buffer::Buffer,
-    crossterm::event::{KeyCode, KeyEvent},
+    crossterm::event::{KeyCode, KeyEvent, KeyModifiers},
     layout::Rect,
-    style::Style,
+    style::{Modifier, Style},
     text::{self, Line},
     widgets::{Block, Paragraph, Widget},
 };
@@ -108,16 +108,16 @@ impl TextAreaStatus {
         self.position = self.value.chars().count() as u16
     }
     fn up(&mut self) {
-        let (x, mut y) = calculate_coordinate(self);
-        y = y.saturating_sub(1);
-        self.position = calculate_position(self, x, y);
+        let (col, mut row) = calculate_coordinate(self);
+        row = row.saturating_sub(1);
+        self.position = calculate_position(self, col, row);
     }
     fn down(&mut self) {
-        let (x, mut y) = calculate_coordinate(self);
-        if y + 1 < self.lines.len() as u16 {
-            y += 1;
+        let (col, mut row) = calculate_coordinate(self);
+        if row + 1 < self.lines.len() as u16 {
+            row += 1;
         }
-        self.position = calculate_position(self, x, y);
+        self.position = calculate_position(self, col, row);
     }
     fn enter(&mut self) {
         self.insert('\n');
@@ -127,21 +127,38 @@ impl TextAreaStatus {
         self.value.insert(byte_idx, c);
         self.position += 1;
     }
+
+    fn begin_row(&mut self) {
+        let (_, row) = calculate_coordinate(self);
+        self.position = calculate_position(self, 0, row);
+    }
+
+    fn end_row(&mut self) {
+        let (_, row) = calculate_coordinate(self);
+        let col = self
+            .lines
+            .get(row as usize)
+            .map(|(_, l)| l.chars().count().saturating_sub(1))
+            .unwrap_or_default() as u16;
+        self.position = calculate_position(self, col, row);
+    }
 }
 
 // EVENT
 pub(crate) fn handle_input_textarea(key_event: KeyEvent, text_area: &mut TextAreaStatus) {
-    match key_event.code {
-        KeyCode::Backspace => text_area.backspace(),
-        KeyCode::Left => text_area.left(),
-        KeyCode::Right => text_area.right(),
-        KeyCode::Home => text_area.home(),
-        KeyCode::End => text_area.end(),
-        KeyCode::Delete => text_area.delete(),
-        KeyCode::Up => text_area.up(),
-        KeyCode::Down => text_area.down(),
-        KeyCode::Char(c) => text_area.insert(c),
-        KeyCode::Enter => text_area.enter(),
+    match (key_event.modifiers, key_event.code) {
+        (_, KeyCode::Backspace) => text_area.backspace(),
+        (_, KeyCode::Left) => text_area.left(),
+        (_, KeyCode::Right) => text_area.right(),
+        (KeyModifiers::CONTROL, KeyCode::Home) => text_area.home(),
+        (_, KeyCode::Home) => text_area.begin_row(),
+        (KeyModifiers::CONTROL, KeyCode::End) => text_area.end(),
+        (_, KeyCode::End) => text_area.end_row(),
+        (_, KeyCode::Delete) => text_area.delete(),
+        (_, KeyCode::Up) => text_area.up(),
+        (_, KeyCode::Down) => text_area.down(),
+        (_, KeyCode::Char(c)) => text_area.insert(c),
+        (_, KeyCode::Enter) => text_area.enter(),
         // TODO: Home/End devono andare all'inizio/fine della riga corrente
         // TODO: Ctrl+Home/Ctrl+End devono andare all'inizio/fine del testo
         _ => {}
