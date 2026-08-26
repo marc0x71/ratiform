@@ -191,6 +191,9 @@ pub(crate) fn render_singleline(
     highlight_style: Style,
     placeholder_style: Style,
 ) -> Option<(u16, u16)> {
+    // limiting height to 1 row for single_line
+    let area = Rect { height: 1, ..area };
+
     let mut style = value_style;
 
     let mut display = masked_display(singleline.value.as_str(), singleline.masked_with);
