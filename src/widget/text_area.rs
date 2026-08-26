@@ -239,6 +239,7 @@ fn calculate_position(text_area: &TextAreaStatus, col: u16, row: u16) -> u16 {
 }
 
 fn wrap_text(text: &str, width: usize) -> Vec<(usize, String)> {
+    let width = width.max(1);
     let mut lines = Vec::new();
     let mut pos = 0;
     for line in text.lines() {
