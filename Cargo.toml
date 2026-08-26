@@ -3,5 +3,12 @@ name = "ratiform"
 version = "0.1.0"
 edition = "2024"
 
+description = "A small, composable, stateful form widget for Ratatui"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/marc0x71/ratiform"
+readme = "README.md"
+keywords = ["ratatui", "tui", "form", "widget"]
+categories = ["command-line-interface"]
+
 [dependencies]
 ratatui = "0.30.2"
