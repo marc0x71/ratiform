@@ -503,3 +503,122 @@ mod coordinate_tests {
         assert_eq!(calculate_position(&text_area, x, y), 8);
     }
 }
+
+#[cfg(test)]
+mod editing_tests {
+    use ratatui::crossterm::event::KeyModifiers;
+
+    use super::*;
+
+    fn make_text_area(value: &str, position: u16) -> TextAreaStatus {
+        TextAreaStatus {
+            label: "Test".to_owned(),
+            value: value.to_owned(),
+            position,
+            lines: Vec::new(),
+            placeholder: None,
+            visible_height: 0,
+        }
+    }
+
+    fn key(code: KeyCode) -> KeyEvent {
+        KeyEvent::new(code, KeyModifiers::NONE)
+    }
+
+    #[test]
+    fn insert_handles_unicode_content_correctly() {
+        // "città" = c-i-t-t-à, position 3 sits right before the second 't'.
+        let mut text_area = make_text_area("città", 3);
+        handle_input_textarea(key(KeyCode::Char('X')), &mut text_area);
+
+        assert_eq!(text_area.value, "citXtà");
+        assert_eq!(text_area.position, 4);
+    }
+
+    #[test]
+    fn backspace_removes_the_character_before_the_cursor() {
+        // Cursor at the end: backspace must remove the 'à' (multi-byte)
+        // as a whole character, not split it or remove the wrong byte.
+        let mut text_area = make_text_area("città", 5);
+        handle_input_textarea(key(KeyCode::Backspace), &mut text_area);
+
+        assert_eq!(text_area.value, "citt");
+        assert_eq!(text_area.position, 4);
+    }
+
+    #[test]
+    fn backspace_at_the_start_does_not_panic_or_change_anything() {
+        let mut text_area = make_text_area("città", 0);
+        handle_input_textarea(key(KeyCode::Backspace), &mut text_area);
+
+        assert_eq!(text_area.value, "città");
+        assert_eq!(text_area.position, 0);
+    }
+
+    #[test]
+    fn delete_removes_the_character_at_the_cursor() {
+        // Position 4 sits right before the 'à'. Delete must remove it.
+        let mut text_area = make_text_area("città", 4);
+        handle_input_textarea(key(KeyCode::Delete), &mut text_area);
+
+        assert_eq!(text_area.value, "citt");
+        assert_eq!(text_area.position, 4);
+    }
+
+    #[test]
+    fn delete_at_the_end_of_the_value_does_not_remove_anything() {
+        let mut text_area = make_text_area("citt", 4);
+        handle_input_textarea(key(KeyCode::Delete), &mut text_area);
+
+        assert_eq!(text_area.value, "citt");
+    }
+
+    #[test]
+    fn delete_on_an_empty_value_does_not_panic() {
+        let mut text_area = make_text_area("", 0);
+        handle_input_textarea(key(KeyCode::Delete), &mut text_area);
+
+        assert_eq!(text_area.value, "");
+        assert_eq!(text_area.position, 0);
+    }
+
+    #[test]
+    fn left_does_not_go_below_zero() {
+        let mut text_area = make_text_area("ciao", 0);
+        handle_input_textarea(key(KeyCode::Left), &mut text_area);
+
+        assert_eq!(text_area.position, 0);
+    }
+
+    #[test]
+    fn right_does_not_go_past_the_end() {
+        let mut text_area = make_text_area("ciao", 4);
+        handle_input_textarea(key(KeyCode::Right), &mut text_area);
+
+        assert_eq!(text_area.position, 4);
+    }
+
+    #[test]
+    fn backspace_at_the_start_of_a_line_merges_it_with_the_previous_line() {
+        // "abc\ndef" -- position 4 is right after the newline, at the
+        // start of "def". Backspace must remove the '\n' itself, joining
+        // the two lines into "abcdef", not just refuse to do anything
+        // because there's no "character" to the left on this visual row.
+        let mut text_area = make_text_area("abc\ndef", 4);
+        handle_input_textarea(key(KeyCode::Backspace), &mut text_area);
+
+        assert_eq!(text_area.value, "abcdef");
+        assert_eq!(text_area.position, 3);
+    }
+
+    #[test]
+    fn delete_at_the_end_of_a_line_merges_it_with_the_next_line() {
+        // Same idea, the other direction: position 3 is right before the
+        // newline, at the end of "abc". Delete must remove the '\n'.
+        let mut text_area = make_text_area("abc\ndef", 3);
+        handle_input_textarea(key(KeyCode::Delete), &mut text_area);
+
+        assert_eq!(text_area.value, "abcdef");
+        assert_eq!(text_area.position, 3);
+    }
+}
