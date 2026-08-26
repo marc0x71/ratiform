@@ -59,7 +59,11 @@ pub struct FormState<T> {
 
 impl<T: PartialEq> FormState<T> {
     pub(crate) fn new(mut fields: Vec<Field<T>>, label_width: Option<u16>) -> Self {
-        fields.iter_mut().for_each(|f| f.validate());
+        fields.iter_mut().for_each(|f| {
+            f.normalize();
+            f.initial_value = f.get();
+            f.validate();
+        });
         Self {
             fields,
             focus: 0,
@@ -319,6 +323,7 @@ mod form_state_tests {
                 readonly: false,
                 height: 1,
                 validator: vec![],
+                normalizer: None,
             },
             error: None,
             initial_value: value.to_owned(),

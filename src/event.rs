@@ -17,6 +17,7 @@ pub fn handle_input_field<T>(key_event: KeyEvent, field: &mut Field<T>) {
         FieldKind::Select(ref mut select) => handle_input_select(key_event, select),
         FieldKind::TextArea(ref mut text_area) => handle_input_textarea(key_event, text_area),
     }
+    field.normalize();
     field.validate();
 }
 
@@ -44,6 +45,7 @@ mod handle_input_field_tests {
                 readonly: false,
                 height: 1,
                 validator: vec![],
+                normalizer: None,
             },
             error: None,
             initial_value: value.to_owned(),

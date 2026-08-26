@@ -10,6 +10,7 @@ use crate::{
 };
 
 pub type Validator = Box<dyn Fn(&str) -> Result<(), String> + 'static>;
+pub type Normalizer = Box<dyn Fn(&str) -> String + 'static>;
 
 pub struct FieldOptions {
     pub(crate) required: Option<Validator>, // None = optional
@@ -17,6 +18,7 @@ pub struct FieldOptions {
     pub(crate) readonly: bool,
     pub(crate) height: u16,
     pub(crate) validator: Vec<Validator>,
+    pub(crate) normalizer: Option<Normalizer>, // None = optional
 }
 
 impl Default for FieldOptions {
@@ -27,6 +29,7 @@ impl Default for FieldOptions {
             readonly: false,
             height: 1,
             validator: Vec::new(),
+            normalizer: None,
         }
     }
 }
@@ -63,7 +66,15 @@ impl<T> Field<T> {
 
     pub(crate) fn set(&mut self, value: &str) {
         self.kind.set(value);
+        self.normalize();
         self.validate();
+    }
+
+    pub(crate) fn normalize(&mut self) {
+        if let Some(function) = self.options.normalizer.as_ref() {
+            let value = self.kind.get();
+            self.kind.set(function(value.as_str()).as_str());
+        }
     }
 
     pub(crate) fn validate(&mut self) {
@@ -164,6 +175,7 @@ mod validate_tests {
                 readonly: false,
                 height: 1,
                 validator,
+                normalizer: None,
             },
             error: None,
             initial_value: value.to_owned(),

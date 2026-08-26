@@ -23,6 +23,7 @@ fn main() -> std::io::Result<()> {
             .required("Il cognome è obbligatorio".to_owned())
             .single_line(AnagraficaField::CodiceFiscale, "Codice fiscale")
             .placeholder("RSSMRA80A01H501U")
+            .normalizer(|s| s.to_uppercase().to_owned())
             .validator(validators::max_length(
                 16,
                 "Il codice fiscale ha al massimo 16 caratteri".to_owned(),
@@ -30,6 +31,8 @@ fn main() -> std::io::Result<()> {
             .required("Il codice fiscale è obbligatorio".to_owned())
             .single_line(AnagraficaField::Email, "Email")
             .placeholder("mario.rossi@esempio.it")
+            .value("PIPPO")
+            .normalizer(|s| s.to_lowercase().to_owned())
             .validator(|value: &str| {
                 let valid = value.split('@').count() == 2
                     && value
@@ -66,23 +69,7 @@ fn main() -> std::io::Result<()> {
                         let values: HashMap<AnagraficaField, String> = state.values().collect();
                         break Ok(values);
                     }
-                    ratiform::FormResult::Working => {
-                        // Codice fiscale: forzato in maiuscolo
-                        if let Some(value) = state.value(&AnagraficaField::CodiceFiscale) {
-                            let upper = value.to_uppercase();
-                            if upper != value {
-                                state.set_value(&AnagraficaField::CodiceFiscale, &upper);
-                            }
-                        }
-
-                        // Email: forzata tutti in minuscolo
-                        if let Some(value) = state.value(&AnagraficaField::Email) {
-                            let lower = value.to_lowercase();
-                            if lower != value {
-                                state.set_value(&AnagraficaField::Email, &lower);
-                            }
-                        }
-                    }
+                    ratiform::FormResult::Working => {}
                 }
             }
         }

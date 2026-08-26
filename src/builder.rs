@@ -168,6 +168,14 @@ macro_rules! field_builder_common {
                 self
             }
 
+            pub fn normalizer<F>(mut self, function: F) -> Self
+            where
+                F: Fn(&str) -> String + 'static,
+            {
+                self.options.normalizer = Some(Box::new(function));
+                self
+            }
+
             // Builders
             /// Finishes this field and starts a new single-line text field,
             /// continuing the same builder chain.

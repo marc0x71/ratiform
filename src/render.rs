@@ -272,6 +272,7 @@ mod label_width_tests {
                 readonly: false,
                 height,
                 validator: vec![],
+                normalizer: None,
             },
             error: None,
             initial_value: String::new(),
