@@ -54,16 +54,18 @@ pub struct FormState<T> {
     focus: usize,
     cursor_position: Option<(u16, u16)>,
     result: FormResult,
+    label_width: Option<u16>,
 }
 
 impl<T: PartialEq> FormState<T> {
-    pub(crate) fn new(mut fields: Vec<Field<T>>) -> Self {
+    pub(crate) fn new(mut fields: Vec<Field<T>>, label_width: Option<u16>) -> Self {
         fields.iter_mut().for_each(|f| f.validate());
         Self {
             fields,
             focus: 0,
             cursor_position: None,
             result: FormResult::Working,
+            label_width,
         }
     }
 
@@ -248,6 +250,10 @@ impl<T: PartialEq> FormState<T> {
             .map(|f| f.special_key_handled().contains(&code))
             .unwrap_or(false)
     }
+
+    pub fn label_width(&mut self, width: u16) {
+        self.label_width = Some(width);
+    }
 }
 
 /// The widget that renders a [`FormState`]. Stateless and cheap to
@@ -321,11 +327,14 @@ mod form_state_tests {
 
     #[test]
     fn tab_moves_focus_forward_and_wraps_around() {
-        let mut state = FormState::new(vec![
-            make_field(1, "A", "", None),
-            make_field(2, "B", "", None),
-            make_field(3, "C", "", None),
-        ]);
+        let mut state = FormState::new(
+            vec![
+                make_field(1, "A", "", None),
+                make_field(2, "B", "", None),
+                make_field(3, "C", "", None),
+            ],
+            None,
+        );
         assert_eq!(state.focused_field(), Some(&1));
 
         state.handle_input(key(KeyCode::Tab));
@@ -342,11 +351,14 @@ mod form_state_tests {
     fn back_tab_wraps_to_the_last_field_with_a_non_power_of_two_field_count() {
         // 3 fields on purpose: this is the exact case that was broken
         // before the fix (usize::MAX % 3 == 0, not len - 1).
-        let mut state = FormState::new(vec![
-            make_field(1, "A", "", None),
-            make_field(2, "B", "", None),
-            make_field(3, "C", "", None),
-        ]);
+        let mut state = FormState::new(
+            vec![
+                make_field(1, "A", "", None),
+                make_field(2, "B", "", None),
+                make_field(3, "C", "", None),
+            ],
+            None,
+        );
         assert_eq!(state.focused_field(), Some(&1));
 
         state.handle_input(key(KeyCode::BackTab));
@@ -357,7 +369,7 @@ mod form_state_tests {
 
     #[test]
     fn non_press_events_are_ignored() {
-        let mut state = FormState::new(vec![make_field(1, "A", "", None)]);
+        let mut state = FormState::new(vec![make_field(1, "A", "", None)], None);
         let mut release_event = KeyEvent::new(KeyCode::Char('x'), KeyModifiers::NONE);
         release_event.kind = KeyEventKind::Release;
 
@@ -370,7 +382,7 @@ mod form_state_tests {
     fn a_disabled_field_does_not_receive_input() {
         let mut field = make_field(1, "A", "", None);
         field.options.disabled = true;
-        let mut state = FormState::new(vec![field]);
+        let mut state = FormState::new(vec![field], None);
 
         state.handle_input(key(KeyCode::Char('x')));
 
@@ -381,7 +393,7 @@ mod form_state_tests {
     fn a_readonly_field_does_not_receive_input() {
         let mut field = make_field(1, "A", "", None);
         field.options.readonly = true;
-        let mut state = FormState::new(vec![field]);
+        let mut state = FormState::new(vec![field], None);
 
         state.handle_input(key(KeyCode::Char('x')));
 
@@ -392,12 +404,15 @@ mod form_state_tests {
 
     #[test]
     fn enter_does_not_submit_while_a_field_is_invalid() {
-        let mut state = FormState::new(vec![make_field(
-            1,
-            "A",
-            "",
-            Some(validators::required("Obbligatorio".to_owned())),
-        )]);
+        let mut state = FormState::new(
+            vec![make_field(
+                1,
+                "A",
+                "",
+                Some(validators::required("Obbligatorio".to_owned())),
+            )],
+            None,
+        );
 
         state.handle_input(key(KeyCode::Enter));
 
@@ -406,12 +421,15 @@ mod form_state_tests {
 
     #[test]
     fn enter_submits_once_every_field_is_valid() {
-        let mut state = FormState::new(vec![make_field(
-            1,
-            "A",
-            "Mario",
-            Some(validators::required("Obbligatorio".to_owned())),
-        )]);
+        let mut state = FormState::new(
+            vec![make_field(
+                1,
+                "A",
+                "Mario",
+                Some(validators::required("Obbligatorio".to_owned())),
+            )],
+            None,
+        );
 
         state.handle_input(key(KeyCode::Enter));
 
@@ -422,10 +440,13 @@ mod form_state_tests {
 
     #[test]
     fn values_returns_every_field_with_its_current_value() {
-        let state = FormState::new(vec![
-            make_field(1, "Nome", "Mario", None),
-            make_field(2, "Cognome", "Rossi", None),
-        ]);
+        let state = FormState::new(
+            vec![
+                make_field(1, "Nome", "Mario", None),
+                make_field(2, "Cognome", "Rossi", None),
+            ],
+            None,
+        );
 
         let values: std::collections::HashMap<i32, String> = state.values().collect();
 
@@ -435,7 +456,7 @@ mod form_state_tests {
 
     #[test]
     fn value_returns_none_for_an_id_that_does_not_exist() {
-        let state = FormState::new(vec![make_field(1, "A", "Mario", None)]);
+        let state = FormState::new(vec![make_field(1, "A", "Mario", None)], None);
         assert_eq!(state.value(&999), None);
     }
 
@@ -443,7 +464,7 @@ mod form_state_tests {
 
     #[test]
     fn focused_field_is_none_when_the_form_has_no_fields() {
-        let state: FormState<i32> = FormState::new(vec![]);
+        let state: FormState<i32> = FormState::new(vec![], None);
         assert_eq!(state.focused_field(), None);
     }
 
@@ -454,10 +475,13 @@ mod form_state_tests {
         // Uses .any() internally: this proves it's "at least one", not
         // "every field", which is the semantic a careless refactor
         // (swapping .any() for .all()) would silently break.
-        let mut state = FormState::new(vec![
-            make_field(1, "A", "Mario", None),
-            make_field(2, "B", "Rossi", None),
-        ]);
+        let mut state = FormState::new(
+            vec![
+                make_field(1, "A", "Mario", None),
+                make_field(2, "B", "Rossi", None),
+            ],
+            None,
+        );
         assert!(!state.is_dirty());
 
         state.set_value(&2, "Bianchi");
@@ -471,10 +495,13 @@ mod form_state_tests {
     fn max_label_length_counts_characters_not_bytes() {
         // "Città" is 5 characters but 6 bytes in UTF-8 ('à' takes 2 bytes).
         // "Nome" is 4 characters. Byte-counting would wrongly report 6.
-        let state = FormState::new(vec![
-            make_field(1, "Nome", "", None),
-            make_field(2, "Città", "", None),
-        ]);
+        let state = FormState::new(
+            vec![
+                make_field(1, "Nome", "", None),
+                make_field(2, "Città", "", None),
+            ],
+            None,
+        );
         assert_eq!(state.max_label_length(), 5);
     }
 
@@ -482,12 +509,15 @@ mod form_state_tests {
 
     #[test]
     fn new_validates_every_field_immediately() {
-        let state = FormState::new(vec![make_field(
-            1,
-            "A",
-            "",
-            Some(validators::required("Obbligatorio".to_owned())),
-        )]);
+        let state = FormState::new(
+            vec![make_field(
+                1,
+                "A",
+                "",
+                Some(validators::required("Obbligatorio".to_owned())),
+            )],
+            None,
+        );
 
         // No handle_input call yet -- the error must already be there.
         assert!(state.has_errors());

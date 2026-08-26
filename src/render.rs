@@ -19,8 +19,12 @@ impl<T: PartialEq> StatefulWidget for Form<T> {
     type State = FormState<T>;
 
     fn render(self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {
-        let label_width = state.max_label_length() as u16 + 2;
-        let label_width = label_width.min(area.width / 3);
+        let label_width = if let Some(max_width) = state.label_width {
+            max_width + 1
+        } else {
+            let width = state.max_label_length() as u16 + 2;
+            width.min(area.width / 3)
+        };
 
         let heights: Vec<u16> = compute_heights(&state.fields, label_width);
 

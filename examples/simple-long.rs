@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use ratatui::{
     crossterm::event::{self, Event},
-    layout::{Constraint, Layout},
+    layout::Constraint,
     style::{Color, Style},
 };
 use ratiform::{
@@ -45,6 +45,7 @@ fn main() -> std::io::Result<()> {
             .required("La password non può essere vuota".to_owned())
             .single_line(10, "Debug")
             .disabled()
+            .label_width(25)
             .build();
 
         loop {

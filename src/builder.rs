@@ -12,12 +12,14 @@ use crate::{
 /// `enum`; see the crate-level docs for why that matters.
 pub struct FormBuilder<T> {
     pub(crate) fields: Vec<Field<T>>,
+    pub(crate) label_width: Option<u16>,
 }
 
 impl<T> Default for FormBuilder<T> {
     fn default() -> Self {
         Self {
             fields: Default::default(),
+            label_width: None,
         }
     }
 }
@@ -26,6 +28,11 @@ impl<T: PartialEq> FormBuilder<T> {
     /// Starts a new, empty form.
     pub fn new() -> Self {
         Self::default()
+    }
+
+    pub fn label_width(mut self, width: u16) -> FormBuilder<T> {
+        self.label_width = Some(width);
+        self
     }
 
     /// Adds a single-line text field.
@@ -83,7 +90,7 @@ impl<T: PartialEq> FormBuilder<T> {
     /// required field left empty) already carries its error before the
     /// first render.
     pub fn build(self) -> FormState<T> {
-        FormState::new(self.fields)
+        FormState::new(self.fields, self.label_width)
     }
 }
 
@@ -193,6 +200,11 @@ macro_rules! field_builder_common {
             ) -> $crate::widget::text_area::TextAreaBuilder<$generic> {
                 self.finish().text_area(id, label)
             }
+
+            pub fn label_width(self, width: u16) -> FormBuilder<T> {
+                self.finish().label_width(width)
+            }
+
             /// Finishes this field and builds the `FormState` — see
             /// `FormBuilder::build`.
             pub fn build(self) -> FormState<T> {
