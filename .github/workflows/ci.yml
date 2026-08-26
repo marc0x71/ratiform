@@ -44,3 +44,9 @@ jobs:
       # ── 6. Test ──────────────────────────────────────────────────────────────
       - name: Test
         run: cargo test --workspace
+
+      # ── 7. Documentazione ────────────────────────────────────────────────────
+      - name: Verifica documentazione
+        run: cargo doc --no-deps
+        env:
+          RUSTDOCFLAGS: "-D warnings"
