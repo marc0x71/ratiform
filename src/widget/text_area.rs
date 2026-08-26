@@ -49,6 +49,7 @@ impl<T: PartialEq> TextAreaBuilder<T> {
                 position,
                 lines: Vec::new(),
                 placeholder: self.placeholder,
+                visible_height: 0,
             }),
             options: self.options,
             error: None,
@@ -67,6 +68,7 @@ pub struct TextAreaStatus {
     pub(crate) position: u16,
     pub(crate) lines: Vec<(usize, String)>,
     pub(crate) placeholder: Option<String>,
+    pub(crate) visible_height: u16,
 }
 
 impl TextAreaStatus {
@@ -150,6 +152,19 @@ impl TextAreaStatus {
             .unwrap_or_default() as u16;
         self.position = calculate_position(self, col, row);
     }
+
+    fn page_up(&mut self) {
+        let (col, row) = calculate_coordinate(self);
+        let new_row = row.saturating_sub(self.visible_height.saturating_sub(1));
+        self.position = calculate_position(self, col, new_row);
+    }
+
+    fn page_down(&mut self) {
+        let (col, row) = calculate_coordinate(self);
+        let last_row = self.lines.len().saturating_sub(1) as u16;
+        let new_row = (row + self.visible_height.saturating_sub(1)).min(last_row);
+        self.position = calculate_position(self, col, new_row);
+    }
 }
 
 // EVENT
@@ -167,6 +182,8 @@ pub(crate) fn handle_input_textarea(key_event: KeyEvent, text_area: &mut TextAre
         (_, KeyCode::Down) => text_area.down(),
         (_, KeyCode::Char(c)) => text_area.insert(c),
         (_, KeyCode::Enter) => text_area.enter(),
+        (_, KeyCode::PageUp) => text_area.page_up(),
+        (_, KeyCode::PageDown) => text_area.page_down(),
         _ => {}
     }
 }
@@ -183,6 +200,9 @@ pub(crate) fn render_textarea(
     let mut style = value_style;
 
     text_area.lines = wrap_text(&text_area.value, area.width as usize);
+
+    text_area.visible_height = area.height;
+
     let v: Vec<_> = text_area.lines.iter().map(|(x, _)| *x).collect();
 
     let mut display = text_area
