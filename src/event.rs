@@ -1,4 +1,4 @@
-use ratatui::crossterm::event::KeyCode;
+use ratatui::crossterm::event::KeyEvent;
 
 use crate::{
     field::{Field, FieldKind},
@@ -8,20 +8,22 @@ use crate::{
     },
 };
 
-pub fn handle_input_field<T>(key_code: KeyCode, field: &mut Field<T>) {
+pub fn handle_input_field<T>(key_event: KeyEvent, field: &mut Field<T>) {
     match field.kind {
         FieldKind::SingleLine(ref mut single_line) => {
-            handle_input_singleline(key_code, single_line)
+            handle_input_singleline(key_event, single_line)
         }
-        FieldKind::CheckBox(ref mut check_box) => handle_input_checkbox(key_code, check_box),
-        FieldKind::Select(ref mut select) => handle_input_select(key_code, select),
-        FieldKind::TextArea(ref mut text_area) => handle_input_textarea(key_code, text_area),
+        FieldKind::CheckBox(ref mut check_box) => handle_input_checkbox(key_event, check_box),
+        FieldKind::Select(ref mut select) => handle_input_select(key_event, select),
+        FieldKind::TextArea(ref mut text_area) => handle_input_textarea(key_event, text_area),
     }
     field.validate();
 }
 
 #[cfg(test)]
 mod handle_input_field_tests {
+    use ratatui::crossterm::event::{KeyCode, KeyModifiers};
+
     use super::*;
     use crate::{field::FieldOptions, validators, widget::single_line::SingleLineStatus};
 
@@ -53,7 +55,10 @@ mod handle_input_field_tests {
 
         // Backspace on a 1-character field with the cursor at the end
         // empties it, which should immediately turn the field invalid.
-        handle_input_field(KeyCode::Backspace, &mut field);
+        handle_input_field(
+            KeyEvent::new(KeyCode::Backspace, KeyModifiers::NONE),
+            &mut field,
+        );
 
         assert_eq!(field.error, Some("Obbligatorio".to_owned()));
     }
@@ -62,7 +67,10 @@ mod handle_input_field_tests {
     fn handle_input_field_revalidates_when_a_keystroke_makes_the_value_valid_again() {
         let mut field = make_field("", Some(validators::required("Obbligatorio".to_owned())));
 
-        handle_input_field(KeyCode::Char('A'), &mut field);
+        handle_input_field(
+            KeyEvent::new(KeyCode::Char('A'), KeyModifiers::NONE),
+            &mut field,
+        );
 
         assert_eq!(field.error, None);
     }

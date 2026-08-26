@@ -2,7 +2,7 @@
 
 use ratatui::{
     buffer::Buffer,
-    crossterm::event::KeyCode,
+    crossterm::event::{KeyCode, KeyEvent},
     layout::Rect,
     style::Style,
     text::{self, Line},
@@ -130,8 +130,8 @@ impl TextAreaStatus {
 }
 
 // EVENT
-pub(crate) fn handle_input_textarea(key_code: KeyCode, text_area: &mut TextAreaStatus) {
-    match key_code {
+pub(crate) fn handle_input_textarea(key_event: KeyEvent, text_area: &mut TextAreaStatus) {
+    match key_event.code {
         KeyCode::Backspace => text_area.backspace(),
         KeyCode::Left => text_area.left(),
         KeyCode::Right => text_area.right(),

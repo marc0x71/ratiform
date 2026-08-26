@@ -1,5 +1,9 @@
 use ratatui::{
-    buffer::Buffer, crossterm::event::KeyCode, layout::Rect, style::Style, text::Span,
+    buffer::Buffer,
+    crossterm::event::{KeyCode, KeyEvent},
+    layout::Rect,
+    style::Style,
+    text::Span,
     widgets::Widget,
 };
 
@@ -68,8 +72,8 @@ impl CheckBoxStatus {
 }
 
 // EVENT
-pub(crate) fn handle_input_checkbox(key_code: KeyCode, check_box: &mut CheckBoxStatus) {
-    if let KeyCode::Char(' ') = key_code {
+pub(crate) fn handle_input_checkbox(key_event: KeyEvent, check_box: &mut CheckBoxStatus) {
+    if let KeyCode::Char(' ') = key_event.code {
         check_box.toggle();
     }
 }
@@ -93,6 +97,8 @@ pub(crate) fn render_checkbox(
 
 #[cfg(test)]
 mod checkbox_tests {
+    use ratatui::crossterm::event::KeyModifiers;
+
     use super::*;
 
     fn make_checkbox(checked: bool) -> CheckBoxStatus {
@@ -124,16 +130,28 @@ mod checkbox_tests {
     #[test]
     fn space_toggles_the_checkbox() {
         let mut checkbox = make_checkbox(false);
-        handle_input_checkbox(KeyCode::Char(' '), &mut checkbox);
+        handle_input_checkbox(
+            KeyEvent::new(KeyCode::Char(' '), KeyModifiers::NONE),
+            &mut checkbox,
+        );
         assert!(checkbox.checked);
     }
 
     #[test]
     fn other_keys_do_not_toggle_the_checkbox() {
         let mut checkbox = make_checkbox(false);
-        handle_input_checkbox(KeyCode::Char('a'), &mut checkbox);
-        handle_input_checkbox(KeyCode::Enter, &mut checkbox);
-        handle_input_checkbox(KeyCode::Left, &mut checkbox);
+        handle_input_checkbox(
+            KeyEvent::new(KeyCode::Char('a'), KeyModifiers::NONE),
+            &mut checkbox,
+        );
+        handle_input_checkbox(
+            KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE),
+            &mut checkbox,
+        );
+        handle_input_checkbox(
+            KeyEvent::new(KeyCode::Left, KeyModifiers::NONE),
+            &mut checkbox,
+        );
         assert!(!checkbox.checked);
     }
 }

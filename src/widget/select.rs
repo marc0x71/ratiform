@@ -1,6 +1,6 @@
 use ratatui::{
     buffer::Buffer,
-    crossterm::event::KeyCode,
+    crossterm::event::{KeyCode, KeyEvent},
     layout::Rect,
     style::Style,
     widgets::{List, ListState, StatefulWidget},
@@ -139,8 +139,8 @@ impl SelectStatus {
 }
 
 // EVENT
-pub(crate) fn handle_input_select(key_code: KeyCode, select: &mut SelectStatus) {
-    match key_code {
+pub(crate) fn handle_input_select(key_event: KeyEvent, select: &mut SelectStatus) {
+    match key_event.code {
         KeyCode::Up => select.up(),
         KeyCode::Down => select.down(),
         KeyCode::Home => select.home(),

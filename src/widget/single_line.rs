@@ -2,7 +2,7 @@ use std::borrow::Cow;
 
 use ratatui::{
     buffer::Buffer,
-    crossterm::event::KeyCode,
+    crossterm::event::{KeyCode, KeyEvent},
     layout::Rect,
     style::Style,
     widgets::{Block, Paragraph, Widget},
@@ -147,8 +147,8 @@ impl SingleLineStatus {
 }
 
 // EVENT
-pub(crate) fn handle_input_singleline(key_code: KeyCode, single_line: &mut SingleLineStatus) {
-    match key_code {
+pub(crate) fn handle_input_singleline(key_event: KeyEvent, single_line: &mut SingleLineStatus) {
+    match key_event.code {
         KeyCode::Backspace => single_line.backspace(),
         KeyCode::Left => single_line.left(),
         KeyCode::Right => single_line.right(),
@@ -276,6 +276,8 @@ mod masked_display_tests {
 
 #[cfg(test)]
 mod editing_tests {
+    use ratatui::crossterm::event::KeyModifiers;
+
     use super::*;
 
     fn make_status(value: &str, position: u16) -> SingleLineStatus {
@@ -292,7 +294,10 @@ mod editing_tests {
     fn insert_handles_unicode_content_correctly() {
         // "città" = c-i-t-t-à, position 3 sits right before the second 't'.
         let mut status = make_status("città", 3);
-        handle_input_singleline(KeyCode::Char('X'), &mut status);
+        handle_input_singleline(
+            KeyEvent::new(KeyCode::Char('X'), KeyModifiers::NONE),
+            &mut status,
+        );
 
         assert_eq!(status.value, "citXtà");
         assert_eq!(status.position, 4);
@@ -303,7 +308,10 @@ mod editing_tests {
         // Cursor at the end: backspace must remove the 'à' (multi-byte)
         // as a whole character, not split it or remove the wrong byte.
         let mut status = make_status("città", 5);
-        handle_input_singleline(KeyCode::Backspace, &mut status);
+        handle_input_singleline(
+            KeyEvent::new(KeyCode::Backspace, KeyModifiers::NONE),
+            &mut status,
+        );
 
         assert_eq!(status.value, "citt");
         assert_eq!(status.position, 4);
@@ -312,7 +320,10 @@ mod editing_tests {
     #[test]
     fn backspace_at_the_start_does_not_panic_or_change_anything() {
         let mut status = make_status("città", 0);
-        handle_input_singleline(KeyCode::Backspace, &mut status);
+        handle_input_singleline(
+            KeyEvent::new(KeyCode::Backspace, KeyModifiers::NONE),
+            &mut status,
+        );
 
         assert_eq!(status.value, "città");
         assert_eq!(status.position, 0);
@@ -322,7 +333,10 @@ mod editing_tests {
     fn delete_removes_the_character_at_the_cursor() {
         // Position 4 sits right before the 'à'. Delete must remove it.
         let mut status = make_status("città", 4);
-        handle_input_singleline(KeyCode::Delete, &mut status);
+        handle_input_singleline(
+            KeyEvent::new(KeyCode::Delete, KeyModifiers::NONE),
+            &mut status,
+        );
 
         assert_eq!(status.value, "citt");
         assert_eq!(status.position, 4);
@@ -331,7 +345,10 @@ mod editing_tests {
     #[test]
     fn delete_at_the_end_of_the_value_does_not_remove_anything() {
         let mut status = make_status("citt", 4);
-        handle_input_singleline(KeyCode::Delete, &mut status);
+        handle_input_singleline(
+            KeyEvent::new(KeyCode::Delete, KeyModifiers::NONE),
+            &mut status,
+        );
 
         assert_eq!(status.value, "citt");
     }
@@ -339,7 +356,10 @@ mod editing_tests {
     #[test]
     fn delete_on_an_empty_value_does_not_panic() {
         let mut status = make_status("", 0);
-        handle_input_singleline(KeyCode::Delete, &mut status);
+        handle_input_singleline(
+            KeyEvent::new(KeyCode::Delete, KeyModifiers::NONE),
+            &mut status,
+        );
 
         assert_eq!(status.value, "");
         assert_eq!(status.position, 0);
@@ -350,7 +370,7 @@ mod editing_tests {
         // "città" = 5 characters, 6 bytes: end() must stop at 5, not 6.
         // A direct regression test for the very first bug found in this project.
         let mut status = make_status("città", 0);
-        handle_input_singleline(KeyCode::End, &mut status);
+        handle_input_singleline(KeyEvent::new(KeyCode::End, KeyModifiers::NONE), &mut status);
 
         assert_eq!(status.position, 5);
     }
@@ -358,7 +378,10 @@ mod editing_tests {
     #[test]
     fn left_does_not_go_below_zero() {
         let mut status = make_status("ciao", 0);
-        handle_input_singleline(KeyCode::Left, &mut status);
+        handle_input_singleline(
+            KeyEvent::new(KeyCode::Left, KeyModifiers::NONE),
+            &mut status,
+        );
 
         assert_eq!(status.position, 0);
     }
@@ -366,7 +389,10 @@ mod editing_tests {
     #[test]
     fn right_does_not_go_past_the_end() {
         let mut status = make_status("ciao", 4);
-        handle_input_singleline(KeyCode::Right, &mut status);
+        handle_input_singleline(
+            KeyEvent::new(KeyCode::Right, KeyModifiers::NONE),
+            &mut status,
+        );
 
         assert_eq!(status.position, 4);
     }

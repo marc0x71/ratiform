@@ -124,7 +124,7 @@ impl<T: PartialEq> FormState<T> {
                     && !field.options.disabled
                     && !field.options.readonly
                 {
-                    handle_input_field(key_event.code, field);
+                    handle_input_field(key_event, field);
                 }
             }
         }
