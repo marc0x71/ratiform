@@ -34,7 +34,7 @@ impl<T: PartialEq> TextAreaBuilder<T> {
 
     fn finish(mut self) -> FormBuilder<T> {
         let initial_value = self.value.to_string();
-        let position = self.value.chars().count() as u16;
+        let position = 0;
         self.form.fields.push(Field {
             id: self.id,
             kind: FieldKind::TextArea(TextAreaStatus {
@@ -142,6 +142,8 @@ pub(crate) fn handle_input_textarea(key_code: KeyCode, text_area: &mut TextAreaS
         KeyCode::Down => text_area.down(),
         KeyCode::Char(c) => text_area.insert(c),
         KeyCode::Enter => text_area.enter(),
+        // TODO: Home/End devono andare all'inizio/fine della riga corrente
+        // TODO: Ctrl+Home/Ctrl+End devono andare all'inizio/fine del testo
         _ => {}
     }
 }
@@ -166,21 +168,22 @@ pub(crate) fn render_textarea(
         .map(|(_, line)| Line::from(line.clone()))
         .collect::<Vec<_>>();
 
-    // TODO: da fare placeholder
-    // TODO: scrolling
+    let (col, row) = calculate_coordinate(text_area);
+
+    let scroll_y = (row + 1).saturating_sub(area.height);
 
     let value = Paragraph::new(display)
         .style(style)
-        .block(Block::default().style(highlight_style));
+        .block(Block::default().style(highlight_style))
+        .scroll((scroll_y, 0));
 
     value.render(area, buf);
 
-    let (x, y) = calculate_coordinate(text_area);
-    Some((area.x + x, area.y + y))
+    Some((area.x + col, area.y + row.saturating_sub(scroll_y)))
 }
 
 fn calculate_coordinate(text_area: &TextAreaStatus) -> (u16, u16) {
-    let mut y: u16 = 0;
+    let mut row: u16 = 0;
     let mut begin: u16 = 0;
 
     for (start, _) in &text_area.lines {
@@ -188,15 +191,15 @@ fn calculate_coordinate(text_area: &TextAreaStatus) -> (u16, u16) {
             break;
         }
         begin = *start as u16;
-        y += 1;
+        row += 1;
     }
-    let x = text_area.position - begin;
-    (x, y.saturating_sub(1))
+    let col = text_area.position - begin;
+    (col, row.saturating_sub(1))
 }
 
-fn calculate_position(text_area: &TextAreaStatus, x: u16, y: u16) -> u16 {
-    if let Some((start, line)) = text_area.lines.get(y as usize) {
-        let x = x.min(line.chars().count() as u16);
+fn calculate_position(text_area: &TextAreaStatus, col: u16, row: u16) -> u16 {
+    if let Some((start, line)) = text_area.lines.get(row as usize) {
+        let x = col.min(line.chars().count() as u16);
         (*start as u16) + x
     } else {
         0
