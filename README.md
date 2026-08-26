@@ -1,14 +1,31 @@
 # ratiform
 [![CI](https://github.com/marc0x71/ratiform/actions/workflows/ci.yml/badge.svg)](https://github.com/marc0x71/ratiform/actions/workflows/ci.yml)
-A small, composable, stateful form widget for [Ratatui](https://github.com/ratatui/ratatui).
 
-Build forms with a typed field identity, keep the state in your application, and render them like any other Ratatui widget.
+**A small, composable, stateful form widget for [Ratatui](https://ratatui.rs/), with typed field identifiers and application-owned data.**
+
+```rust
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+enum Field {
+    Name,
+    Email,
+    Country,
+    Terms,
+}
+
+let mut state = FormBuilder::new()
+    .single_line(Field::Name, "Name")
+    .single_line(Field::Email, "Email")
+    .select(Field::Country, "Country")
+    .values_ref(&[("IT", "Italy"), ("FR", "France"), ("DE", "Germany")])
+    .checkbox(Field::Terms, "I accept the terms")
+    .build();
+```
+
+The field identity is a real Rust type — `state.value(&Field::Email)`, not `state.value("email")`. No string keys, no JSON round-trip, no form-specific data model.
 
 > **⚠️ Work in progress**
 >
 > `ratiform` is currently under active development. Breaking changes are still possible before a stable release, so pin a specific commit if you depend on it.
-
-`ratiform` provides a small, builder-based form component for [Ratatui](https://github.com/ratatui/ratatui), with keyboard navigation and a few basic input widgets.
 
 The project is dual-licensed under the **MIT License** and the **Apache License 2.0** (see [License](#license) below).
 
@@ -29,31 +46,36 @@ I doubt I'm the only one this has bothered — hence this project. 😅
 ## Design
 
 ```
-             ratiform
-                │
-      ┌─────────┼─────────┐
-      │         │         │
-   Builder    State     Widget
-      │         │         │
-      └─────────┼─────────┘
-                │
-          your application
+┌──────────────────────────────┐
+│       your application       │
+│                              │
+│   domain model, business     │
+│   logic, persistence         │
+└─────────────┬────────────────┘
+               │ field values, typed by you
+               ▼
+┌──────────────────────────────┐
+│           ratiform           │
+│                              │
+│  input · focus · validation  │
+│  navigation · dirty state    │
+└──────────────┬───────────────┘
+               │ a StatefulWidget
+               ▼
+┌──────────────────────────────┐
+│            Ratatui           │
+└──────────────────────────────┘
 ```
 
-* The form doesn't own your application.
-* The form doesn't own your data.
-* The form doesn't decide what your UI looks like.
-* The form handles input, focus, validation and rendering.
+* The form doesn't own your application, or your data — it hands values back as plain `String`s tied to *your* id type, and never guesses what they mean.
+* The form doesn't decide what your UI looks like — `Form<T>` is a stateless `StatefulWidget`, composable with any other widget (see [`examples/login-form.rs`](examples/login-form.rs), which wraps it in a titled `Block`).
+* `FormBuilder` produces a `FormState<T>`, which your application owns for as long as the form is active — no hidden global state, no callback registry.
 
-`FormBuilder` produces a `FormState<T>`, which your application owns for as long as the form is active — there is no hidden global state, no callback registry, nothing running in the background. `Form<T>` is a stateless `StatefulWidget`: you render it against that state exactly like you would any other Ratatui widget, in whichever `Rect`, frame, and event loop your application already has. That includes composing it with other widgets — wrapping it in a titled `Block`, for instance, needs no support from `ratiform` at all (see [`examples/login-form.rs`](examples/login-form.rs)).
-
-The `T` here is the type of your field identifiers — see [Field identifiers](#field-identifiers) below, which is where most of what makes `ratiform` different from other form widgets actually lives.
+The `T` here is the type of your field identifiers — see [Field identifiers](#field-identifiers), which is where most of what makes `ratiform` different from other form widgets actually lives.
 
 ## Installation
 
 Since the project is still under development, it is currently intended to be used directly from GitHub.
-
-Add the following dependency to your `Cargo.toml`:
 
 ```toml
 [dependencies]
@@ -62,336 +84,46 @@ ratiform = { git = "https://github.com/marc0x71/ratiform" }
 
 `ratiform` currently depends on Ratatui `0.30`.
 
-## Features
-
-The following widgets are currently implemented:
-
-### Single-line input
-
-A simple single-line text input.
-
-It supports:
-
-* text insertion
-* `Backspace`
-* `Delete`
-* cursor movement with `Left` / `Right`
-* `Home` / `End`
-* an initial value
-* masking (for password-like fields)
-* a placeholder shown while the value is empty
-* restricting which characters can be typed at all
-
-Example:
+## Quick start
 
 ```rust
-.single_line(1, "Nome")
-    .value("Mario")
-    .required("Il nome è obbligatorio".to_owned())
-```
-
-The first argument is the field's **identifier** (see [Field identifiers](#field-identifiers) below).
-
-#### Masked fields
-
-For a password-style field, use `masked()` (the character typed is replaced with `*`) or `masked_with(c)` to pick your own mask character:
-
-```rust
-.single_line(5, "Password")
-    .masked_with('•')
-    .required("La password non può essere vuota".to_owned())
-```
-
-Masking only changes what's drawn on screen — the field's real value, the required check, `validator(...)` and everything read back through `value()`/`values()` all still see (and act on) what the user actually typed, not the mask. The cursor stays correctly aligned regardless of the mask character or of multi-byte characters in the value, since the displayed string always has exactly as many characters as the real one.
-
-#### Placeholder
-
-`placeholder(text)` shows a hint whenever the field's value is empty:
-
-```rust
-.single_line(1, "Nome")
-    .placeholder("Inserisci il nome")
-    .required("Il nome è obbligatorio".to_owned())
-```
-
-The placeholder disappears as soon as the user types anything, and is rendered with its own style (see [Theming](#theming)) so it doesn't get mistaken for real content. It's drawn in plain text even on a `masked_with(...)` field — masking a hint that isn't real input would just make it unreadable — and, like the mask itself, it has no effect on validation: a required field showing a placeholder is still empty as far as the required check and `values()` are concerned.
-
-#### Allowed characters
-
-`alphabet(chars)` restricts what can be typed into the field to the characters present in `chars` — anything else is rejected at the keystroke, before it ever becomes part of the value:
-
-```rust
-.single_line(1, "Codice")
-    .alphabet("0123456789")
-```
-
-Unlike `validator(...)`, which flags an already-typed value as invalid, `alphabet` prevents the disallowed character from being entered in the first place — there's no error message to show, because there's nothing to reject after the fact. The two compose naturally: `alphabet` keeps the *shape* of what can be typed narrow, `validator(...)` still checks the *result* (a length, a range, anything `alphabet` alone can't express).
-
-The restriction applies everywhere a value can enter the field, not just typing — an initial `.value(...)` that contains a disallowed character is filtered the same way, and so is anything written later through `set_value`.
-
-### Checkbox
-
-A boolean checkbox that can be toggled with the `Space` key.
-
-```rust
-.checkbox(4, "Accetto i termini")
-    .checked(false)
-    .optional()
-```
-
-### Select
-
-A selectable list of values.
-
-The selected item can be changed using:
-
-* `Up` / `Down`
-* `Home` / `End`
-* `PageUp` / `PageDown`
-
-Example:
-
-```rust
-.select(3, "Paese")
-    .values_ref(&[
-        ("I", "Italia"),
-        ("F", "Francia"),
-        ("D", "Germania"),
-    ])
-    .selected(1)
-    .height(5)
-    .required("Seleziona un paese".to_owned())
-```
-
-The first value in each pair is the value associated with the option, while the second is the text displayed to the user.
-
-### Text area
-
-A multi-line text field.
-
-It supports:
-
-* text insertion, including newlines
-* `Backspace` / `Delete`
-* cursor movement with `Left` / `Right` / `Up` / `Down`
-* `Home` / `End`, which jump to the start/end of the current visual line; `Ctrl+Home` / `Ctrl+End` jump to the start/end of the whole text
-* `PageUp` / `PageDown`
-* a placeholder and an initial value, same as `SingleLine`
-
-Example:
-
-```rust
-.text_area(2, "Note")
-    .placeholder("Scrivi qui...")
-    .height(5)
-```
-
-Long lines wrap automatically to fit the field's width — at the character level, not at word boundaries (the same default `vim` uses), so a long word can be split across two lines rather than pushed entirely to the next one.
-
-Since `Enter` inserts a newline instead of submitting the form, submitting while a `TextArea` has focus needs `Ctrl+Enter` — see [Keyboard navigation](#keyboard-navigation) below for the full picture.
-
-## Form builder
-
-Forms are created using a builder API. Fields can be chained together and configured with common options such as:
-
-* `required(message)` / `optional()`
-* `disabled()`
-* `readonly()`
-* `height()`
-* `validator(...)`
-* `normalizer(...)`
-
-### Label width
-
-By default, every field shares a single label column, sized automatically to fit the widest label across all of them, capped to a third of the available area. A label too long for that cap wraps onto a second line rather than pushing the shared column — and every other field's label with it — off to the side. Wrapping only affects that field's own row height; the column width stays the same for every field regardless of whether its own label needed to wrap. Wrapping breaks on whole words, the same way Ratatui's own text wrapping does; a single word longer than the column still isn't split.
-
-Call `.label_width(n)` on the builder to fix the column at `n` characters instead of computing it automatically. An explicit width is **not** capped — if you ask for more than the terminal can comfortably show, you get exactly what you asked for:
-
-```rust
-.single_line(1, "Nome")
-    .label_width(20)
-```
-
-`FormState::label_width(&mut self, width: u16)` sets the same thing after the form has already been built, for cases where the right width is only known once the form is running (in response to a resize, for instance).
-
-### Field identifiers
-
-Every field is created together with an **identifier**, which is the first argument passed to `single_line()`, `checkbox()`, `select()` and `text_area()`. `FormBuilder`, `FormState` and `Form` are all generic over the type of this identifier — it doesn't have to be a string or an integer, it can be your own `enum`:
-
-```rust
-#[derive(Debug, Hash, Eq, PartialEq)]
-enum FormField {
-    Nome,
-    Cognome,
-    Nazione,
-    Termini,
-}
-```
-
-This is what lets you match each submitted value back to the field that produced it (see [Retrieving the submitted values](#retrieving-the-submitted-values)) without relying on string keys: no risk of a typo in a field name going unnoticed until runtime, and the compiler will tell you if a `match` on the collected values forgets a variant. The examples in this README use a plain `enum` for this reason, even though any type works equally well — an integer, a `&'static str`, or anything else that fits your application.
-
-Since fields are looked up by id (see [Reading and writing a single field](#reading-and-writing-a-single-field) below), `T` must implement `PartialEq`. `#[derive(PartialEq)]` — or `Hash, Eq, PartialEq` together, as in the `FormField` example above, needed if you also want to `collect()` into a `HashMap` — is enough for any plain enum or newtype.
-
-With `FormField` in scope, a complete form looks like this:
-
-```rust
-use ratiform::validators;
-
-let mut state = FormBuilder::new()
-    .single_line(FormField::Nome, "Nome")
-    .value("Mario")
-    .validator(validators::min_length(
-        2,
-        "Il nome deve avere una lunghezza di almeno 2 caratteri".to_owned(),
-    ))
-    .required("Il nome è obbligatorio".to_owned())
-    .single_line(FormField::Cognome, "Cognome")
-    .value("Rossi")
-    .validator(validators::min_length(
-        2,
-        "Il cognome deve avere una lunghezza di almeno 2 caratteri".to_owned(),
-    ))
-    .validator(validators::max_length(
-        10,
-        "Il cognome deve avere una lunghezza massima di 10 caratteri".to_owned(),
-    ))
-    .select(FormField::Nazione, "Paese")
-    .values_ref(&[
-        ("I", "Italia"),
-        ("F", "Francia"),
-        ("D", "Germania"),
-    ])
-    .selected(1)
-    .height(5)
-    .checkbox(FormField::Termini, "Accetto i termini")
-    .checked(false)
-    .optional()
-    .build();
-```
-
-Note the two `.validator(...)` calls chained on `Cognome`: both checks are kept, and are evaluated in that order (see [Validation](#validation) below). Also note that `Cognome` and `Paese` never call `.required(...)` at all — every field is required by default (with a built-in message), so `.required(message)` is only needed when you want your *own* message; `.optional()` is what actually changes behavior, by opting a field out of the required check entirely.
-
-### Validation
-
-A field can be marked invalid in two ways:
-
-* **Being required** — every field is required by default, and an empty required field is invalid with a built-in message. Call `.required(message)` to use your own message instead of the built-in one, or `.optional()` to opt the field out of this check entirely. Either way, this doesn't need `validator(...)`: internally, `.required(message)` is itself backed by a `Validator` (`ratiform::validators::required`, see [Built-in validators](#built-in-validators)), just kept in its own slot rather than the general list below.
-* **`validator(...)`** — a custom rule, `Fn(&str) -> Result<(), String> + 'static`. The closure receives the field's current value and returns `Err(message)` when the value is not acceptable. `validator(...)` can be called any number of times on the same field; each call adds one more check, evaluated in the order they were added.
-
-The two interact like this:
-
-| Field state | Result |
-| --- | --- |
-| required (default, or `.required(message)`), value empty | invalid, with the required message — validators are **not** run |
-| `optional()`, value empty | valid — validators are **not** run |
-| any value, non-empty | each validator runs in order; the first one that returns `Err` wins and its message is shown; if all of them return `Ok`, the field is valid |
-
-In other words, an empty value is never handed to a validator: the required check decides on its own whether an empty field is acceptable, and only once a field actually has content do the custom validators get a say. This also means a validator doesn't need to special-case the empty string itself — that's the required check's job, not the validator's.
-
-Validation runs **in real time**: every time a keystroke changes a field's value, that field is immediately re-checked, not just when the form is submitted — and a field is validated once up front too, as soon as the form is built, so a field that starts out invalid (an initial `.value(...)` too short, or a required field left empty) shows its error from the very first render, not only after the user touches it. When a field is invalid, its error message is rendered next to the field, styled with `FormStyle`'s `error` (red and bold by default — see [Theming](#theming) to change it).
-
-While at least one field is invalid, pressing `Enter` has no effect: the form stays in `FormResult::Working` and is not submitted. Once every field passes validation, `Enter` submits the form as usual.
-
-### Normalizing values
-
-Where `validator(...)` judges an already-typed value, `normalizer(...)` rewrites it into a canonical form — before validation runs on it, not after:
-
-```rust
-.single_line(FormField::CodiceFiscale, "Codice fiscale")
-    .normalizer(|value: &str| value.to_uppercase())
-    .validator(validators::max_length(
-        16,
-        "Il codice fiscale ha al massimo 16 caratteri".to_owned(),
-    ))
-```
-
-The closure runs on every keystroke, on `set_value`, and once on the initial value when the form is built — so a field's value is never seen (by validators, by `is_dirty()`, by `values()`) in anything other than its normalized form. Only one `normalizer` is kept per field; calling it again replaces the previous one, unlike `validator(...)`, which accumulates.
-
-On a `SingleLine` field, `normalizer(...)` pairs naturally with [`alphabet(...)`](#allowed-characters): `alphabet` rejects a character outright before it's ever typed, `normalizer` rewrites a character that was allowed in. Forcing digits only is `alphabet`'s job; forcing uppercase is `normalizer`'s.
-
-### Built-in validators
-
-`validator(...)` accepts any closure, so you can always write your own check from scratch — but the `ratiform::validators` module ships a handful of common ones, each taking the error message to show and returning a ready-to-use `Validator`:
-
-| Function | Checks that the value... | Notes |
-| --- | --- | --- |
-| `required(message)` | is not empty | this is what `.required(message)` uses internally — see [Validation](#validation) above. Rarely called directly, but it's a plain `Validator` like the rest, so you can compose it yourself if needed |
-| `min_length(len, message)` | has at least `len` characters | inclusive — `min_length(5, ..)` accepts a 5-character value |
-| `max_length(len, message)` | has at most `len` characters | inclusive — `max_length(10, ..)` accepts a 10-character value |
-| `is_numeric(message)` | consists only of ASCII digits (`0`–`9`) | no sign, no decimal point — `"-5"` and `"3.14"` are both rejected |
-| `alphabetic(message)` | consists only of letters | Unicode-aware — accented letters like `à` count as letters |
-| `alphanumeric(message)` | consists only of letters and digits | same Unicode-awareness as `alphabetic` |
-| `no_whitespace(message)` | contains no whitespace (spaces, tabs, newlines) | |
-| `parsable::<T>(message)` | parses as a `T` via `T: FromStr` | see below — needs the turbofish |
-
-`min_length`/`max_length` count Unicode characters, not bytes — `min_length(5, ..)` correctly accepts `"città"` (5 characters, 6 bytes in UTF-8). All the shape-based validators above (everything except `required` and `parsable`) pass on an empty string: they check *shape*, and an empty value has no character that violates the rule. In practice this rarely matters, because inside a `Field`, the required check already decides whether an empty value is acceptable before any of these run (see the table in [Validation](#validation)) — but it's worth knowing if you call one of these functions directly, outside of a `Field`.
-
-`parsable` is different from the rest: since `T` only appears in the function body, not in `Validator`'s return type, the compiler can't infer it — you always need the turbofish, `parsable::<i32>(message)`, `parsable::<f64>(message)`, and so on. Being generic over any `T: FromStr` also means it isn't limited to numbers: any type with a `FromStr` implementation works, including ones from other crates. For example, `chrono::NaiveDate` implements `FromStr` for the ISO `YYYY-MM-DD` format, so `parsable::<chrono::NaiveDate>("data non valida".to_owned())` gives you a correct date validator — leap years included — without `ratiform` itself depending on `chrono`. That dependency, if you want it, lives in your own `Cargo.toml`, not in `ratiform`'s.
-
-For anything these don't cover — a different date format, a regex pattern, a check across multiple fields — `.validator(...)` still takes a plain closure exactly as before; the built-ins are a convenience on top of that, not a replacement for it.
-
-## Usage
-
-A complete example is available in [`examples/simple-typed.rs`](examples/simple-typed.rs).
-
-The following is essentially the same example:
-
-```rust
-use std::collections::HashMap;
-
 use ratatui::{
     crossterm::event::{self, Event},
-    layout::{Constraint, Layout},
+    layout::Constraint,
+    widgets::{Block, Borders, Padding},
 };
 use ratiform::{Form, builder::FormBuilder};
 
 #[derive(Debug, Hash, Eq, PartialEq)]
-enum FormField {
-    Nome,
-    Cognome,
-    Nazione,
-    Termini,
+enum Field {
+    Username,
+    Password,
 }
 
 fn main() -> std::io::Result<()> {
-    let result = ratatui::run(|terminal| -> std::io::Result<_> {
-        let mut state = FormBuilder::new()
-            .single_line(FormField::Nome, "Nome")
-            .value("Mario")
-            .validator(|value: &str| {
-                (value.len() > 2)
-                    .then_some(())
-                    .ok_or_else(|| "Il nome deve avere una lunghezza maggiore di 2".to_owned())
-            })
-            .single_line(FormField::Cognome, "Cognome")
-            .value("Rossi")
-            .select(FormField::Nazione, "Paese")
-            .values_ref(&[
-                ("I", "Italia"),
-                ("F", "Francia"),
-                ("D", "Germania"),
-            ])
-            .selected(1)
-            .height(5)
-            .checkbox(FormField::Termini, "Accetto i termini")
-            .checked(false)
-            .optional()
-            .build();
+    let mut state = FormBuilder::new()
+        .single_line(Field::Username, "Username")
+        .required("Username is required".to_owned())
+        .single_line(Field::Password, "Password")
+        .masked()
+        .required("Password is required".to_owned())
+        .build();
 
+    ratatui::run(|terminal| -> std::io::Result<_> {
         loop {
             terminal.draw(|frame| {
-                let [area, _] =
-                    Layout::vertical([
-                        Constraint::Length(19),
-                        Constraint::Fill(1),
-                    ])
-                    .areas(frame.area());
+                let area = frame
+                    .area()
+                    .centered(Constraint::Length(50), Constraint::Length(8));
 
-                frame.render_stateful_widget(
-                    Form::default(),
-                    area,
-                    &mut state,
-                );
+                let block = Block::default()
+                    .title(" Login ")
+                    .borders(Borders::ALL)
+                    .padding(Padding::uniform(1));
+                let inner = block.inner(area);
+
+                frame.render_widget(block, area);
+                frame.render_stateful_widget(Form::default(), inner, &mut state);
 
                 if let Some(position) = state.cursor_position() {
                     frame.set_cursor_position(position);
@@ -404,10 +136,8 @@ fn main() -> std::io::Result<()> {
                 state.handle_input(key);
 
                 match state.result() {
-                    ratiform::FormResult::Submitted
-                    | ratiform::FormResult::Cancelled => {
-                        let values: HashMap<FormField, String> = state.values().collect();
-                        break Ok(values);
+                    ratiform::FormResult::Submitted | ratiform::FormResult::Cancelled => {
+                        break Ok(());
                     }
                     ratiform::FormResult::Working => {}
                 }
@@ -415,198 +145,206 @@ fn main() -> std::io::Result<()> {
         }
     })?;
 
-    println!("got = {result:?}");
     Ok(())
 }
 ```
 
-`Form::default()` renders with the built-in theme; see [Theming](#theming) below for how to use your own.
+The exact same code lives in [`examples/quickstart.rs`](examples/quickstart.rs) — see [More examples](#more-examples) below for a few other complete programs, closer to a real application than this one.
+
+## Features
+
+### Single-line input
+
+* text insertion, `Backspace`/`Delete`, cursor movement (`Left`/`Right`/`Home`/`End`)
+* an initial value, and a placeholder shown while the value is empty
+* masking for password-like fields (`masked()`/`masked_with(c)`) — cosmetic only, validation and `value()` still see what was actually typed
+* restricting which characters can be typed at all (`alphabet(chars)`), and/or rewriting the value into a canonical form as it's typed (`normalizer(...)`, e.g. forcing uppercase) — see [Normalizing values](#normalizing-values)
+
+```rust
+.single_line(Field::Name, "Name")
+    .value("Mario")
+    .placeholder("Enter your name")
+    .required("Name is required".to_owned())
+```
+
+### Checkbox
+
+A boolean, toggled with `Space`:
+
+```rust
+.checkbox(Field::Terms, "I accept the terms")
+    .checked(false)
+    .optional()
+```
+
+### Select
+
+A list of `(value, label)` pairs, navigated with `Up`/`Down`/`Home`/`End`/`PageUp`/`PageDown`. `value()` returns the first element of the pair, not the label shown on screen:
+
+```rust
+.select(Field::Country, "Country")
+    .values_ref(&[("IT", "Italy"), ("FR", "France"), ("DE", "Germany")])
+    .selected(1)
+    .height(5)
+```
+
+### Text area
+
+Multi-line text, with the same insertion/deletion/placeholder support as single-line input, plus `Up`/`Down`, scrolling, and `PageUp`/`PageDown`. `Home`/`End` jump to the start/end of the current visual line; `Ctrl+Home`/`Ctrl+End` jump to the start/end of the whole text. Long lines wrap at the character level, not at word boundaries (the same default `vim` uses).
+
+```rust
+.text_area(Field::Notes, "Notes")
+    .placeholder("Write here...")
+    .height(5)
+```
+
+Since `Enter` inserts a newline instead of submitting the form, submitting while a `TextArea` has focus needs `Ctrl+Enter` — see [Keyboard navigation](#keyboard-navigation).
+
+## Form builder
+
+Fields are chained together and configured with options shared across every kind: `required(message)`/`optional()`, `disabled()`, `readonly()`, `height()`, `validator(...)`, `normalizer(...)`. Full details on each are in the generated docs (`cargo doc --open`) — the sections below cover the ones with enough behavior to be worth a walkthrough.
+
+### Field identifiers
+
+Every field is created together with an **identifier** — the first argument to `single_line()`, `checkbox()`, `select()` and `text_area()`. `FormBuilder`, `FormState` and `Form` are all generic over its type (it needs `PartialEq`, plus `Hash`/`Eq` if you want to `collect()` results into a `HashMap`) — it doesn't have to be a string or an integer, it can be your own `enum`:
+
+```rust
+#[derive(Debug, Hash, Eq, PartialEq)]
+enum FormField {
+    Nome,
+    Cognome,
+    Nazione,
+    Termini,
+}
+
+let mut state = FormBuilder::new()
+    .single_line(FormField::Nome, "Nome")
+    .value("Mario")
+    .validator(validators::min_length(2, "Troppo corto".to_owned()))
+    .required("Il nome è obbligatorio".to_owned())
+    .single_line(FormField::Cognome, "Cognome")
+    .select(FormField::Nazione, "Paese")
+    .values_ref(&[("I", "Italia"), ("F", "Francia"), ("D", "Germania")])
+    .checkbox(FormField::Termini, "Accetto i termini")
+    .optional()
+    .build();
+```
+
+This is what lets you match each submitted value back to the field that produced it, at compile time — no risk of a typo in a field name going unnoticed until runtime, and the compiler tells you if a `match` on the results forgets a variant. Note that `Cognome`/`Nazione` never call `.required(...)`: every field is required by default (with a built-in message), so `.required(message)` is only needed for your *own* message — `.optional()` is what actually opts a field out.
+
+### Validation
+
+A field is invalid in two ways:
+
+* **Being required** — every field is required by default; an empty required field is invalid, with a built-in or custom (`.required(message)`) message.
+* **`validator(...)`** — `Fn(&str) -> Result<(), String>`, called any number of times on the same field, evaluated in the order added.
+
+| Field state | Result |
+| --- | --- |
+| required, value empty | invalid, required message — validators don't run |
+| `optional()`, value empty | valid — validators don't run |
+| any value, non-empty | validators run in order; first `Err` wins, otherwise valid |
+
+An empty value is never handed to a validator — the required check decides on its own whether it's acceptable, so a validator never needs to special-case the empty string.
+
+Validation runs on every keystroke, on `set_value`, and once up front when the form is built, so a field that starts out invalid shows its error from the very first render. While any field is invalid, `Enter` doesn't submit the form.
+
+### Normalizing values
+
+Where `validator(...)` judges an already-typed value, `normalizer(...)` rewrites it into a canonical form before validation runs on it:
+
+```rust
+.single_line(FormField::CodiceFiscale, "Codice fiscale")
+    .normalizer(|value: &str| value.to_uppercase())
+    .validator(validators::max_length(16, "Troppo lungo".to_owned()))
+```
+
+It runs on every keystroke, on `set_value`, and on the initial value — a field's value is never seen (by validators, `is_dirty()`, `values()`) in anything other than its normalized form. Only one `normalizer` is kept per field; calling it again replaces the previous one. On a `SingleLine` field it pairs naturally with `alphabet(...)`: `alphabet` rejects a character outright, `normalizer` rewrites one that was allowed in.
+
+### Built-in validators
+
+`ratiform::validators` ships common checks, each taking the error message and returning a ready-to-use `Validator`: `required`, `min_length`/`max_length` (Unicode-aware, inclusive bounds), `is_numeric` (ASCII digits only), `alphabetic`/`alphanumeric` (Unicode-aware), `no_whitespace`, and `parsable::<T>` (parses via `T: FromStr` — needs the turbofish, since `T` doesn't appear in `Validator`'s return type). `parsable` isn't limited to numbers: any `FromStr` type works, including ones from other crates — `parsable::<chrono::NaiveDate>(..)` gives a correct, leap-year-aware date validator without `ratiform` depending on `chrono`.
+
+All the shape-based validators pass on an empty string (they check *shape*, not presence — that's the required check's job); `parsable` doesn't, since `"".parse()` fails like any other malformed input.
+
+For anything these don't cover, `.validator(...)` still takes a plain closure — the built-ins are a convenience on top, not a replacement.
 
 ## More examples
 
-A few more programs live in [`examples/`](examples), each built around a specific situation rather than a feature tour:
+* [`examples/quickstart.rs`](examples/quickstart.rs) — the Quick start above, complete and runnable.
+* [`examples/simple-typed.rs`](examples/simple-typed.rs) — the [Field identifiers](#field-identifiers) walkthrough, complete and runnable.
+* [`examples/simple.rs`](examples/simple.rs) — the same form with a custom `FormStyle` (see [Theming](#theming)), plus debug fields exercising `set_value`/`focused_field`.
+* [`examples/login-form.rs`](examples/login-form.rs) — a login screen with a masked password, a custom strength check, and the form rendered inside a titled, centered `Block`.
+* [`examples/connections.rs`](examples/connections.rs) — `validators::parsable::<u16>` for a port number, a `Select` for the protocol, required and optional fields side by side.
+* [`examples/anagrafica.rs`](examples/anagrafica.rs) — forcing a field to stay uppercase or lowercase via `normalizer(...)`.
+* [`examples/simple-textarea.rs`](examples/simple-textarea.rs) — a form built entirely around a `TextArea`.
 
-* [`examples/simple.rs`](examples/simple.rs) — the same form as above, rendered with a custom `FormStyle` (see [Theming](#theming)), plus a couple of debug fields exercising `set_value`/`focused_field`.
-* [`examples/login-form.rs`](examples/login-form.rs) — a login screen: a required username with a minimum length, a masked password with a custom strength check, an optional "remember me" checkbox, and the form itself rendered inside a titled, centered `Block` rather than filling the whole screen.
-* [`examples/connections.rs`](examples/connections.rs) — a connection settings form: `validators::parsable::<u16>` to validate a port number, a `Select` for the protocol, and a mix of required and optional fields side by side.
-* [`examples/anagrafica.rs`](examples/anagrafica.rs) — forcing a field to stay uppercase or lowercase as the user types, using `value()`/`set_value()` in the event loop rather than any dedicated feature of the library.
-
-Run any of them with `cargo run --example <name>` (e.g. `cargo run --example login-form`).
+Run any of them with `cargo run --example <name>`.
 
 ## Theming
 
-By default, `Form::default()` renders with a built-in gray/bold/reversed color scheme. To use your own, build a [`ratiform::style::FormStyle`](src/style.rs) and hand it to `Form::with_style(...)` instead of calling `Form::default()`:
+By default, `Form::default()` renders with a built-in gray/bold/reversed scheme. Build a [`ratiform::style::FormStyle`](src/style.rs) and hand it to `Form::with_style(...)` instead:
 
 ```rust
 use ratatui::style::{Color, Style};
 use ratiform::style::{FieldStyle, FormStyle};
 
-fn my_style() -> FormStyle {
-    let normal = Style::default().fg(Color::LightGreen);
-    FormStyle::builder()
-        .label(
-            FieldStyle::builder()
-                .normal(normal)
-                .focused(normal.bold())
-                .disabled(normal.crossed_out())
-                .build(),
-        )
-        .value(
-            FieldStyle::builder()
-                .normal(normal)
-                .focused(normal.bold())
-                .disabled(normal.crossed_out())
-                .build(),
-        )
-        .highlight(
-            FieldStyle::builder()
-                .normal(normal)
-                .focused(normal.reversed())
-                .disabled(normal.reversed().crossed_out())
-                .build(),
-        )
-        .error(Style::default().bg(Color::Red).fg(Color::White).bold())
-        .placeholder(normal.italic())
-        .build()
-}
+let normal = Style::default().fg(Color::LightGreen);
+let my_style = FormStyle::builder()
+    .value(FieldStyle::builder().normal(normal).focused(normal.bold()).build())
+    .error(Style::default().fg(Color::Red).bold())
+    .build();
+
+frame.render_stateful_widget(Form::with_style(my_style), area, &mut state);
 ```
 
-```rust
-frame.render_stateful_widget(Form::with_style(my_style()), area, &mut state);
-```
+`FormStyle` groups five areas — `label`, `value`, `highlight` (the focused field / selected row), `error`, and `placeholder`. The first three are a [`FieldStyle`](src/style.rs) each (one `Style` per `normal`/`focused`/`disabled`/`readonly` state, resolved for you); `error`/`placeholder` are plain `Style`s. Full field-by-field docs are on `FormStyle`/`FieldStyle` themselves (`cargo doc --open`). A runnable example with a full custom theme is in [`examples/simple.rs`](examples/simple.rs).
 
-`FormStyle` groups five areas:
+## Keyboard navigation
 
-* **`label`** — the field's caption, on the left.
-* **`value`** — the field's own content: the text color of a `SingleLine` field, a `Select` field's list items, and a `Checkbox`'s `[✓]` / `[ ]` glyph.
-* **`highlight`** — emphasis for whatever is "active right now": the background box behind a `SingleLine` field, and the currently selected row of a `Select` list.
-* **`error`** — the validation error message shown under an invalid field. The error is rendered right-aligned in an area sized to the message itself, so a background color set here (like the white-on-red in the example above) hugs just the text rather than filling the whole row.
-* **`placeholder`** — a `SingleLine` field's [placeholder text](#placeholder), shown in place of `value`'s style while the field is empty.
+| Key | Action |
+| --- | --- |
+| `Tab` / `Shift+Tab` | Move to the next / previous field |
+| `Ctrl+Enter` | Submit, unless some field is currently invalid |
+| `Enter` | Same as `Ctrl+Enter`, unless the focused field claims it (a `TextArea` inserts a newline instead) |
+| `Esc` | Cancel the form |
 
-Each of `label`, `value` and `highlight` is a [`FieldStyle`](src/style.rs), carrying one `Style` per state: `normal`, `focused`, `disabled`, `readonly`. You don't need to pick which one applies yourself — `FieldOptions` resolves it for you, with `disabled` taking priority over `readonly`, which takes priority over `focused`. `error` and `placeholder` are plain `Style`s instead — unlike the other three, they're not tied to focus/disabled/readonly, they simply apply whenever an error or a placeholder is shown.
-
-A runnable variant of the earlier example with a custom `FormStyle`, placeholders on every text field, a masked `Password` field, and a couple of debug fields exercising `set_value`/`focused_field`, is in [`examples/simple.rs`](examples/simple.rs).
-
-### Keyboard navigation
-
-The form handles a few global keys automatically:
-
-| Key         | Action                     |
-| ----------- | -------------------------- |
-| `Tab`       | Move to the next field     |
-| `Shift+Tab` | Move to the previous field |
-| `Ctrl+Enter`| Submit the form, unless some field is currently invalid |
-| `Enter`     | Same as `Ctrl+Enter`, unless the focused field claims `Enter` for itself — a `TextArea` uses it to insert a newline instead |
-| `Esc`       | Cancel the form            |
-
-The keys specific to each widget are handled by the currently focused field.
-
-For example, `Space` toggles a checkbox, while the arrow keys navigate a select field or move the cursor around a text area.
+Every other key goes to the focused field — `Space` toggles a checkbox, arrow keys navigate a select or move a text cursor, and so on.
 
 ## Form result
 
-The current state of the form can be inspected through `FormState::result()`:
-
 ```rust
 match state.result() {
-    ratiform::FormResult::Submitted => {
-        // Form submitted
-    }
-    ratiform::FormResult::Cancelled => {
-        // Form cancelled
-    }
-    ratiform::FormResult::Working => {
-        // Still editing
-    }
+    ratiform::FormResult::Submitted => { /* ... */ }
+    ratiform::FormResult::Cancelled => { /* ... */ }
+    ratiform::FormResult::Working => { /* still editing */ }
 }
 ```
 
-The current cursor position is also available through:
+A few methods work at any point while the form is active, not just after submission:
 
-```rust
-state.cursor_position()
-```
+* `value(&self, id: &T) -> Option<String>` / `set_value(&mut self, id: &T, value: &str)` — read or overwrite a single field; `set_value` validates immediately, like a keystroke would.
+* `value_as::<V: FromStr>(&self, id: &T) -> Option<Result<V, V::Err>>` — parses the current value as any `FromStr` type; pairs naturally with a `parsable::<V>` validator on the same field, but doesn't check for one.
+* `focused_field(&self) -> Option<&T>` — the id of the field that currently has focus.
+* `is_dirty(&self) -> bool` / `is_field_dirty(&self, id: &T) -> Option<bool>` / `reset(&mut self)` — whether a value has changed since the form was built, and rolling it back.
 
-which can be passed to Ratatui's `set_cursor_position()` when rendering a focused text field.
-
-### Reading and writing a single field
-
-You don't have to wait for the form to be submitted to read or change a field's value — `FormState::value(&self, id: &T) -> Option<String>` returns the current value of the field with that id (`None` if no field has it), and `FormState::set_value(&mut self, id: &T, value: &str)` overwrites it:
-
-```rust
-if let Some(nome) = state.value(&FormField::Nome) {
-    // ...
-}
-
-state.set_value(&FormField::Termini, "true");
-```
-
-A couple of details worth knowing before you reach for this:
-
-* For a `Select` field, `set_value` matches against the **value** side of the pairs passed to `values_ref` (the first element, e.g. `"I"`, `"F"`, `"D"`), not the displayed label — the same convention `values_ref` itself already uses.
-* For a `Checkbox` field, the string is parsed as a `bool` (`"true"` / `"false"`); anything else is treated as `false`.
-* `set_value` triggers validation (see [Validation](#validation)) immediately, just like a keystroke would — so if the value you set fails the required check or one of the field's validators, the field's error state is updated right away, before the next render.
-
-`FormState::value_as::<V>(&self, id: &T) -> Option<Result<V, V::Err>>` parses the current value of a field as any type implementing `FromStr`:
-
-```rust
-if let Some(Ok(port)) = state.value_as::<u16>(&ConnectionField::Port) {
-    // ...
-}
-```
-
-It pairs naturally with a `validators::parsable::<V>(..)` on the same field, so a successful parse is expected rather than merely possible — but `value_as` doesn't check for that validator, or that the `V` you ask for here matches the one you validated with: request a different type, or one with no `parsable` validator at all, and it simply fails to parse.
-
-### Focused field
-
-`FormState::focused_field(&self) -> Option<&T>` returns the id of the field that currently has focus (`None` only if the form has no fields at all). It's handy for anything that needs to react to "which field is the user on right now" — for instance, showing contextual help for the focused field elsewhere on screen.
-
-### Dirty state and resetting
-
-Every field remembers the value it was built with — whatever `.value(...)`, `.checked(...)` or `.selected(...)` set, or the default if none of those were called. "Dirty" means the current value no longer matches that original one:
-
-* **`FormState::is_dirty(&self) -> bool`** — `true` if at least one field has been changed since the form was built.
-* **`FormState::is_field_dirty(&self, id: &T) -> Option<bool>`** — the same check for a single field, `None` if no field has that id (same convention as `value()`).
-* **`FormState::reset(&mut self)`** — restores every field to its original value, and re-validates each one against it, so the error state after a reset matches the restored values rather than whatever was on screen a moment before.
-
-```rust
-if state.is_dirty() {
-    // warn the user before discarding their changes, for example
-}
-
-state.reset();
-```
-
-`set_value(...)` counts as a change here too, exactly as if the user had typed it — it updates a field's dirty state the same way a keystroke would, since it goes through the same underlying value.
-
-### Retrieving the submitted values
-
-Once the form has reached `FormResult::Submitted` (or `FormResult::Cancelled`), the values entered by the user can be collected through `FormState::values()`, which returns an iterator of `(id, String)` pairs — one per field, paired with the identifier it was created with (see [Field identifiers](#field-identifiers)):
+Once the form is `Submitted`/`Cancelled`, `values(self) -> impl Iterator<Item = (T, String)>` consumes the form and collects every field:
 
 ```rust
 let values: HashMap<FormField, String> = state.values().collect();
 ```
 
-Note that `values()` consumes the `FormState`, so it's meant to be called once, after you're done using the form.
+Full signatures and edge cases for all of these are in the generated docs.
 
 ## Current status
 
-This project is still in an early stage.
+This project is still in an early stage. The core design — typed field identifiers, the builder/state/widget split, validation — is becoming stable, but breaking changes are still possible before a first tagged release.
 
-The current implementation is intentionally small and focused on providing a basic form abstraction for Ratatui. APIs, behaviour and rendering may change as the project evolves.
-
-The required check, `disabled()`, `readonly()` and `validator(...)` are now enforced, submitted values can be retrieved through `FormState::values()`, rendering can be themed through `FormStyle` (see [Theming](#theming)), a handful of common checks are available in `ratiform::validators` (see [Built-in validators](#built-in-validators)), and forms can track unsaved changes and roll them back through `is_dirty()`/`is_field_dirty()`/`reset()` (see [Dirty state and resetting](#dirty-state-and-resetting)). Behaviour and layout may still change as the project evolves.
-
-Contributions, ideas and bug reports are welcome. If you're thinking about adding a new field kind, see [`docs/adding-a-widget.md`](docs/adding-a-widget.md) for the wiring points and conventions the existing three (`SingleLine`, `Checkbox`, `Select`) already follow.
+Contributions, ideas and bug reports are welcome. If you're thinking about adding a new field kind, see [`docs/adding-a-widget.md`](docs/adding-a-widget.md) for the wiring points and conventions the existing four already follow.
 
 ## License
 
-`ratiform` is dual-licensed under the following licenses:
-
-* [MIT License](LICENSE-MIT)
-* [Apache License 2.0](LICENSE-APACHE)
-
-You may choose to use `ratiform` under the terms of either license.
+`ratiform` is dual-licensed under the [MIT License](LICENSE-MIT) and the [Apache License 2.0](LICENSE-APACHE). You may choose either.
 
 ## A note about AI
 
