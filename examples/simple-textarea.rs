@@ -20,6 +20,7 @@ fn main() -> std::io::Result<()> {
             .single_line(1, "Titolo")
             .required("Campo obbligatorio".to_owned())
             .text_area(2, "Articolo")
+            .placeholder("Testo dell'articolo")
             .value(testo)
             .height(5)
             .checkbox(4, "Accetto i termini")

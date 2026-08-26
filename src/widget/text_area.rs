@@ -23,12 +23,18 @@ pub struct TextAreaBuilder<T> {
     pub(crate) label: String,
     pub(crate) value: String,
     pub(crate) options: FieldOptions,
+    pub(crate) placeholder: Option<String>,
 }
 
 impl<T: PartialEq> TextAreaBuilder<T> {
     /// Sets the field's initial value.
     pub fn value(mut self, value: impl Into<String>) -> Self {
         self.value = value.into();
+        self
+    }
+
+    pub fn placeholder(mut self, placeholder: impl Into<String>) -> Self {
+        self.placeholder = Some(placeholder.into());
         self
     }
 
@@ -42,6 +48,7 @@ impl<T: PartialEq> TextAreaBuilder<T> {
                 value: self.value,
                 position,
                 lines: Vec::new(),
+                placeholder: self.placeholder,
             }),
             options: self.options,
             error: None,
@@ -59,6 +66,7 @@ pub struct TextAreaStatus {
     pub(crate) value: String,
     pub(crate) position: u16,
     pub(crate) lines: Vec<(usize, String)>,
+    pub(crate) placeholder: Option<String>,
 }
 
 impl TextAreaStatus {
@@ -159,8 +167,6 @@ pub(crate) fn handle_input_textarea(key_event: KeyEvent, text_area: &mut TextAre
         (_, KeyCode::Down) => text_area.down(),
         (_, KeyCode::Char(c)) => text_area.insert(c),
         (_, KeyCode::Enter) => text_area.enter(),
-        // TODO: Home/End devono andare all'inizio/fine della riga corrente
-        // TODO: Ctrl+Home/Ctrl+End devono andare all'inizio/fine del testo
         _ => {}
     }
 }
@@ -172,18 +178,25 @@ pub(crate) fn render_textarea(
     text_area: &mut TextAreaStatus,
     value_style: Style,
     highlight_style: Style,
-    _placeholder_style: Style,
+    placeholder_style: Style,
 ) -> Option<(u16, u16)> {
-    let style = value_style;
+    let mut style = value_style;
 
     text_area.lines = wrap_text(&text_area.value, area.width as usize);
     let v: Vec<_> = text_area.lines.iter().map(|(x, _)| *x).collect();
 
-    let display = text_area
+    let mut display = text_area
         .lines
         .iter()
         .map(|(_, line)| Line::from(line.clone()))
         .collect::<Vec<_>>();
+
+    if let Some(placeholder) = text_area.placeholder.as_ref()
+        && display.is_empty()
+    {
+        display = vec![Line::from(placeholder.clone())];
+        style = placeholder_style;
+    }
 
     let (col, row) = calculate_coordinate(text_area);
 
@@ -410,6 +423,7 @@ mod coordinate_tests {
                 .iter()
                 .map(|(start, line)| (*start, (*line).to_owned()))
                 .collect(),
+            placeholder: None,
         }
     }
 
