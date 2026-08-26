@@ -199,6 +199,7 @@ Forms are created using a builder API. Fields can be chained together and config
 * `readonly()`
 * `height()`
 * `validator(...)`
+* `normalizer(...)`
 
 ### Label width
 
@@ -270,6 +271,8 @@ let mut state = FormBuilder::new()
 
 Note the two `.validator(...)` calls chained on `Cognome`: both checks are kept, and are evaluated in that order (see [Validation](#validation) below). Also note that `Cognome` and `Paese` never call `.required(...)` at all — every field is required by default (with a built-in message), so `.required(message)` is only needed when you want your *own* message; `.optional()` is what actually changes behavior, by opting a field out of the required check entirely.
 
+### Validation
+
 A field can be marked invalid in two ways:
 
 * **Being required** — every field is required by default, and an empty required field is invalid with a built-in message. Call `.required(message)` to use your own message instead of the built-in one, or `.optional()` to opt the field out of this check entirely. Either way, this doesn't need `validator(...)`: internally, `.required(message)` is itself backed by a `Validator` (`ratiform::validators::required`, see [Built-in validators](#built-in-validators)), just kept in its own slot rather than the general list below.
@@ -288,6 +291,23 @@ In other words, an empty value is never handed to a validator: the required chec
 Validation runs **in real time**: every time a keystroke changes a field's value, that field is immediately re-checked, not just when the form is submitted — and a field is validated once up front too, as soon as the form is built, so a field that starts out invalid (an initial `.value(...)` too short, or a required field left empty) shows its error from the very first render, not only after the user touches it. When a field is invalid, its error message is rendered next to the field, styled with `FormStyle`'s `error` (red and bold by default — see [Theming](#theming) to change it).
 
 While at least one field is invalid, pressing `Enter` has no effect: the form stays in `FormResult::Working` and is not submitted. Once every field passes validation, `Enter` submits the form as usual.
+
+### Normalizing values
+
+Where `validator(...)` judges an already-typed value, `normalizer(...)` rewrites it into a canonical form — before validation runs on it, not after:
+
+```rust
+.single_line(FormField::CodiceFiscale, "Codice fiscale")
+    .normalizer(|value: &str| value.to_uppercase())
+    .validator(validators::max_length(
+        16,
+        "Il codice fiscale ha al massimo 16 caratteri".to_owned(),
+    ))
+```
+
+The closure runs on every keystroke, on `set_value`, and once on the initial value when the form is built — so a field's value is never seen (by validators, by `is_dirty()`, by `values()`) in anything other than its normalized form. Only one `normalizer` is kept per field; calling it again replaces the previous one, unlike `validator(...)`, which accumulates.
+
+On a `SingleLine` field, `normalizer(...)` pairs naturally with [`alphabet(...)`](#allowed-characters): `alphabet` rejects a character outright before it's ever typed, `normalizer` rewrites a character that was allowed in. Forcing digits only is `alphabet`'s job; forcing uppercase is `normalizer`'s.
 
 ### Built-in validators
 

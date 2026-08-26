@@ -25,7 +25,7 @@ use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 
 use crate::{event::handle_input_field, style::FormStyle};
 
-pub use field::Validator;
+pub use field::{Normalizer, Validator};
 pub use widget::{
     check_box::CheckboxBuilder, select::SelectBuilder, single_line::SingleLineBuilder,
     text_area::TextAreaBuilder,

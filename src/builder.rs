@@ -168,6 +168,19 @@ macro_rules! field_builder_common {
                 self
             }
 
+            /// Rewrites the field's value into a canonical form every time it
+            /// changes — a keystroke, `set_value`, or the initial value
+            /// given at build time — before validation runs on it.
+            /// Typical use: forcing a fiscal code to uppercase, or an
+            /// email address to lowercase.
+            ///
+            /// Only one `normalizer` is kept per field; calling this again
+            /// replaces the previous one, unlike `validator(...)`, which
+            /// accumulates. Where `validator(...)` judges an already-typed
+            /// value, `normalizer` rewrites it — pair it with
+            /// [`alphabet`](crate::widget::single_line::SingleLineBuilder::alphabet)
+            /// on a `SingleLine` field if you also want to reject certain
+            /// characters outright rather than rewrite them.
             pub fn normalizer<F>(mut self, function: F) -> Self
             where
                 F: Fn(&str) -> String + 'static,
