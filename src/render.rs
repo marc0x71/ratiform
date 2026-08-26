@@ -19,12 +19,11 @@ impl<T: PartialEq> StatefulWidget for Form<T> {
     type State = FormState<T>;
 
     fn render(self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {
-        let label_width = if let Some(max_width) = state.label_width {
-            max_width + 1
-        } else {
-            let width = state.max_label_length() as u16 + 2;
-            width.min(area.width / 3)
-        };
+        let label_width = resolve_label_width(
+            state.label_width,
+            state.max_label_length() as u16,
+            area.width,
+        );
 
         let heights: Vec<u16> = compute_heights(&state.fields, label_width);
 
@@ -74,6 +73,13 @@ impl<T: PartialEq> StatefulWidget for Form<T> {
                 error_message.render(right, buf);
             }
         }
+    }
+}
+
+fn resolve_label_width(configured: Option<u16>, computed_max: u16, area_width: u16) -> u16 {
+    match configured {
+        Some(width) => width + 1,
+        None => (computed_max + 1).min(area_width / 3),
     }
 }
 
@@ -238,5 +244,98 @@ mod tests {
         let heights2 = [3, 3, 3, 3];
         let (_, highest2) = scroll_offset(&heights2, 8, 0);
         assert_eq!(highest2, 2);
+    }
+}
+
+#[cfg(test)]
+mod label_width_tests {
+    use super::*;
+    use crate::{
+        field::{Field, FieldOptions},
+        widget::single_line::SingleLineStatus,
+    };
+
+    fn make_field(label: &str, height: u16) -> Field<i32> {
+        Field {
+            id: 1,
+            kind: FieldKind::SingleLine(SingleLineStatus {
+                label: label.to_owned(),
+                value: String::new(),
+                position: 0,
+                masked_with: None,
+                placeholder: None,
+            }),
+            options: FieldOptions {
+                required: None,
+                disabled: false,
+                readonly: false,
+                height,
+                validator: vec![],
+            },
+            error: None,
+            initial_value: String::new(),
+        }
+    }
+
+    // ---------- count_lines ----------
+
+    #[test]
+    fn wraps_at_the_word_boundary_when_it_would_exceed_the_width() {
+        assert_eq!(count_lines("Nome cognome indirizzo", 15), 2);
+    }
+
+    #[test]
+    fn a_single_word_longer_than_the_width_is_not_split() {
+        assert_eq!(count_lines("Supercalifragilistichespiralidoso", 10), 1);
+    }
+
+    #[test]
+    fn empty_text_returns_zero_lines() {
+        assert_eq!(count_lines("", 10), 0);
+    }
+
+    #[test]
+    fn zero_width_returns_zero_lines() {
+        assert_eq!(count_lines("Nome cognome", 0), 0);
+    }
+
+    #[test]
+    fn unicode_characters_are_counted_not_bytes() {
+        assert_eq!(count_lines("Città natale", 12), 1);
+    }
+
+    // ---------- compute_heights ----------
+
+    #[test]
+    fn the_configured_height_wins_when_taller_than_the_wrapped_label() {
+        let field = make_field("Paese", 5);
+        let heights = compute_heights(std::slice::from_ref(&field), 20);
+        assert_eq!(heights[0], 6);
+    }
+
+    #[test]
+    fn the_wrapped_label_wins_when_taller_than_the_configured_height() {
+        let field = make_field("Nome cognome indirizzo", 1);
+        let heights = compute_heights(std::slice::from_ref(&field), 15);
+        assert_eq!(heights[0], 3);
+    }
+
+    // ---------- resolve_label_width ----------
+
+    #[test]
+    fn explicit_label_width_is_not_capped_even_when_wider_than_a_third_of_the_area() {
+        assert_eq!(resolve_label_width(Some(200), 5, 80), 201);
+    }
+
+    #[test]
+    fn auto_computed_label_width_is_capped_to_a_third_of_the_area() {
+        assert_eq!(resolve_label_width(None, 50, 60), 20);
+    }
+
+    #[test]
+    fn explicit_and_auto_computed_paths_add_the_same_padding() {
+        let explicit = resolve_label_width(Some(10), 0, 100);
+        let auto = resolve_label_width(None, 10, 100);
+        assert_eq!(explicit, auto);
     }
 }
