@@ -115,6 +115,7 @@ impl SingleLineStatus {
         self.value.clone()
     }
 
+    /// Borrowed form of [`Self::get`] — see [`crate::field::Field::get_ref`].
     pub(crate) fn get_ref(&self) -> Cow<'_, str> {
         Cow::Borrowed(self.value.as_ref())
     }
