@@ -75,15 +75,6 @@ The `T` here is the type of your field identifiers — see [Field identifiers](#
 
 ## Installation
 
-Add `ratiform` to your `Cargo.toml`:
-
-```toml
-[dependencies]
-ratiform = "0.2"
-```
-
-Or run:
-
 ```bash
 cargo add ratiform
 ```
