@@ -40,9 +40,15 @@ impl<T: PartialEq> StatefulWidget for Form<T> {
         for (idx, field) in state.fields[from_field..=to_field].iter_mut().enumerate() {
             let has_focus = (idx + from_field) == state.focus;
             let field_state = field.options.to_field_state(has_focus);
-
-            let [row, error] =
-                Layout::vertical([Constraint::Fill(1), Constraint::Length(1)]).areas(rows[idx]);
+            let (row, error) = if rows[idx].height >= 2 {
+                // there is enough space for the error message
+                let [row, error] =
+                    Layout::vertical([Constraint::Fill(1), Constraint::Length(1)]).areas(rows[idx]);
+                (row, Some(error))
+            } else {
+                // display only the widget
+                (rows[idx], None)
+            };
 
             let [left, right] =
                 Layout::horizontal([Constraint::Length(label_width), Constraint::Fill(1)])
@@ -65,10 +71,12 @@ impl<T: PartialEq> StatefulWidget for Form<T> {
                 state.cursor_position = Some(position);
             }
 
-            if let Some(message) = field.error.as_ref() {
+            if let Some(message) = field.error.as_ref()
+                && let Some(err_area) = error
+            {
                 let len = message.chars().count() as u16;
-                let [_, right] =
-                    Layout::horizontal([Constraint::Fill(1), Constraint::Length(len)]).areas(error);
+                let [_, right] = Layout::horizontal([Constraint::Fill(1), Constraint::Length(len)])
+                    .areas(err_area);
                 let error_message = Span::raw(message.as_str()).style(self.style.error);
                 error_message.render(right, buf);
             }
