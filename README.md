@@ -79,7 +79,7 @@ Add `ratiform` to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-ratiform = "0.1"
+ratiform = "0.2"
 ```
 
 Or run:
