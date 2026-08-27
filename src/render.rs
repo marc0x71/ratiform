@@ -84,6 +84,14 @@ impl<T: PartialEq> StatefulWidget for Form<T> {
     }
 }
 
+pub fn required_height<T: PartialEq>(state: &FormState<T>, width: u16) -> u16 {
+    let label_width =
+        resolve_label_width(state.label_width, state.max_label_length() as u16, width);
+
+    let heights: Vec<u16> = compute_heights(&state.fields, label_width);
+    heights.iter().sum()
+}
+
 fn resolve_label_width(configured: Option<u16>, computed_max: u16, area_width: u16) -> u16 {
     match configured {
         Some(width) => width + 1,
@@ -263,7 +271,7 @@ mod label_width_tests {
         widget::single_line::SingleLineStatus,
     };
 
-    fn make_field(label: &str, height: u16) -> Field<i32> {
+    pub(super) fn make_field(label: &str, height: u16) -> Field<i32> {
         Field {
             id: 1,
             kind: FieldKind::SingleLine(SingleLineStatus {
@@ -347,5 +355,28 @@ mod label_width_tests {
         let explicit = resolve_label_width(Some(10), 0, 100);
         let auto = resolve_label_width(None, 10, 100);
         assert_eq!(explicit, auto);
+    }
+}
+
+#[cfg(test)]
+mod required_height_tests {
+    use crate::render::label_width_tests::make_field;
+
+    use super::*;
+
+    #[test]
+    fn required_height_sums_the_heights_of_every_field() {
+        let state = FormState::new(vec![make_field("A", 1), make_field("BB", 1)], None);
+
+        assert_eq!(required_height(&state, 30), 4);
+    }
+
+    #[test]
+    fn required_height_reflects_an_explicit_label_width() {
+        let wide = FormState::new(vec![make_field("Nome completo", 1)], None);
+        assert_eq!(required_height(&wide, 100), 2); // 1 (single line) + 1 (error row)
+
+        let narrow = FormState::new(vec![make_field("Nome completo", 1)], Some(6));
+        assert_eq!(required_height(&narrow, 100), 3); // 2 (wrapped) + 1 (error row)
     }
 }

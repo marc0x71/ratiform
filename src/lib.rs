@@ -296,6 +296,21 @@ impl<T> Default for Form<T> {
     }
 }
 
+/// The total height, in terminal rows, needed to render every field of
+/// `state` at the given `width` — the same figure `Form`'s own rendering
+/// computes internally, exposed so you can size a fixed area (a `Block`,
+/// a `Rect` you picked yourself) around the form instead of guessing.
+///
+/// ```rust
+/// # use ratiform::{required_height, builder::FormBuilder};
+/// # #[derive(PartialEq)] enum Field { Name }
+/// let state = FormBuilder::new().single_line(Field::Name, "Name").build();
+/// required_height(&state, 50);
+/// ```
+pub fn required_height<T: PartialEq>(state: &FormState<T>, width: u16) -> u16 {
+    render::required_height(state, width)
+}
+
 #[cfg(test)]
 mod form_state_tests {
     use super::*;
