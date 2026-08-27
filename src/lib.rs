@@ -265,10 +265,15 @@ impl<T: PartialEq> FormState<T> {
     }
 }
 
-#[derive(Default, Clone, Copy, PartialEq)]
+/// How a form arranges each field's label relative to its value. Set via
+/// [`Form::with_layout`]; defaults to [`FormLayout::Horizontal`].
+#[derive(Debug, Default, Clone, Copy, PartialEq)]
 pub enum FormLayout {
+    /// Label and value side by side, on the same row — the layout used
+    /// throughout this crate's examples and screenshots.
     #[default]
     Horizontal,
+    /// Label above, value below, each on its own row.
     Stacked,
 }
 
@@ -290,6 +295,8 @@ impl<T> Form<T> {
         self
     }
 
+    /// Renders using the given [`FormLayout`] instead of the default
+    /// `Horizontal` one.
     pub fn with_layout(mut self, layout: FormLayout) -> Self {
         self.layout = layout;
         self
@@ -297,8 +304,9 @@ impl<T> Form<T> {
 }
 
 impl<T> Default for Form<T> {
-    /// Renders with the built-in theme. Equivalent to
-    /// `Form::with_style(FormStyle::default())`.
+    /// Renders with the built-in theme and the `Horizontal` layout.
+    /// Equivalent to
+    /// `Form::default().with_style(FormStyle::default()).with_layout(FormLayout::default())`.
     fn default() -> Self {
         Self {
             style: FormStyle::default(),
@@ -309,9 +317,10 @@ impl<T> Default for Form<T> {
 }
 
 /// The total height, in terminal rows, needed to render every field of
-/// `state` at the given `width` — the same figure `Form`'s own rendering
-/// computes internally, exposed so you can size a fixed area (a `Block`,
-/// a `Rect` you picked yourself) around the form instead of guessing.
+/// `state` with the given `layout` at the given `width` — the same figure
+/// `Form`'s own rendering computes internally, exposed so you can size a
+/// fixed area (a `Block`, a `Rect` you picked yourself) around the form
+/// instead of guessing.
 ///
 /// ```rust
 /// # use ratiform::{required_height, builder::FormBuilder, FormLayout};
