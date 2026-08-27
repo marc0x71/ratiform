@@ -11,4 +11,4 @@ keywords = ["ratatui", "tui", "form", "widget"]
 categories = ["command-line-interface"]
 
 [dependencies]
-ratatui = "0.30.2"
+ratatui = "0.30"

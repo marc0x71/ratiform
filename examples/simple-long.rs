@@ -56,7 +56,11 @@ fn main() -> std::io::Result<()> {
                 let area = frame
                     .area()
                     .centered(Constraint::Length(80), Constraint::Length(30));
-                frame.render_stateful_widget(Form::with_style(my_style()), area, &mut state);
+                frame.render_stateful_widget(
+                    Form::default().with_style(my_style()),
+                    area,
+                    &mut state,
+                );
                 if let Some(position) = state.cursor_position() {
                     frame.set_cursor_position(position);
                 }

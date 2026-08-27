@@ -265,23 +265,34 @@ impl<T: PartialEq> FormState<T> {
     }
 }
 
+#[derive(Default, Clone, Copy, PartialEq)]
+pub enum FormLayout {
+    #[default]
+    Horizontal,
+    Stacked,
+}
+
 /// The widget that renders a [`FormState`]. Stateless and cheap to
 /// construct — build one fresh on every frame, exactly like any other
 /// Ratatui widget, and pass it to `Frame::render_stateful_widget` together
 /// with the `FormState` you want it to draw.
 pub struct Form<T> {
     style: FormStyle,
+    layout: FormLayout,
     _phantom: PhantomData<T>,
 }
 
 impl<T> Form<T> {
     /// Renders with a custom [`FormStyle`] instead of the built-in theme.
     /// See the project README's Theming section for a full example.
-    pub fn with_style(style: FormStyle) -> Self {
-        Self {
-            style,
-            _phantom: PhantomData,
-        }
+    pub fn with_style(mut self, style: FormStyle) -> Self {
+        self.style = style;
+        self
+    }
+
+    pub fn with_layout(mut self, layout: FormLayout) -> Self {
+        self.layout = layout;
+        self
     }
 }
 
@@ -291,6 +302,7 @@ impl<T> Default for Form<T> {
     fn default() -> Self {
         Self {
             style: FormStyle::default(),
+            layout: FormLayout::default(),
             _phantom: PhantomData,
         }
     }
@@ -302,13 +314,14 @@ impl<T> Default for Form<T> {
 /// a `Rect` you picked yourself) around the form instead of guessing.
 ///
 /// ```rust
-/// # use ratiform::{required_height, builder::FormBuilder};
+/// # use ratiform::{required_height, builder::FormBuilder, FormLayout};
 /// # #[derive(PartialEq)] enum Field { Name }
+/// let layout = FormLayout::Horizontal;
 /// let state = FormBuilder::new().single_line(Field::Name, "Name").build();
-/// required_height(&state, 50);
+/// required_height(layout, &state, 50);
 /// ```
-pub fn required_height<T: PartialEq>(state: &FormState<T>, width: u16) -> u16 {
-    render::required_height(state, width)
+pub fn required_height<T: PartialEq>(layout: FormLayout, state: &FormState<T>, width: u16) -> u16 {
+    render::required_height(layout, state, width)
 }
 
 #[cfg(test)]
