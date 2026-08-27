@@ -223,7 +223,19 @@ Call `.label_width(n)` on the builder to fix the column at `n` characters instea
 
 ### Layout
 
-By default, every field's label and value sit side by side on the same row — [`FormLayout::Horizontal`](src/lib.rs). `FormLayout::Stacked` puts the label above the value instead, each on its own row, useful when the terminal is too narrow for a comfortable label column. Set it with `.with_layout(...)` on `Form`, the same way you'd set a custom style with `.with_style(...)`:
+By default, every field's label and value sit side by side on the same row — [`FormLayout::Horizontal`](src/lib.rs). `FormLayout::Stacked` puts the label above the value instead, each on its own row, useful when the terminal is too narrow for a comfortable label column.
+
+```
+Horizontal                          Stacked
+
+Name       [Mario_____________]     Name
+Email      [mario@example.com_]     [Mario_____________]
+
+                                    Email
+                                    [mario@example.com_]
+```
+
+Set it with `.with_layout(...)` on `Form`, the same way you'd set a custom style with `.with_style(...)`:
 
 ```rust
 frame.render_stateful_widget(
