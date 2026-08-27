@@ -75,14 +75,27 @@ The `T` here is the type of your field identifiers — see [Field identifiers](#
 
 ## Installation
 
-Since the project is still under development, it is currently intended to be used directly from GitHub.
+Add `ratiform` to your `Cargo.toml`:
+
+```toml
+[dependencies]
+ratiform = "0.1"
+```
+
+Or run:
+
+```bash
+cargo add ratiform
+```
+
+`ratiform` currently depends on Ratatui `0.30`.
+
+If you want to use the latest development version, you can depend directly on GitHub:
 
 ```toml
 [dependencies]
 ratiform = { git = "https://github.com/marc0x71/ratiform" }
 ```
-
-`ratiform` currently depends on Ratatui `0.30`.
 
 ## Quick start
 
