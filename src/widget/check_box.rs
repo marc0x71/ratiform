@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use ratatui::{
     buffer::Buffer,
     crossterm::event::{KeyCode, KeyEvent},
@@ -68,6 +70,10 @@ impl CheckBoxStatus {
 
     pub(crate) fn set(&mut self, value: &str) {
         self.checked = value.to_lowercase().parse().unwrap_or_default();
+    }
+
+    pub(crate) fn get_ref(&self) -> Cow<'_, str> {
+        Cow::Owned(self.checked.to_string())
     }
 }
 

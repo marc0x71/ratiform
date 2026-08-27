@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use ratatui::crossterm::event::KeyCode;
 
 use crate::{
@@ -64,6 +66,10 @@ impl<T> Field<T> {
         self.kind.get()
     }
 
+    pub fn get_ref(&self) -> Cow<'_, str> {
+        self.kind.get_ref()
+    }
+
     pub(crate) fn set(&mut self, value: &str) {
         self.kind.set(value);
         self.normalize();
@@ -72,13 +78,13 @@ impl<T> Field<T> {
 
     pub(crate) fn normalize(&mut self) {
         if let Some(function) = self.options.normalizer.as_ref() {
-            let value = self.kind.get();
-            self.kind.set(function(value.as_str()).as_str());
+            let value = self.get_ref();
+            self.kind.set(function(&value).as_str());
         }
     }
 
     pub(crate) fn validate(&mut self) {
-        let value = self.kind.get();
+        let value = self.get_ref();
         let required_error = self.options.required.as_ref().and_then(|f| f(&value).err());
         self.error = if let Some(error) = required_error {
             Some(error)
@@ -96,7 +102,7 @@ impl<T> Field<T> {
     }
 
     pub fn is_dirty(&self) -> bool {
-        self.kind.get() != self.initial_value
+        self.kind.get_ref() != self.initial_value
     }
 
     pub(crate) fn reset(&mut self) {
@@ -131,6 +137,14 @@ impl FieldKind {
             FieldKind::CheckBox(k) => k.get(),
             FieldKind::Select(k) => k.get(),
             FieldKind::TextArea(k) => k.get(),
+        }
+    }
+    pub fn get_ref(&self) -> Cow<'_, str> {
+        match self {
+            FieldKind::SingleLine(k) => k.get_ref(),
+            FieldKind::CheckBox(k) => k.get_ref(),
+            FieldKind::Select(k) => k.get_ref(),
+            FieldKind::TextArea(k) => k.get_ref(),
         }
     }
     pub fn set(&mut self, value: &str) {

@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use ratatui::{
     buffer::Buffer,
     crossterm::event::{KeyCode, KeyEvent, KeyModifiers},
@@ -82,6 +84,10 @@ pub struct TextAreaStatus {
 impl TextAreaStatus {
     pub(crate) fn get(&self) -> String {
         self.value.clone()
+    }
+
+    pub(crate) fn get_ref(&self) -> Cow<'_, str> {
+        Cow::Borrowed(self.value.as_ref())
     }
 
     pub(crate) fn set(&mut self, value: &str) {

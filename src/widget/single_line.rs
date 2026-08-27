@@ -115,6 +115,10 @@ impl SingleLineStatus {
         self.value.clone()
     }
 
+    pub(crate) fn get_ref(&self) -> Cow<'_, str> {
+        Cow::Borrowed(self.value.as_ref())
+    }
+
     pub(crate) fn set(&mut self, value: &str) {
         self.value = filter_by(value, self.alphabet.as_ref());
         self.position = self.value.chars().count() as u16;

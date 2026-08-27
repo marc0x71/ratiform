@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use ratatui::{
     buffer::Buffer,
     crossterm::event::{KeyCode, KeyEvent},
@@ -110,6 +112,15 @@ impl SelectStatus {
             .and_then(|idx| self.values.get(idx.min(last)))
             .map(|(k, _)| k.clone())
             .unwrap_or_default()
+    }
+
+    pub(crate) fn get_ref(&self) -> Cow<'_, str> {
+        let last = self.values.len().saturating_sub(1);
+        self.list_state
+            .selected()
+            .and_then(|idx| self.values.get(idx.min(last)))
+            .map(|(k, _)| Cow::Borrowed(k.as_ref()))
+            .unwrap_or(Cow::Borrowed(""))
     }
 
     pub(crate) fn set(&mut self, value: &str) {
