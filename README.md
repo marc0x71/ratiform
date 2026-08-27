@@ -217,6 +217,33 @@ Since `Enter` inserts a newline instead of submitting the form, submitting while
 
 Fields are chained together and configured with options shared across every kind: `required(message)`/`optional()`, `disabled()`, `readonly()`, `height()`, `validator(...)`, `normalizer(...)`. Full details on each are in the generated docs (`cargo doc --open`) — the sections below cover the ones with enough behavior to be worth a walkthrough.
 
+### Label width
+
+Every field shares a single label column, sized automatically to fit the widest label across all of them, capped to a third of the available area. A label too long for that cap wraps onto a second line rather than pushing the shared column — and every other field's label with it — off to the side. Wrapping only affects that field's own row height; the column width stays the same for every field regardless of whether its own label needed to wrap. Wrapping breaks on whole words, the same way Ratatui's own text wrapping does; a single word longer than the column still isn't split.
+
+Call `.label_width(n)` on the builder to fix the column at `n` characters instead of computing it automatically. An explicit width is **not** capped — if you ask for more than the terminal can comfortably show, you get exactly what you asked for:
+
+```rust
+.single_line(1, "Name")
+    .label_width(20)
+```
+
+`FormState::label_width(&mut self, width: u16)` sets the same thing after the form has already been built, for cases where the right width is only known once the form is running (in response to a resize, for instance).
+
+### Layout
+
+By default, every field's label and value sit side by side on the same row — [`FormLayout::Horizontal`](src/lib.rs). `FormLayout::Stacked` puts the label above the value instead, each on its own row, useful when the terminal is too narrow for a comfortable label column. Set it with `.with_layout(...)` on `Form`, the same way you'd set a custom style with `.with_style(...)`:
+
+```rust
+frame.render_stateful_widget(
+    Form::default().with_layout(FormLayout::Stacked),
+    area,
+    &mut state,
+);
+```
+
+`Form` is rebuilt fresh every frame, so nothing stops you from picking the layout based on the current area — [`examples/layouts.rs`](examples/layouts.rs) does exactly that, switching to `Stacked` once the terminal gets too narrow, reacting to a resize with no extra code to handle the resize itself. `label_width` only means something in `Horizontal`; `Stacked` ignores it, since there's no shared column to size.
+
 ### Field identifiers
 
 Every field is created together with an **identifier** — the first argument to `single_line()`, `checkbox()`, `select()` and `text_area()`. `FormBuilder`, `FormState` and `Form` are all generic over its type (it needs `PartialEq`, plus `Hash`/`Eq` if you want to `collect()` results into a `HashMap`) — it doesn't have to be a string or an integer, it can be your own `enum`:
@@ -224,26 +251,26 @@ Every field is created together with an **identifier** — the first argument to
 ```rust
 #[derive(Debug, Hash, Eq, PartialEq)]
 enum FormField {
-    Nome,
-    Cognome,
-    Nazione,
-    Termini,
+    FirstName,
+    LastName,
+    Country,
+    Terms,
 }
 
 let mut state = FormBuilder::new()
-    .single_line(FormField::Nome, "Nome")
+    .single_line(FormField::FirstName, "First name")
     .value("Mario")
-    .validator(validators::min_length(2, "Troppo corto".to_owned()))
-    .required("Il nome è obbligatorio".to_owned())
-    .single_line(FormField::Cognome, "Cognome")
-    .select(FormField::Nazione, "Paese")
-    .values_ref(&[("I", "Italia"), ("F", "Francia"), ("D", "Germania")])
-    .checkbox(FormField::Termini, "Accetto i termini")
+    .validator(validators::min_length(2, "Too short".to_owned()))
+    .required("First name is required".to_owned())
+    .single_line(FormField::LastName, "Last name")
+    .select(FormField::Country, "Country")
+    .values_ref(&[("IT", "Italy"), ("FR", "France"), ("DE", "Germany")])
+    .checkbox(FormField::Terms, "I accept the terms")
     .optional()
     .build();
 ```
 
-This is what lets you match each submitted value back to the field that produced it, at compile time — no risk of a typo in a field name going unnoticed until runtime, and the compiler tells you if a `match` on the results forgets a variant. Note that `Cognome`/`Nazione` never call `.required(...)`: every field is required by default (with a built-in message), so `.required(message)` is only needed for your *own* message — `.optional()` is what actually opts a field out.
+This is what lets you match each submitted value back to the field that produced it, at compile time — no risk of a typo in a field name going unnoticed until runtime, and the compiler tells you if a `match` on the results forgets a variant. Note that `LastName`/`Country` never call `.required(...)`: every field is required by default (with a built-in message), so `.required(message)` is only needed for your *own* message — `.optional()` is what actually opts a field out.
 
 ### Validation
 
@@ -285,12 +312,13 @@ For anything these don't cover, `.validator(...)` still takes a plain closure �
 ## More examples
 
 * [`examples/quickstart.rs`](examples/quickstart.rs) — the Quick start above, complete and runnable.
-* [`examples/simple-typed.rs`](examples/simple-typed.rs) — the [Field identifiers](#field-identifiers) walkthrough, complete and runnable.
-* [`examples/simple.rs`](examples/simple.rs) — the same form with a custom `FormStyle` (see [Theming](#theming)), plus debug fields exercising `set_value`/`focused_field`.
+* [`examples/typed-fields.rs`](examples/typed-fields.rs) — the [Field identifiers](#field-identifiers) walkthrough, complete and runnable.
+* [`examples/theming.rs`](examples/theming.rs) — a custom `FormStyle` with distinct colors for labels and values (see [Theming](#theming)), a deliberately long label to show off wrapping, and debug fields exercising `set_value`/`focused_field`.
 * [`examples/login-form.rs`](examples/login-form.rs) — a login screen with a masked password, a custom strength check, and the form rendered inside a titled, centered `Block`.
 * [`examples/connections.rs`](examples/connections.rs) — `validators::parsable::<u16>` for a port number, a `Select` for the protocol, required and optional fields side by side.
-* [`examples/anagrafica.rs`](examples/anagrafica.rs) — forcing a field to stay uppercase or lowercase via `normalizer(...)`.
-* [`examples/simple-textarea.rs`](examples/simple-textarea.rs) — a form built entirely around a `TextArea`.
+* [`examples/normalizer.rs`](examples/normalizer.rs) — forcing a field to stay uppercase or lowercase via `normalizer(...)`.
+* [`examples/text-area.rs`](examples/text-area.rs) — a form built entirely around a `TextArea`.
+* [`examples/layouts.rs`](examples/layouts.rs) — `Horizontal` vs `Stacked` [`FormLayout`](#layout), recomputed from the available width every frame so it reacts to a terminal resize on its own.
 
 Run any of them with `cargo run --example <name>`.
 
@@ -311,7 +339,7 @@ let my_style = FormStyle::builder()
 frame.render_stateful_widget(Form::with_style(my_style), area, &mut state);
 ```
 
-`FormStyle` groups five areas — `label`, `value`, `highlight` (the focused field / selected row), `error`, and `placeholder`. The first three are a [`FieldStyle`](src/style.rs) each (one `Style` per `normal`/`focused`/`disabled`/`readonly` state, resolved for you); `error`/`placeholder` are plain `Style`s. Full field-by-field docs are on `FormStyle`/`FieldStyle` themselves (`cargo doc --open`). A runnable example with a full custom theme is in [`examples/simple.rs`](examples/simple.rs).
+`FormStyle` groups five areas — `label`, `value`, `highlight` (the focused field / selected row), `error`, and `placeholder`. The first three are a [`FieldStyle`](src/style.rs) each (one `Style` per `normal`/`focused`/`disabled`/`readonly` state, resolved for you); `error`/`placeholder` are plain `Style`s. Full field-by-field docs are on `FormStyle`/`FieldStyle` themselves (`cargo doc --open`). A runnable example with a full custom theme is in [`examples/theming.rs`](examples/theming.rs).
 
 ## Keyboard navigation
 
