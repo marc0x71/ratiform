@@ -21,14 +21,16 @@ fn main() -> std::io::Result<()> {
             .placeholder("mario.rossi")
             .validator(validators::min_length(
                 3,
-                "L'username deve avere almeno 3 caratteri".to_owned(),
+                "Username must be at least 3 characters".to_owned(),
             ))
-            .required("L'username è obbligatorio".to_owned())
+            .required("Username is required".to_owned())
+            // A validator built from a plain closure -- for anything the
+            // built-in ones in `validators::` don't cover.
             .single_line(LoginField::Password, "Password")
             .masked()
             .validator(validators::min_length(
                 8,
-                "La password deve avere almeno 8 caratteri".to_owned(),
+                "Password must be at least 8 characters".to_owned(),
             ))
             .validator(|value: &str| {
                 let has_uppercase = value.chars().any(|c| c.is_uppercase());
@@ -41,13 +43,13 @@ fn main() -> std::io::Result<()> {
                 (has_uppercase && has_lowercase && has_digit && has_special)
                     .then_some(())
                     .ok_or_else(|| {
-                        "La password deve contenere almeno una maiuscola, una minuscola, \
-                         un numero e un carattere speciale"
+                        "Password must contain at least one uppercase letter, one \
+                         lowercase letter, one digit and one special character"
                             .to_owned()
                     })
             })
-            .required("La password è obbligatoria".to_owned())
-            .checkbox(LoginField::RememberMe, "Ricordami")
+            .required("Password is required".to_owned())
+            .checkbox(LoginField::RememberMe, "Remember me")
             .checked(false)
             .optional()
             .build();
@@ -101,11 +103,11 @@ fn main() -> std::io::Result<()> {
                 .map(|v| v == "true")
                 .unwrap_or(false);
 
-            // La password è disponibile in values.get(&LoginField::Password),
-            // ma non la stampiamo di proposito: è solo un esempio.
-            println!("Login effettuato: {username} (ricordami: {remember})");
+            // The password is available at values.get(&LoginField::Password),
+            // but we don't print it -- this is just an example.
+            println!("Logged in: {username} (remember me: {remember})");
         }
-        None => println!("Accesso annullato."),
+        None => println!("Login cancelled."),
     }
 
     Ok(())

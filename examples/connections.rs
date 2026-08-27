@@ -21,25 +21,28 @@ fn main() -> std::io::Result<()> {
         let mut state = FormBuilder::new()
             .single_line(ConnectionField::Host, "Host")
             .value("localhost")
-            .required("L'host è obbligatorio".to_owned())
-            .single_line(ConnectionField::Port, "Porta")
+            .required("Host is required".to_owned())
+            // alphabet() rejects a character at the keystroke, before it
+            // ever becomes part of the value -- parsable() still checks
+            // the result is a valid u16.
+            .single_line(ConnectionField::Port, "Port")
             .alphabet("0123456789")
             .value("5432")
             .validator(validators::parsable::<u16>(
-                "La porta deve essere un numero tra 0 e 65535".to_owned(),
+                "Port must be a number between 0 and 65535".to_owned(),
             ))
-            .required("La porta è obbligatoria".to_owned())
-            .select(ConnectionField::Protocol, "Protocollo")
+            .required("Port is required".to_owned())
+            .select(ConnectionField::Protocol, "Protocol")
             .values_ref(&[("tcp", "TCP"), ("ssl", "TCP + SSL")])
             .selected(0)
             .height(2)
-            .single_line(ConnectionField::Username, "Utente")
+            .single_line(ConnectionField::Username, "Username")
             .placeholder("postgres")
             .optional()
             .single_line(ConnectionField::Password, "Password")
             .masked()
             .optional()
-            .checkbox(ConnectionField::SaveCredentials, "Salva le credenziali")
+            .checkbox(ConnectionField::SaveCredentials, "Save credentials")
             .checked(false)
             .optional()
             .build();
@@ -72,6 +75,6 @@ fn main() -> std::io::Result<()> {
         }
     })?;
 
-    println!("Configurazione raccolta: {result:?}");
+    println!("Collected configuration: {result:?}");
     Ok(())
 }

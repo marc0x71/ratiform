@@ -7,32 +7,34 @@ use ratatui::{
 use ratiform::{Form, builder::FormBuilder, validators};
 
 #[derive(Debug, Hash, Eq, PartialEq)]
-enum AnagraficaField {
-    Nome,
-    Cognome,
-    CodiceFiscale,
+enum FormField {
+    FirstName,
+    LastName,
+    ReferenceCode,
     Email,
 }
 
 fn main() -> std::io::Result<()> {
     let result = ratatui::run(|terminal| -> std::io::Result<_> {
         let mut state = FormBuilder::new()
-            .single_line(AnagraficaField::Nome, "Nome")
-            .required("Il nome è obbligatorio".to_owned())
-            .single_line(AnagraficaField::Cognome, "Cognome")
-            .required("Il cognome è obbligatorio".to_owned())
-            .single_line(AnagraficaField::CodiceFiscale, "Codice fiscale")
-            .placeholder("RSSMRA80A01H501U")
-            .normalizer(|s| s.to_uppercase().to_owned())
+            .single_line(FormField::FirstName, "First name")
+            .required("First name is required".to_owned())
+            .single_line(FormField::LastName, "Last name")
+            .required("Last name is required".to_owned())
+            // normalizer() rewrites every keystroke into a canonical form,
+            // before validation runs on it -- here, forced uppercase.
+            .single_line(FormField::ReferenceCode, "Reference code")
+            .placeholder("ABC-1234")
+            .normalizer(|s| s.to_uppercase())
             .validator(validators::max_length(
                 16,
-                "Il codice fiscale ha al massimo 16 caratteri".to_owned(),
+                "Reference code is at most 16 characters".to_owned(),
             ))
-            .required("Il codice fiscale è obbligatorio".to_owned())
-            .single_line(AnagraficaField::Email, "Email")
-            .placeholder("mario.rossi@esempio.it")
-            .value("PIPPO")
-            .normalizer(|s| s.to_lowercase().to_owned())
+            .required("Reference code is required".to_owned())
+            // Same idea, the other direction: forced lowercase.
+            .single_line(FormField::Email, "Email")
+            .placeholder("mario.rossi@example.com")
+            .normalizer(|s| s.to_lowercase())
             .validator(|value: &str| {
                 let valid = value.split('@').count() == 2
                     && value
@@ -42,9 +44,9 @@ fn main() -> std::io::Result<()> {
 
                 valid
                     .then_some(())
-                    .ok_or_else(|| "Indirizzo email non valido".to_owned())
+                    .ok_or_else(|| "Invalid email address".to_owned())
             })
-            .required("L'email è obbligatoria".to_owned())
+            .required("Email is required".to_owned())
             .build();
 
         loop {
@@ -66,7 +68,7 @@ fn main() -> std::io::Result<()> {
 
                 match state.result() {
                     ratiform::FormResult::Submitted | ratiform::FormResult::Cancelled => {
-                        let values: HashMap<AnagraficaField, String> = state.values().collect();
+                        let values: HashMap<FormField, String> = state.values().collect();
                         break Ok(values);
                     }
                     ratiform::FormResult::Working => {}
@@ -75,6 +77,6 @@ fn main() -> std::io::Result<()> {
         }
     })?;
 
-    println!("Dati raccolti: {result:?}");
+    println!("Collected data: {result:?}");
     Ok(())
 }

@@ -9,48 +9,37 @@ use ratiform::{
     Form,
     builder::FormBuilder,
     style::{FieldStyle, FormStyle},
-    validators,
 };
 
+#[derive(Debug, Hash, Eq, PartialEq)]
+enum FormField {
+    Title,
+    Body,
+    Terms,
+}
+
 fn main() -> std::io::Result<()> {
+    let placeholder_text = String::from(
+        "First line\nSecond line\nLorem ipsum dolor sit amet, consectetur adipiscing elit. \
+         Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.",
+    );
+
     let result = ratatui::run(|terminal| -> std::io::Result<_> {
         let mut state = FormBuilder::new()
-            .single_line(1, "Nome")
-            .placeholder("Insersci il nome".to_owned())
-            .validator(validators::min_length(
-                2,
-                "Il nome deve avere una lunghezza di almeno 2 caratteri".to_owned(),
-            ))
-            .required("Campo obbligatorio".to_owned())
-            .single_line(2, "Cognome")
-            .placeholder("Insersci il cognome".to_owned())
-            .validator(validators::min_length(
-                2,
-                "Il cognome deve avere una lunghezza di almeno 2 caratteri".to_owned(),
-            ))
-            .validator(validators::max_length(
-                10,
-                "Il cognome deve avere una lunghezza massima di 10 caratteri".to_owned(),
-            ))
-            .select(3, "Paese")
-            .values_ref(&[("I", "Italia"), ("F", "Francia"), ("D", "Germania")])
-            .selected(1)
+            .single_line(FormField::Title, "Title")
+            .required("Title is required".to_owned())
+            // A multi-line field: wraps long lines, scrolls vertically,
+            // Ctrl+Enter submits since Enter itself inserts a newline.
+            .text_area(FormField::Body, "Body")
+            .placeholder("Write the article body here...")
+            .value(placeholder_text)
             .height(5)
-            .checkbox(4, "Accetto i termini")
+            .checkbox(FormField::Terms, "I accept the terms")
             .checked(false)
             .optional()
-            .single_line(5, "Password")
-            .placeholder("Insersci la password".to_owned())
-            .masked_with('•')
-            .required("La password non può essere vuota".to_owned())
-            .single_line(10, "Debug")
-            .disabled()
             .build();
 
         loop {
-            state.set_value(&4, "true");
-            let f = format!("focus={:?}", state.focused_field());
-            state.set_value(&10, &f);
             terminal.draw(|frame| {
                 let [area, _] = Layout::vertical([Constraint::Length(19), Constraint::Fill(1)])
                     .areas(frame.area());
@@ -70,7 +59,7 @@ fn main() -> std::io::Result<()> {
                 state.handle_input(key);
                 match state.result() {
                     ratiform::FormResult::Submitted | ratiform::FormResult::Cancelled => {
-                        let values: HashMap<i32, String> = state.values().collect();
+                        let values: HashMap<FormField, String> = state.values().collect();
                         break Ok(values);
                     }
                     ratiform::FormResult::Working => {}
