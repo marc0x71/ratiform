@@ -1,6 +1,6 @@
 [package]
 name = "ratiform"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2024"
 
 description = "A small, composable, stateful form widget for Ratatui"

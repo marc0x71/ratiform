@@ -15,12 +15,12 @@ use crate::{
 /// with the message to show otherwise. Built by
 /// [`crate::validators`], or written by hand and passed to
 /// `.validator(...)` on any field builder.
-pub type Validator = Box<dyn Fn(&str) -> Result<(), String> + 'static>;
+pub type Validator = Box<dyn Fn(&str) -> Result<(), String> + Send + 'static>;
 
 /// A per-field rewrite rule, run before validation: takes the current
 /// value, returns the value it should become (e.g. forcing uppercase).
 /// Passed to `.normalizer(...)` on any field builder.
-pub type Normalizer = Box<dyn Fn(&str) -> String + 'static>;
+pub type Normalizer = Box<dyn Fn(&str) -> String + Send + 'static>;
 
 /// The options shared by every field kind, populated by
 /// [`field_builder_common`](crate::field_builder_common) — see that macro

@@ -162,7 +162,7 @@ macro_rules! field_builder_common {
             /// invalid as soon as one of them returns `Err`.
             pub fn validator<F>(mut self, function: F) -> Self
             where
-                F: Fn(&str) -> Result<(), String> + 'static,
+                F: Fn(&str) -> Result<(), String> + Send + 'static,
             {
                 self.options.validator.push(Box::new(function));
                 self
@@ -183,7 +183,7 @@ macro_rules! field_builder_common {
             /// characters outright rather than rewrite them.
             pub fn normalizer<F>(mut self, function: F) -> Self
             where
-                F: Fn(&str) -> String + 'static,
+                F: Fn(&str) -> String + Send + 'static,
             {
                 self.options.normalizer = Some(Box::new(function));
                 self
