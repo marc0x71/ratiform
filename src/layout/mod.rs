@@ -4,7 +4,7 @@ pub mod builder;
 pub mod custom;
 
 /// How a form arranges each field's label relative to its value. Set via
-/// [`Form::with_layout`]; defaults to [`FormLayout::Horizontal`].
+/// [`crate::Form::with_layout`]; defaults to [`FormLayout::Horizontal`].
 #[derive(Debug, Default, Clone, PartialEq)]
 pub enum FormLayout<T> {
     /// Label and value side by side, on the same row — the layout used
