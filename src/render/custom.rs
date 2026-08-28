@@ -4,13 +4,15 @@ use ratatui::{
     buffer::Buffer,
     layout::{Constraint, Layout, Rect},
     macros::constraints,
+    text::Span,
+    widgets::{Paragraph, Widget, Wrap},
 };
 
 use crate::{
     FormLayout, FormState,
     field::Field,
     layout::custom::{CustomLayout, Object, ObjectKind},
-    render::count_lines,
+    render::{count_lines, render_field, scroll_offset},
     style::FormStyle,
 };
 
@@ -23,10 +25,97 @@ pub(crate) fn render_custom<T: PartialEq>(
 ) {
     let heights = compute_heights(layout, &state.fields, area.width);
 
-    todo!()
+    let (from_row, to_row) = scroll_offset(&heights, area.height, state.focus);
+
+    let constraints: Vec<_> = heights[from_row..=to_row]
+        .iter()
+        .map(|f| Constraint::Length(*f))
+        .collect();
+    let rows = Layout::vertical(constraints).split(area);
+
+    for (idx, area) in rows[from_row..=to_row].iter().enumerate() {
+        //
+        let row = &layout.rows[idx];
+        render_row(idx, row, style, state, *area, buf);
+    }
 }
 
-fn compute_heights<T: PartialEq>(layout: &CustomLayout<T>, fields: &[Field<T>], width: u16) -> u16 {
+fn render_row<T: PartialEq>(
+    idx: usize,
+    row: &[(Constraint, Option<Object<T>>)],
+    style: &FormStyle,
+    state: &mut FormState<T>,
+    area: Rect,
+    buf: &mut Buffer,
+) {
+    let cols = Layout::horizontal(row.iter().map(|(c, _)| *c).collect::<Vec<_>>()).split(area);
+    for (idx, (_, object)) in row.iter().enumerate() {
+        //
+        if let Some(object) = object {
+            render_object(object, style, state, cols[idx], buf);
+        }
+    }
+}
+
+fn render_object<T: PartialEq>(
+    object: &Object<T>,
+    style: &FormStyle,
+    state: &mut FormState<T>,
+    area: Rect,
+    buf: &mut Buffer,
+) {
+    let Some(field_position) = find_field_position(&state.fields, &object.id) else {
+        return;
+    };
+    let has_focus = state.fields[state.focus].id == object.id;
+    let field = &mut state.fields[field_position];
+    let field_state = field.options.to_field_state(has_focus);
+    match object.kind {
+        ObjectKind::Label => {
+            let label = Paragraph::new(field.label())
+                .style(style.label.style_for(&field_state))
+                .wrap(Wrap { trim: true });
+            label.render(area, buf);
+        }
+        ObjectKind::Value => {
+            let a = render_field(
+                area,
+                buf,
+                field,
+                style.value.style_for(&field_state),
+                style.highlight.style_for(&field_state),
+                style.placeholder,
+            );
+        }
+        ObjectKind::Error => {
+            if let Some(message) = field.error.as_ref() {
+                let len = message.chars().count() as u16;
+                let [_, right] =
+                    Layout::horizontal([Constraint::Fill(1), Constraint::Length(len)]).areas(area);
+                let error_message = Span::raw(message.as_str()).style(style.error);
+                error_message.render(right, buf);
+            }
+        }
+    }
+}
+
+fn compute_heights<T: PartialEq>(
+    layout: &CustomLayout<T>,
+    fields: &[Field<T>],
+    width: u16,
+) -> Vec<u16> {
+    layout
+        .rows
+        .iter()
+        .map(|row| compute_row_height(row, fields, width))
+        .collect()
+}
+
+fn compute_rows_heights<T: PartialEq>(
+    layout: &CustomLayout<T>,
+    fields: &[Field<T>],
+    width: u16,
+) -> u16 {
     layout
         .rows
         .iter()
@@ -69,12 +158,16 @@ fn find_field<'a, T: PartialEq>(fields: &'a [Field<T>], id: &T) -> Option<&'a Fi
     fields.iter().find(|f| f.id == *id)
 }
 
+fn find_field_position<T: PartialEq>(fields: &[Field<T>], id: &T) -> Option<usize> {
+    fields.iter().position(|f| f.id == *id)
+}
+
 pub(crate) fn required_height_custom<T: PartialEq>(
     layout: &CustomLayout<T>,
     state: &FormState<T>,
     width: u16,
 ) -> u16 {
-    compute_heights(layout, &state.fields, width)
+    compute_rows_heights(layout, &state.fields, width)
 }
 
 #[cfg(test)]

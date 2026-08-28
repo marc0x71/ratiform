@@ -39,11 +39,11 @@ fn main() -> std::io::Result<()> {
     let grid_layout = custom_layout! {
         // Email | Password
         row [
-            (Constraint::Length(15), Label(Field::Email)),
+            (Constraint::Fill(1), Label(Field::Email)),
             (Constraint::Fill(1), Label(Field::Password)),
         ],
         row [
-            (Constraint::Length(15), Value(Field::Email)),
+            (Constraint::Fill(1), Value(Field::Email)),
             (Constraint::Fill(1), Value(Field::Password)),
         ],
         row [
@@ -64,19 +64,19 @@ fn main() -> std::io::Result<()> {
 
         // City | State | Zip
         row [
-            (Constraint::Length(15), Label(Field::City)),
-            (Constraint::Length(15), Label(Field::State)),
-            (Constraint::Fill(1), Label(Field::Zip)),
+            (Constraint::Fill(1), Label(Field::City)),
+            (Constraint::Fill(1), Label(Field::State)),
+            (Constraint::Length(9), Label(Field::Zip)),
         ],
         row [
-            (Constraint::Length(15), Value(Field::City)),
-            (Constraint::Length(15), Value(Field::State)),
-            (Constraint::Fill(1), Value(Field::Zip)),
+            (Constraint::Fill(1), Value(Field::City)),
+            (Constraint::Fill(1), Value(Field::State)),
+            (Constraint::Length(9), Value(Field::Zip)),
         ],
         row [
-            (Constraint::Length(15), Error(Field::City)),
-            (Constraint::Length(15), Error(Field::State)),
-            (Constraint::Fill(1), Error(Field::Zip)),
+            (Constraint::Fill(1), Error(Field::City)),
+            (Constraint::Fill(1), Error(Field::State)),
+            (Constraint::Length(9), Error(Field::Zip)),
         ],
     };
     let form = Form::default().with_layout(FormLayout::Custom(grid_layout));
@@ -86,9 +86,9 @@ fn main() -> std::io::Result<()> {
             terminal.draw(|frame| {
                 let area = frame
                     .area()
-                    .centered(Constraint::Length(50), Constraint::Length(8));
+                    .centered(Constraint::Length(60), Constraint::Length(20));
                 let block = Block::default()
-                    .title(" Login ")
+                    .title(" Form ")
                     .borders(Borders::ALL)
                     .padding(Padding::uniform(1));
                 let inner = block.inner(area);
