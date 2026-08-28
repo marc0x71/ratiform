@@ -15,7 +15,7 @@ use crate::{
 };
 
 pub(crate) fn render_stacked<T: PartialEq>(
-    style: FormStyle,
+    style: &FormStyle,
     area: Rect,
     buf: &mut Buffer,
     state: &mut FormState<T>,

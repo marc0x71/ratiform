@@ -4,15 +4,18 @@ use crate::{
     Form, FormLayout, FormState,
     field::{Field, FieldKind},
     render::{
+        custom::{render_custom, required_height_custom},
         horizontal::{render_horizontal, required_height_horizontal},
         stacked::{render_stacked, required_height_stacked},
     },
+    style::FormStyle,
     widget::{
         check_box::render_checkbox, select::render_select, single_line::render_singleline,
         text_area::render_textarea,
     },
 };
 
+mod custom;
 mod horizontal;
 mod stacked;
 
@@ -20,25 +23,45 @@ impl<T: PartialEq> StatefulWidget for Form<T> {
     type State = FormState<T>;
 
     fn render(self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {
-        if state.fields.is_empty() {
-            state.cursor_position = None;
-            return;
-        }
-        match self.layout {
-            crate::FormLayout::Horizontal => render_horizontal(self.style, area, buf, state),
-            crate::FormLayout::Stacked => render_stacked(self.style, area, buf, state),
-        }
+        render_form(&self.layout, &self.style, area, buf, state);
+    }
+}
+
+impl<T: PartialEq> StatefulWidget for &Form<T> {
+    type State = FormState<T>;
+
+    fn render(self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {
+        render_form(&self.layout, &self.style, area, buf, state);
+    }
+}
+
+fn render_form<T: PartialEq>(
+    layout: &FormLayout<T>,
+    style: &FormStyle,
+    area: Rect,
+    buf: &mut Buffer,
+    state: &mut FormState<T>,
+) {
+    if state.fields.is_empty() {
+        state.cursor_position = None;
+        return;
+    }
+    match layout {
+        FormLayout::Horizontal => render_horizontal(style, area, buf, state),
+        FormLayout::Stacked => render_stacked(style, area, buf, state),
+        FormLayout::Custom(custom) => render_custom(custom, style, area, buf, state),
     }
 }
 
 pub(crate) fn required_height<T: PartialEq>(
-    layout: FormLayout,
+    layout: &FormLayout<T>,
     state: &FormState<T>,
     width: u16,
 ) -> u16 {
     match layout {
         FormLayout::Horizontal => required_height_horizontal(state, width),
         FormLayout::Stacked => required_height_stacked(state, width),
+        FormLayout::Custom(custom) => required_height_custom(custom, state, width),
     }
 }
 
