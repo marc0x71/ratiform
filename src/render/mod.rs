@@ -20,6 +20,10 @@ impl<T: PartialEq> StatefulWidget for Form<T> {
     type State = FormState<T>;
 
     fn render(self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {
+        if state.fields.is_empty() {
+            state.cursor_position = None;
+            return;
+        }
         match self.layout {
             crate::FormLayout::Horizontal => render_horizontal(self.style, area, buf, state),
             crate::FormLayout::Stacked => render_stacked(self.style, area, buf, state),
