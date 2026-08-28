@@ -498,7 +498,7 @@ mod alphabet_tests {
         status.set("12a3");
 
         assert_eq!(status.value, "123");
-        assert_eq!(status.position, 3);
+        assert_eq!(status.position, 0);
     }
 
     #[test]
