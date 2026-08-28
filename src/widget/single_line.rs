@@ -121,8 +121,9 @@ impl SingleLineStatus {
     }
 
     pub(crate) fn set(&mut self, value: &str) {
+        let old_position = self.position;
         self.value = filter_by(value, self.alphabet.as_ref());
-        self.position = self.value.chars().count() as u16;
+        self.position = old_position.min(self.value.chars().count() as u16);
     }
 
     fn byte_position(&self, position: u16, default: usize) -> usize {

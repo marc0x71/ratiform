@@ -91,8 +91,9 @@ impl TextAreaStatus {
     }
 
     pub(crate) fn set(&mut self, value: &str) {
+        let old_position = self.position;
         self.value = value.to_owned();
-        self.position = self.value.chars().count() as u16;
+        self.position = old_position.min(self.value.chars().count() as u16);
     }
 
     fn byte_position(&self, position: u16, default: usize) -> usize {
