@@ -23,9 +23,12 @@ pub(crate) fn render_custom<T: PartialEq>(
     buf: &mut Buffer,
     state: &mut FormState<T>,
 ) {
+    // No row has this field's Value (mis-built layout) — start from the top.
+    let focused_row = focused_row_index(layout, &state.fields, state.focus).unwrap_or(0);
+
     let heights = compute_heights(layout, &state.fields, area.width);
 
-    let (from_row, to_row) = scroll_offset(&heights, area.height, state.focus);
+    let (from_row, to_row) = scroll_offset(&heights, area.height, focused_row);
 
     let constraints: Vec<_> = heights[from_row..=to_row]
         .iter()
@@ -33,11 +36,29 @@ pub(crate) fn render_custom<T: PartialEq>(
         .collect();
     let rows = Layout::vertical(constraints).split(area);
 
-    for (idx, area) in rows[from_row..=to_row].iter().enumerate() {
+    for (idx, area) in rows.iter().enumerate() {
         //
-        let row = &layout.rows[idx];
+        let row = &layout.rows[from_row + idx];
         render_row(idx, row, style, state, *area, buf);
     }
+}
+
+// Grid rows don't map 1:1 to fields (Label/Value/Error can live on
+// different, even distant rows), so `state.focus` (a field index)
+// can't be used as a row index directly.
+// We resolve it to the row with that field's Value cell — the only
+// one the user actually interacts with.
+fn focused_row_index<T: PartialEq>(
+    layout: &CustomLayout<T>,
+    fields: &[Field<T>],
+    focus: usize,
+) -> Option<usize> {
+    let focused_id = &fields.get(focus)?.id;
+    layout.rows.iter().position(|row| {
+        row.iter().any(
+            |(_, obj)| matches!(obj, Some(o) if o.kind == ObjectKind::Value && o.id == *focused_id),
+        )
+    })
 }
 
 fn render_row<T: PartialEq>(
