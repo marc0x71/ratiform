@@ -223,16 +223,21 @@ Call `.label_width(n)` on the builder to fix the column at `n` characters instea
 
 ### Layout
 
-By default, every field's label and value sit side by side on the same row — [`FormLayout::Horizontal`](src/lib.rs). `FormLayout::Stacked` puts the label above the value instead, each on its own row, useful when the terminal is too narrow for a comfortable label column.
+By default, every field's label and value sit side by side on the same row — [`FormLayout::Horizontal`](src/layout/mod.rs):
 
 ```
-Horizontal                          Stacked
+Name       [Mario_____________]
+Email      [mario@example.com_]
+```
 
-Name       [Mario_____________]     Name
-Email      [mario@example.com_]     [Mario_____________]
+`FormLayout::Stacked` puts the label above the value instead, each on its own row, useful when the terminal is too narrow for a comfortable label column:
 
-                                    Email
-                                    [mario@example.com_]
+```
+Name
+[Mario_____________]
+
+Email
+[mario@example.com_]
 ```
 
 Set it with `.with_layout(...)` on `Form`, the same way you'd set a custom style with `.with_style(...)`:
@@ -246,6 +251,47 @@ frame.render_stateful_widget(
 ```
 
 `Form` is rebuilt fresh every frame, so nothing stops you from picking the layout based on the current area — [`examples/layouts.rs`](examples/layouts.rs) does exactly that, switching to `Stacked` once the terminal gets too narrow, reacting to a resize with no extra code to handle the resize itself. `label_width` only means something in `Horizontal`; `Stacked` ignores it, since there's no shared column to size.
+
+#### Custom layout
+
+`FormLayout::Custom` gives up automatic arrangement for full control: an explicit grid of rows, and inside each row, columns — each cell either empty (a spacer) or one of a field's `Label`, `Value`, or `Error`. Useful for anything `Horizontal`/`Stacked` can't express — here, `Name` and `Email` sharing a row instead of each getting one of their own:
+
+```
+Name              Email
+[Mario_________]  [mario@example.com_]
+```
+
+```rust
+use ratatui::layout::Constraint;
+use ratiform::{Form, FormLayout, custom_layout, layout::custom::CustomLayout};
+
+let layout = custom_layout! {
+    row [
+        (Constraint::Length(15), Label(Field::Name)),
+        (Constraint::Fill(1), Label(Field::Email)),
+    ],
+    row [
+        (Constraint::Length(15), Value(Field::Name)),
+        (Constraint::Fill(1), Value(Field::Email)),
+    ],
+    row [
+        (Constraint::Length(15), Error(Field::Name)),
+        (Constraint::Fill(1), Error(Field::Email)),
+    ],
+};
+
+frame.render_stateful_widget(
+    Form::default().with_layout(FormLayout::Custom(layout)),
+    area,
+    &mut state,
+);
+```
+
+The same grid can be built imperatively with `CustomLayout::builder()` — a fluent `.row()...label()/value()/error()/empty()...build()` — when the rows aren't known until runtime. `Label` wraps onto multiple lines if the column is too narrow, the same as `Horizontal`/`Stacked`; `Error`, like in every layout, is always a single line and always reserves its row's height, whether or not the field currently has an error. Adjacent cells get a small horizontal gap by default (`CustomLayout::with_column_gap` to change it).
+
+Each grid row scrolls independently — unlike `Horizontal`/`Stacked`, where a field's label, value, and error always move together, a `Custom` layout scrolls whichever row currently has focus into view, which can leave a distant `Label`/`Error` row scrolled out of sight. Keep a field's cells on nearby rows if you want them to move together.
+
+See [`examples/custom.rs`](examples/custom.rs) for a runnable version.
 
 ### Field identifiers
 
@@ -322,8 +368,9 @@ For anything these don't cover, `.validator(...)` still takes a plain closure �
 * [`examples/normalizer.rs`](examples/normalizer.rs) — forcing a field to stay uppercase or lowercase via `normalizer(...)`.
 * [`examples/text-area.rs`](examples/text-area.rs) — a form built entirely around a `TextArea`.
 * [`examples/layouts.rs`](examples/layouts.rs) — `Horizontal` vs `Stacked` [`FormLayout`](#layout), recomputed from the available width every frame so it reacts to a terminal resize on its own.
+* [`examples/custom.rs`](examples/custom.rs) — `FormLayout::Custom` grid layout (see [Custom layout](#custom-layout)), two fields side by side, a field spanning the full row, and a three-column address group.
 
-Run any of them with `cargo run --example <name>`.
+Run any of them with `cargo run --example <n>`.
 
 ## Theming
 
