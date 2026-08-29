@@ -33,6 +33,12 @@ pub struct SelectBuilder<T> {
 impl<T: PartialEq> SelectBuilder<T> {
     /// Sets which option is selected initially, by index into the list of
     /// values.
+    ///
+    /// `selected` isn't validated against the list length at this point —
+    /// if it's a valid index once [`build`](crate::builder::FormBuilder::build)
+    /// runs, it's used as given; if it's out of range for however many
+    /// values the field ends up with, it's silently clamped to the last
+    /// one instead of panicking or leaving the field unselected.
     pub fn selected(mut self, selected: usize) -> Self {
         self.selected = selected;
         self
@@ -234,5 +240,48 @@ mod select_tests {
         // all for a Select field.
         let select = make_select(&[("I", "Italia")], None);
         assert_eq!(select.get(), "");
+    }
+}
+
+#[cfg(test)]
+mod builder_select_tests {
+    use crate::builder::FormBuilder;
+
+    #[test]
+    fn selected_within_bounds_behaves_as_before() {
+        let state = FormBuilder::new()
+            .select(1, "Paese")
+            .values_ref(&[("I", "Italia"), ("F", "Francia")])
+            .selected(1)
+            .build();
+
+        assert_eq!(state.value(&1), Some("F".to_owned()));
+        assert_eq!(state.is_field_dirty(&1), Some(false));
+    }
+
+    #[test]
+    fn selected_out_of_range_clamps_instead_of_producing_a_dirty_field() {
+        let state = FormBuilder::new()
+            .select(1, "Paese")
+            .values_ref(&[("I", "Italia"), ("F", "Francia"), ("D", "Germania")])
+            .selected(99) // fuori range: solo indici 0..=2 esistono
+            .build();
+
+        // Deve corrispondere all'ultima opzione (coerente col clamp di get()),
+        // non alla stringa vuota.
+        assert_eq!(state.value(&1), Some("D".to_owned()));
+        // E soprattutto: non deve nascere già "sporco".
+        assert_eq!(state.is_field_dirty(&1), Some(false));
+    }
+
+    #[test]
+    fn selected_on_an_empty_list_stays_empty_and_not_dirty() {
+        let state = FormBuilder::new()
+            .select(1, "Paese")
+            .selected(5) // nessuna opzione esiste comunque
+            .build();
+
+        assert_eq!(state.value(&1), Some(String::new()));
+        assert_eq!(state.is_field_dirty(&1), Some(false));
     }
 }
