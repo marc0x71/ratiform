@@ -13,6 +13,7 @@ pub enum FormLayout<T> {
     Horizontal,
     /// Label above, value below, each on its own row.
     Stacked,
-    /// Custom layout
+    /// Explicit grid of rows and columns, with full control over what
+    /// each cell draws. See `CustomLayout`
     Custom(CustomLayout<T>),
 }

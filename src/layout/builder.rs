@@ -138,6 +138,29 @@ impl<T> CustomLayoutBuilder<T> {
     }
 }
 
+/// Builds a [`CustomLayout`](crate::layout::custom::CustomLayout) from a
+/// grid literal: one or more `row [...]` blocks, each a list of
+/// `(Constraint, cell)` columns.
+///
+/// Each cell is one of `Label(id)`, `Value(id)`, `Error(id)`, or `None`
+/// for a spacer — `id` is any expression producing your field-id type.
+///
+/// ```
+/// # use ratiform::custom_layout;
+/// # use ratiform::layout::custom::CustomLayout;
+/// # use ratatui::layout::Constraint;
+/// # enum Field { Email, Password }
+/// let layout = custom_layout! {
+///     row [
+///         (Constraint::Length(15), Label(Field::Email)),
+///         (Constraint::Fill(1), Label(Field::Password)),
+///     ],
+///     row [
+///         (Constraint::Length(15), Value(Field::Email)),
+///         (Constraint::Fill(1), Value(Field::Password)),
+///     ],
+/// };
+/// ```
 #[macro_export]
 macro_rules! custom_layout {
     (
