@@ -116,6 +116,7 @@ impl<T: PartialEq> FormState<T> {
             (KeyModifiers::CONTROL, KeyCode::Enter) if !self.has_errors() => {
                 self.result = FormResult::Submitted
             }
+            (KeyModifiers::CONTROL, KeyCode::Enter) => {}
             (_, KeyCode::Enter)
                 if !self.has_errors() && !self.focused_handle_key(KeyCode::Enter) =>
             {
@@ -352,6 +353,42 @@ mod form_state_tests {
     };
     use ratatui::crossterm::event::KeyModifiers;
 
+    use crate::widget::text_area::TextAreaStatus;
+
+    fn make_textarea_field(id: i32, value: &str, readonly: bool) -> Field<i32> {
+        Field {
+            id,
+            kind: FieldKind::TextArea(TextAreaStatus {
+                label: "T".to_owned(),
+                value: value.to_owned(),
+                position: value.chars().count() as u16,
+                lines: Vec::new(),
+                placeholder: None,
+                visible_height: 0,
+            }),
+            options: FieldOptions {
+                required: None,
+                disabled: false,
+                readonly,
+                height: 3,
+                validator: vec![],
+                normalizer: None,
+            },
+            error: None,
+            initial_value: value.to_owned(),
+        }
+    }
+
+    #[test]
+    fn enter_on_a_readonly_textarea_falls_through_to_global_submit() {
+        let mut state = FormState::new(vec![make_textarea_field(1, "abc", true)], None);
+
+        state.handle_input(key(KeyCode::Enter));
+
+        assert!(matches!(state.result(), FormResult::Submitted));
+        assert_eq!(state.value(&1), Some("abc".to_owned())); // invariato, non "abc\n"
+    }
+
     fn make_field(id: i32, label: &str, value: &str, required: Option<Validator>) -> Field<i32> {
         Field {
             id,
@@ -578,5 +615,29 @@ mod form_state_tests {
 
         // No handle_input call yet -- the error must already be there.
         assert!(state.has_errors());
+    }
+
+    #[test]
+    fn ctrl_enter_on_an_invalid_form_does_not_leak_into_the_focused_textarea() {
+        let mut state = FormState::new(
+            vec![
+                make_field(
+                    1,
+                    "A",
+                    "",
+                    Some(validators::required("Obbligatorio".to_owned())),
+                ),
+                make_textarea_field(2, "ciao", false),
+            ],
+            None,
+        );
+        state.handle_input(key(KeyCode::Tab)); // sposta il focus sulla TextArea
+
+        let mut ctrl_enter = KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE);
+        ctrl_enter.modifiers = KeyModifiers::CONTROL;
+        state.handle_input(ctrl_enter);
+
+        assert!(matches!(state.result(), FormResult::Working));
+        assert_eq!(state.value(&2), Some("ciao".to_owned())); // niente newline inserito
     }
 }
