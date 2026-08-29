@@ -155,7 +155,11 @@ impl<T> Field<T> {
     /// — today, only `TextArea` claims `Enter`, to insert a newline
     /// instead of submitting the form.
     pub fn special_key_handled(&self) -> Vec<KeyCode> {
-        self.kind.special_key_handled()
+        if self.options.disabled || self.options.readonly {
+            Vec::new()
+        } else {
+            self.kind.special_key_handled()
+        }
     }
 }
 
