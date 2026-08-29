@@ -132,14 +132,30 @@ macro_rules! field_builder_common {
                 self
             }
 
-            /// Disables the field: it stops responding to keyboard input.
+            /// Disables the field: it stops responding to keyboard input,
+            /// and `Tab`/`BackTab` skip over it entirely — it can never
+            /// receive focus.
+            ///
+            /// This only affects *interactive* input. A disabled field
+            /// still responds to programmatic changes —
+            /// [`FormState::set_value`](crate::FormState::set_value) and
+            /// [`FormState::reset`](crate::FormState::reset) work on it
+            /// exactly as on any other field — and it still participates in
+            /// validation: a `required` field left empty still blocks
+            /// submission even while disabled, and since `Tab` can't reach
+            /// it, the user has no way to fix that from the keyboard.
             pub fn disabled(mut self) -> Self {
                 self.options.disabled = true;
                 self
             }
 
             /// Makes the field readonly: like `disabled()`, it stops
-            /// responding to keyboard input.
+            /// responding to keyboard input and the same caveats about
+            /// [`FormState::set_value`](crate::FormState::set_value),
+            /// [`FormState::reset`](crate::FormState::reset), and
+            /// validation apply. Unlike `disabled()`, though, a readonly
+            /// field is **not** skipped by `Tab`/`BackTab` — it can still
+            /// receive focus, it just won't accept edits once it does.
             pub fn readonly(mut self) -> Self {
                 self.options.readonly = true;
                 self

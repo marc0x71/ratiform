@@ -219,6 +219,21 @@ impl<T: PartialEq> FormState<T> {
     /// Triggers validation immediately, exactly as if the user had typed
     /// it, so the field's error state is up to date before the next
     /// render. Does nothing if no field has that id.
+    ///
+    /// `value` is interpreted differently depending on the field's kind,
+    /// and is never rejected outright — each kind coerces it to *some*
+    /// valid state instead:
+    ///
+    /// - `SingleLine`/`TextArea`: stored as given (filtered through
+    ///   [`alphabet`](crate::widget::single_line::SingleLineBuilder::alphabet)
+    ///   first, if one was set).
+    /// - `Checkbox`: parsed as a boolean, case-insensitively. Anything that
+    ///   isn't a recognized `true`/`false` spelling — not just an explicit
+    ///   `"false"` — resolves to `false`; the previous value is not kept.
+    /// - `Select`: matched against the field's list of values. A `value`
+    ///   with no match **clears the selection** rather than leaving the
+    ///   current one in place — [`FormState::value`] afterwards returns an
+    ///   empty string, not the value it had before this call.
     pub fn set_value(&mut self, id: &T, value: &str) {
         if let Some(f) = self.fields.iter_mut().find(|f| f.id == *id) {
             f.set(value);
