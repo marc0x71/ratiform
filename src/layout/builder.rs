@@ -69,7 +69,9 @@ impl<T> CustomLayoutBuilder<T> {
     }
 
     fn push_current_row(&mut self) {
-        if let Some(row) = self.current_row.take() {
+        if let Some(row) = self.current_row.take()
+            && !row.is_empty()
+        {
             self.rows.push(row);
         }
     }
@@ -114,4 +116,37 @@ macro_rules! custom_layout {
     (@object Error($id:expr)) => {
         Some($crate::layout::custom::Object::new($crate::layout::custom::ObjectKind::Error, $id))
     };
+}
+
+#[cfg(test)]
+mod builder_tests {
+    use super::*;
+    use ratatui::layout::Constraint;
+
+    #[test]
+    fn consecutive_row_calls_without_cells_do_not_create_a_phantom_row() {
+        let built = CustomLayoutBuilder::new()
+            .row()
+            .row()
+            .label(Constraint::Fill(1), 1)
+            .build();
+
+        let expected = CustomLayout::new(vec![vec![(
+            Constraint::Fill(1),
+            Some(Object::new(ObjectKind::Label, 1)),
+        )]]);
+        assert_eq!(built, expected);
+    }
+
+    #[test]
+    fn an_intentional_all_none_spacer_row_is_kept() {
+        let built = CustomLayoutBuilder::<i32>::new()
+            .row()
+            .empty(Constraint::Fill(1))
+            .build();
+        assert_eq!(
+            built,
+            CustomLayout::new(vec![vec![(Constraint::Fill(1), None)]])
+        );
+    }
 }
