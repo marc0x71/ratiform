@@ -36,6 +36,18 @@ impl<T: PartialEq> CheckboxBuilder<T> {
         self
     }
 
+    /// Adds a validator that fails unless the checkbox is checked
+    /// (`"true"`) — this actually enforces "must be checked",
+    /// e.g. for a terms-and-conditions box.
+    pub fn must_be_checked(mut self, message: String) -> Self {
+        self.options.validator.push(Box::new(move |value: &str| {
+            (value == "true")
+                .then_some(())
+                .ok_or_else(|| message.clone())
+        }));
+        self
+    }
+
     fn finish(mut self) -> FormBuilder<T> {
         let initial_value = self.checked.to_string();
         self.form.fields.push(Field {
@@ -159,5 +171,68 @@ mod checkbox_tests {
             &mut checkbox,
         );
         assert!(!checkbox.checked);
+    }
+}
+
+#[cfg(test)]
+mod builder_checkbox_tests {
+    use crate::{FormResult, builder::FormBuilder};
+    use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+
+    fn enter() -> KeyEvent {
+        KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE)
+    }
+
+    #[test]
+    fn must_be_checked_blocks_submit_when_unchecked() {
+        let mut state = FormBuilder::new()
+            .checkbox(1, "Accetto i termini")
+            .must_be_checked("Devi accettare i termini".to_owned())
+            .build();
+
+        state.handle_input(enter());
+
+        assert!(matches!(state.result(), FormResult::Working));
+    }
+
+    #[test]
+    fn must_be_checked_allows_submit_when_checked_at_build_time() {
+        let mut state = FormBuilder::new()
+            .checkbox(1, "Accetto i termini")
+            .checked(true)
+            .must_be_checked("Devi accettare i termini".to_owned())
+            .build();
+
+        state.handle_input(enter());
+
+        assert!(matches!(state.result(), FormResult::Submitted));
+    }
+
+    #[test]
+    fn must_be_checked_allows_submit_after_checking_interactively() {
+        let mut state = FormBuilder::new()
+            .checkbox(1, "Accetto i termini")
+            .must_be_checked("Devi accettare i termini".to_owned())
+            .build();
+
+        state.handle_input(KeyEvent::new(KeyCode::Char(' '), KeyModifiers::NONE)); // spunta
+        state.handle_input(enter());
+
+        assert!(matches!(state.result(), FormResult::Submitted));
+    }
+
+    #[test]
+    fn required_alone_is_still_a_no_op_on_a_checkbox() {
+        // Non-regressione: required() da solo, senza must_be_checked(),
+        // continua a non bloccare nulla su un Checkbox -- comportamento
+        // invariato, e' quello che questa fix affianca, non sostituisce.
+        let mut state = FormBuilder::new()
+            .checkbox(1, "Accetto i termini")
+            .required("Obbligatorio".to_owned())
+            .build();
+
+        state.handle_input(enter());
+
+        assert!(matches!(state.result(), FormResult::Submitted));
     }
 }
