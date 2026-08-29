@@ -338,6 +338,8 @@ An empty value is never handed to a validator — the required check decides on 
 
 Validation runs on every keystroke, on `set_value`, and once up front when the form is built, so a field that starts out invalid shows its error from the very first render. While any field is invalid, `Enter` doesn't submit the form.
 
+`disabled()`/`readonly()` don't skip validation — and since every field is required by default, disabling one with no initial value and no `.optional()` leaves it permanently invalid *and* permanently unreachable, since `Tab`/`BackTab` skip disabled fields. Call `.optional()` on any field you disable without giving it a value.
+
 ### Normalizing values
 
 Where `validator(...)` judges an already-typed value, `normalizer(...)` rewrites it into a canonical form before validation runs on it:
