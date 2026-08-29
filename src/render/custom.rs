@@ -406,3 +406,87 @@ mod required_height_tests {
         assert_eq!(required_height_custom(&all_unknown, &state, 30), 0); // riferimento rotto
     }
 }
+
+#[cfg(test)]
+mod focused_row_index_tests {
+    use super::*;
+    use crate::{
+        FormState,
+        field::{Field, FieldKind, FieldOptions},
+        layout::custom::{CustomLayout, Object, ObjectKind},
+        widget::single_line::SingleLineStatus,
+    };
+    use ratatui::layout::Constraint;
+
+    fn make_field(id: i32, label: &str, height: u16) -> Field<i32> {
+        Field {
+            id,
+            kind: FieldKind::SingleLine(SingleLineStatus {
+                label: label.to_owned(),
+                value: String::new(),
+                position: 0,
+                masked_with: None,
+                placeholder: None,
+                alphabet: None,
+            }),
+            options: FieldOptions {
+                required: None,
+                disabled: false,
+                readonly: false,
+                height,
+                validator: vec![],
+                normalizer: None,
+            },
+            error: None,
+            initial_value: String::new(),
+        }
+    }
+
+    fn lbl(id: i32) -> Option<Object<i32>> {
+        Some(Object::new(ObjectKind::Label, id))
+    }
+    fn val(id: i32) -> Option<Object<i32>> {
+        Some(Object::new(ObjectKind::Value, id))
+    }
+    fn err(id: i32) -> Option<Object<i32>> {
+        Some(Object::new(ObjectKind::Error, id))
+    }
+
+    #[test]
+    fn finds_the_row_containing_the_value_of_the_focused_field() {
+        let fields = vec![make_field(1, "Email", 1), make_field(2, "Password", 1)];
+        let layout = CustomLayout::new(vec![
+            vec![(Constraint::Fill(1), lbl(1)), (Constraint::Fill(1), lbl(2))], // riga 0
+            vec![(Constraint::Fill(1), val(1)), (Constraint::Fill(1), val(2))], // riga 1
+            vec![(Constraint::Fill(1), err(1)), (Constraint::Fill(1), err(2))], // riga 2
+        ]);
+        assert_eq!(focused_row_index(&layout, &fields, 0), Some(1)); // focus su Email -> riga del Value
+        assert_eq!(focused_row_index(&layout, &fields, 1), Some(1)); // stessa riga, Value di entrambi
+    }
+
+    #[test]
+    fn label_and_value_can_be_far_apart_the_value_row_wins() {
+        let fields = vec![make_field(1, "Notes", 1)];
+        let layout = CustomLayout::new(vec![
+            vec![(Constraint::Fill(1), lbl(1))], // riga 0: solo la label
+            vec![(Constraint::Fill(1), None)],   // riga 1: spaziatore
+            vec![(Constraint::Fill(1), None)],   // riga 2: spaziatore
+            vec![(Constraint::Fill(1), val(1))], // riga 3: il value, lontano dalla label
+        ]);
+        assert_eq!(focused_row_index(&layout, &fields, 0), Some(3));
+    }
+
+    #[test]
+    fn a_field_never_placed_as_value_in_the_grid_returns_none() {
+        let fields = vec![make_field(1, "Ghost", 1)];
+        let layout = CustomLayout::new(vec![vec![(Constraint::Fill(1), lbl(1))]]); // solo la label
+        assert_eq!(focused_row_index(&layout, &fields, 0), None);
+    }
+
+    #[test]
+    fn an_out_of_bounds_focus_returns_none() {
+        let fields = vec![make_field(1, "Only", 1)];
+        let layout = CustomLayout::new(vec![vec![(Constraint::Fill(1), val(1))]]);
+        assert_eq!(focused_row_index(&layout, &fields, 7), None); // nessun campo con questo indice
+    }
+}
