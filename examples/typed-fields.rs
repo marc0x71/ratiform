@@ -31,7 +31,8 @@ fn main() -> std::io::Result<()> {
             .value("Rossi")
             .select(FormField::Country, "Country")
             .values_ref(&[("IT", "Italy"), ("FR", "France"), ("DE", "Germany")])
-            .selected(1)
+            // .selected(1)
+            .no_selection()
             .height(5)
             // required by default; .optional() is what actually changes
             // behavior -- an unchecked box here doesn't block submission.

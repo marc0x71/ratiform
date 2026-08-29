@@ -77,7 +77,7 @@ impl<T: PartialEq> FormBuilder<T> {
             label: label.into(),
             values: Vec::new(),
             options: FieldOptions::default(),
-            selected: 0,
+            selected: Some(0),
         }
     }
 

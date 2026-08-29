@@ -347,6 +347,7 @@ pub fn required_height<T: PartialEq>(
 mod form_state_tests {
     use super::*;
     use crate::{
+        builder::FormBuilder,
         field::{FieldKind, FieldOptions, Validator},
         validators,
         widget::single_line::SingleLineStatus,
@@ -495,6 +496,20 @@ mod form_state_tests {
     }
 
     // ---------- submit ----------
+
+    #[test]
+    fn no_selection_combined_with_required_blocks_submit() {
+        let mut state = FormBuilder::new()
+            .select(1, "Paese")
+            .values_ref(&[("I", "Italia"), ("F", "Francia")])
+            .no_selection()
+            .required("Scegli un paese".to_owned())
+            .build();
+
+        state.handle_input(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
+
+        assert!(matches!(state.result(), FormResult::Working));
+    }
 
     #[test]
     fn enter_does_not_submit_while_a_field_is_invalid() {

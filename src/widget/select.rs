@@ -26,7 +26,7 @@ pub struct SelectBuilder<T> {
     pub(crate) form: FormBuilder<T>,
     pub(crate) label: String,
     pub(crate) values: Vec<(String, String)>,
-    pub(crate) selected: usize,
+    pub(crate) selected: Option<usize>,
     pub(crate) options: FieldOptions,
 }
 
@@ -40,7 +40,7 @@ impl<T: PartialEq> SelectBuilder<T> {
     /// values the field ends up with, it's silently clamped to the last
     /// one instead of panicking or leaving the field unselected.
     pub fn selected(mut self, selected: usize) -> Self {
-        self.selected = selected;
+        self.selected = Some(selected);
         self
     }
 
@@ -78,18 +78,29 @@ impl<T: PartialEq> SelectBuilder<T> {
         self
     }
 
+    /// Starts the field with nothing selected, instead of the first
+    /// option (the default). This is the only way `required()` has any
+    /// effect on a `Select` — with a selection always present otherwise,
+    /// `required()` can never fail.
+    ///
+    /// Mutually exclusive with [`selected`](SelectBuilder::selected):
+    /// whichever is called last wins.
+    pub fn no_selection(mut self) -> Self {
+        self.selected = None;
+        self
+    }
+
     fn finish(mut self) -> FormBuilder<T> {
         let initial_value = self
-            .values
-            .get(self.selected)
-            .map(|(k, _)| k.clone())
+            .selected
+            .and_then(|sel| self.values.get(sel).map(|(k, _)| k.clone()))
             .unwrap_or_default();
         self.form.fields.push(Field {
             id: self.id,
             kind: FieldKind::Select(SelectStatus {
                 label: self.label,
                 values: self.values,
-                list_state: ListState::default().with_selected(Some(self.selected)),
+                list_state: ListState::default().with_selected(self.selected),
                 height: self.options.height,
             }),
             options: self.options,
@@ -283,5 +294,51 @@ mod builder_select_tests {
 
         assert_eq!(state.value(&1), Some(String::new()));
         assert_eq!(state.is_field_dirty(&1), Some(false));
+    }
+    #[test]
+    fn no_selection_starts_the_field_empty() {
+        let state = FormBuilder::new()
+            .select(1, "Paese")
+            .values_ref(&[("I", "Italia"), ("F", "Francia")])
+            .no_selection()
+            .build();
+
+        assert_eq!(state.value(&1), Some(String::new()));
+    }
+
+    #[test]
+    fn without_no_selection_the_default_first_option_is_unchanged() {
+        // Non-regressione: il comportamento di sempre, per chi non chiama
+        // no_selection(), deve restare identico.
+        let state = FormBuilder::new()
+            .select(1, "Paese")
+            .values_ref(&[("I", "Italia"), ("F", "Francia")])
+            .build();
+
+        assert_eq!(state.value(&1), Some("I".to_owned()));
+        assert_eq!(state.is_field_dirty(&1), Some(false));
+    }
+
+    #[test]
+    fn explicit_selected_still_works_after_the_internal_type_change() {
+        let state = FormBuilder::new()
+            .select(1, "Paese")
+            .values_ref(&[("I", "Italia"), ("F", "Francia")])
+            .selected(1)
+            .build();
+
+        assert_eq!(state.value(&1), Some("F".to_owned()));
+    }
+
+    #[test]
+    fn calling_both_selected_and_no_selection_the_last_one_wins() {
+        let state = FormBuilder::new()
+            .select(1, "Paese")
+            .values_ref(&[("I", "Italia"), ("F", "Francia")])
+            .selected(1)
+            .no_selection() // chiamato per ultimo -> vince questo
+            .build();
+
+        assert_eq!(state.value(&1), Some(String::new()));
     }
 }
