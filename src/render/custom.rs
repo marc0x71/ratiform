@@ -36,6 +36,8 @@ pub(crate) fn render_custom<T: PartialEq>(
         .collect();
     let rows = Layout::vertical(constraints).split(area);
 
+    state.cursor_position = None;
+
     for (idx, area) in rows.iter().enumerate() {
         //
         let row = &layout.rows[from_row + idx];
@@ -99,7 +101,7 @@ fn render_object<T: PartialEq>(
             label.render(area, buf);
         }
         ObjectKind::Value => {
-            let a = render_field(
+            let position = render_field(
                 area,
                 buf,
                 field,
@@ -107,6 +109,9 @@ fn render_object<T: PartialEq>(
                 style.highlight.style_for(&field_state),
                 style.placeholder,
             );
+            if position.is_some() && has_focus {
+                state.cursor_position = position;
+            }
         }
         ObjectKind::Error => {
             if let Some(message) = field.error.as_ref() {
