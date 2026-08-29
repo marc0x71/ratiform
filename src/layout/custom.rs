@@ -39,6 +39,11 @@ const DEFAULT_COLUMN_GAP: u16 = 1;
 /// row, columns — with full control over which cell (if any) draws
 /// what. See [`FormLayout::Custom`](crate::layout::FormLayout::Custom).
 ///
+/// > **Tip:** give every field a `Value` cell somewhere in the grid.
+/// > Focus cycles through every field regardless of the layout, so one
+/// > left out can still receive focus — just with no visible cursor and
+/// > no error to explain why.
+///
 /// Built with [`CustomLayout::new`] from a raw `Vec` of rows, with
 /// [`CustomLayout::builder`]'s fluent API, or with the
 /// [`custom_layout!`](crate::custom_layout) macro.
