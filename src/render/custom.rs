@@ -1,15 +1,12 @@
-#![allow(unused)]
-
 use ratatui::{
     buffer::Buffer,
     layout::{Constraint, Layout, Rect},
-    macros::constraints,
     text::Span,
     widgets::{Paragraph, Widget, Wrap},
 };
 
 use crate::{
-    FormLayout, FormState,
+    FormState,
     field::Field,
     layout::custom::{CustomLayout, Object, ObjectKind},
     render::{count_lines, render_field, scroll_offset},
@@ -41,7 +38,7 @@ pub(crate) fn render_custom<T: PartialEq>(
     for (idx, area) in rows.iter().enumerate() {
         //
         let row = &layout.rows[from_row + idx];
-        render_row(idx, row, style, state, *area, buf);
+        render_row(row, style, state, *area, buf, layout.column_gap);
     }
 }
 
@@ -64,18 +61,18 @@ fn focused_row_index<T: PartialEq>(
 }
 
 fn render_row<T: PartialEq>(
-    idx: usize,
     row: &[(Constraint, Option<Object<T>>)],
     style: &FormStyle,
     state: &mut FormState<T>,
     area: Rect,
     buf: &mut Buffer,
+    column_padding: u16,
 ) {
     let cols = Layout::horizontal(row.iter().map(|(c, _)| *c).collect::<Vec<_>>()).split(area);
     for (idx, (_, object)) in row.iter().enumerate() {
         //
         if let Some(object) = object {
-            render_object(object, style, state, cols[idx], buf);
+            render_object(object, style, state, cols[idx], buf, idx, column_padding);
         }
     }
 }
@@ -86,10 +83,13 @@ fn render_object<T: PartialEq>(
     state: &mut FormState<T>,
     area: Rect,
     buf: &mut Buffer,
+    column_index: usize,
+    column_padding: u16,
 ) {
     let Some(field_position) = find_field_position(&state.fields, &object.id) else {
         return;
     };
+    let area = apply_padding(area, column_index, column_padding);
     let has_focus = state.fields[state.focus].id == object.id;
     let field = &mut state.fields[field_position];
     let field_state = field.options.to_field_state(has_focus);
@@ -133,7 +133,7 @@ fn compute_heights<T: PartialEq>(
     layout
         .rows
         .iter()
-        .map(|row| compute_row_height(row, fields, width))
+        .map(|row| compute_row_height(row, fields, width, layout.column_gap))
         .collect()
 }
 
@@ -149,18 +149,29 @@ fn compute_row_height<T: PartialEq>(
     row: &[(Constraint, Option<Object<T>>)],
     fields: &[Field<T>],
     width: u16,
+    column_padding: u16,
 ) -> u16 {
     let constraints = Layout::horizontal(row.iter().map(|(c, _)| *c).collect::<Vec<_>>())
         .split(Rect::new(0, 0, width, 1));
     let mut max_height = 0;
     for (idx, (_, obj)) in row.iter().enumerate() {
+        let area = apply_padding(constraints[idx], idx, column_padding);
         let h = match obj {
-            Some(obj) => object_height(constraints[idx], fields, obj),
+            Some(obj) => object_height(area, fields, obj),
             None => 1,
         };
         max_height = max_height.max(h)
     }
     max_height
+}
+
+fn apply_padding(area: Rect, index: usize, column_padding: u16) -> Rect {
+    let padding = if index == 0 { 0 } else { column_padding };
+    Rect {
+        x: area.x + padding,
+        width: area.width.saturating_sub(padding),
+        ..area
+    }
 }
 
 fn object_height<T: PartialEq>(area: Rect, fields: &[Field<T>], obj: &Object<T>) -> u16 {
@@ -401,13 +412,28 @@ mod required_height_tests {
         let all_unknown = CustomLayout::new(vec![vec![(Constraint::Fill(1), val(999))]]);
         assert_eq!(required_height_custom(&all_unknown, &state, 30), 0); // riferimento rotto
     }
+
+    #[test]
+    fn label_height_accounts_for_the_column_gap_not_just_the_first_column() {
+        // "Indirizzo Email" sta su una riga a larghezza 15 ma va a capo a 14 --
+        // esattamente la differenza che il gap su una colonna non-prima deve
+        // produrre.
+        let fields = vec![make_field(1, "Indirizzo Email", 1)];
+        let state = FormState::new(fields, None);
+        let custom = CustomLayout::new(vec![vec![
+            (Constraint::Length(15), None),
+            (Constraint::Length(15), lbl(1)), // colonna di mezzo, gap di default = 1
+            (Constraint::Fill(1), None),
+        ]]);
+
+        assert_eq!(required_height_custom(&custom, &state, 50), 2);
+    }
 }
 
 #[cfg(test)]
 mod focused_row_index_tests {
     use super::*;
     use crate::{
-        FormState,
         field::{Field, FieldKind, FieldOptions},
         layout::custom::{CustomLayout, Object, ObjectKind},
         widget::single_line::SingleLineStatus,
