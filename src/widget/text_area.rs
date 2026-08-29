@@ -51,7 +51,7 @@ impl<T: PartialEq> TextAreaBuilder<T> {
         // long, pre-filled, multi-line value, starting at the end could
         // land the cursor scrolled past content the user hasn't seen yet.
         let position = 0;
-        self.form.fields.push(Field {
+        self.form.push_field(Field {
             id: self.id,
             kind: FieldKind::TextArea(TextAreaStatus {
                 label: self.label,
@@ -72,6 +72,7 @@ impl<T: PartialEq> TextAreaBuilder<T> {
 field_builder_common!(TextAreaBuilder<T>);
 
 // STATUS
+#[derive(Debug)]
 pub struct TextAreaStatus {
     pub(crate) label: String,
     pub(crate) value: String,

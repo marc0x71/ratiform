@@ -45,7 +45,7 @@ fn main() -> std::io::Result<()> {
             .checkbox(ConnectionField::SaveCredentials, "Save credentials")
             .checked(false)
             .optional()
-            .build();
+            .build().unwrap();
 
         loop {
             terminal.draw(|frame| {

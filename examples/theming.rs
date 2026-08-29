@@ -64,7 +64,8 @@ fn main() -> std::io::Result<()> {
             .single_line(FormField::Debug, "Debug")
             .disabled()
             .label_width(25)
-            .build();
+            .build()
+            .unwrap();
 
         loop {
             let focus = format!("focus={:?}", state.focused_field());

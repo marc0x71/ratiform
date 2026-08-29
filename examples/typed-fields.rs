@@ -39,7 +39,7 @@ fn main() -> std::io::Result<()> {
             .checkbox(FormField::Terms, "I accept the terms")
             .checked(false)
             .optional()
-            .build();
+            .build().unwrap();
 
         loop {
             terminal.draw(|frame| {

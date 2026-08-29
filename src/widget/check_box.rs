@@ -50,7 +50,7 @@ impl<T: PartialEq> CheckboxBuilder<T> {
 
     fn finish(mut self) -> FormBuilder<T> {
         let initial_value = self.checked.to_string();
-        self.form.fields.push(Field {
+        self.form.push_field(Field {
             id: self.id,
             kind: FieldKind::CheckBox(CheckBoxStatus {
                 label: self.label,
@@ -67,6 +67,7 @@ impl<T: PartialEq> CheckboxBuilder<T> {
 field_builder_common!(CheckboxBuilder<T>);
 
 // STATUS
+#[derive(Debug)]
 pub struct CheckBoxStatus {
     pub(crate) label: String,
     pub(crate) checked: bool,
@@ -188,7 +189,8 @@ mod builder_checkbox_tests {
         let mut state = FormBuilder::new()
             .checkbox(1, "Accetto i termini")
             .must_be_checked("Devi accettare i termini".to_owned())
-            .build();
+            .build()
+            .unwrap();
 
         state.handle_input(enter());
 
@@ -201,7 +203,8 @@ mod builder_checkbox_tests {
             .checkbox(1, "Accetto i termini")
             .checked(true)
             .must_be_checked("Devi accettare i termini".to_owned())
-            .build();
+            .build()
+            .unwrap();
 
         state.handle_input(enter());
 
@@ -213,7 +216,8 @@ mod builder_checkbox_tests {
         let mut state = FormBuilder::new()
             .checkbox(1, "Accetto i termini")
             .must_be_checked("Devi accettare i termini".to_owned())
-            .build();
+            .build()
+            .unwrap();
 
         state.handle_input(KeyEvent::new(KeyCode::Char(' '), KeyModifiers::NONE)); // spunta
         state.handle_input(enter());
@@ -229,7 +233,8 @@ mod builder_checkbox_tests {
         let mut state = FormBuilder::new()
             .checkbox(1, "Accetto i termini")
             .required("Obbligatorio".to_owned())
-            .build();
+            .build()
+            .unwrap();
 
         state.handle_input(enter());
 

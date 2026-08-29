@@ -79,7 +79,7 @@ impl<T: PartialEq> SingleLineBuilder<T> {
         let value = filter_by(&self.value, self.alphabet.as_ref());
         let position = value.chars().count() as u16;
         let initial_value = value.clone();
-        self.form.fields.push(Field {
+        self.form.push_field(Field {
             id: self.id,
             kind: FieldKind::SingleLine(SingleLineStatus {
                 label: self.label,
@@ -101,6 +101,7 @@ impl<T: PartialEq> SingleLineBuilder<T> {
 field_builder_common!(SingleLineBuilder<T>);
 
 // STATUS
+#[derive(Debug)]
 pub struct SingleLineStatus {
     pub(crate) label: String,
     pub(crate) value: String,

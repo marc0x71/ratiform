@@ -1,5 +1,6 @@
 use crate::{
     FormState,
+    error::BuildError,
     field::{Field, FieldOptions},
     widget::{
         check_box::CheckboxBuilder, select::SelectBuilder, single_line::SingleLineBuilder,
@@ -11,8 +12,15 @@ use crate::{
 /// identify each field — any type works, from a plain integer to your own
 /// `enum`; see the crate-level docs for why that matters.
 pub struct FormBuilder<T> {
+    // TODO: pending_error records the first build error found while
+    // chaining field builders, deferred until build() is called -- a
+    // fluent chain always runs every call regardless of earlier
+    // failures, so this records the first problem instead of stopping
+    // the chain. Review if a fallible-per-field API is ever worth the
+    // ergonomics trade-off.
     pub(crate) fields: Vec<Field<T>>,
     pub(crate) label_width: Option<u16>,
+    pub(crate) pending_error: Option<BuildError>,
 }
 
 impl<T> Default for FormBuilder<T> {
@@ -20,6 +28,7 @@ impl<T> Default for FormBuilder<T> {
         Self {
             fields: Default::default(),
             label_width: None,
+            pending_error: None,
         }
     }
 }
@@ -97,8 +106,23 @@ impl<T: PartialEq> FormBuilder<T> {
     /// so a field that starts out invalid (an initial value too short, a
     /// required field left empty) already carries its error before the
     /// first render.
-    pub fn build(self) -> FormState<T> {
-        FormState::new(self.fields, self.label_width)
+    pub fn build(self) -> Result<FormState<T>, BuildError> {
+        if let Some(err) = self.pending_error {
+            return Err(err);
+        }
+        Ok(FormState::new(self.fields, self.label_width))
+    }
+
+    pub(crate) fn push_field(&mut self, field: Field<T>) {
+        if self.pending_error.is_none()
+            && let Some(pos) = self.fields.iter().position(|f| f.id == field.id)
+        {
+            self.pending_error = Some(BuildError::DuplicateFieldId {
+                first: pos,
+                duplicate: self.fields.len(),
+            });
+        }
+        self.fields.push(field);
     }
 }
 
@@ -254,7 +278,7 @@ macro_rules! field_builder_common {
 
             /// Finishes this field and builds the `FormState` — see
             /// `FormBuilder::build`.
-            pub fn build(self) -> FormState<T> {
+            pub fn build(self) -> Result<FormState<T>, $crate::error::BuildError> {
                 self.finish().build()
             }
         }

@@ -25,7 +25,7 @@ fn main() -> std::io::Result<()> {
             .placeholder("A couple of lines about yourself")
             .height(3)
             .optional()
-            .build();
+            .build().unwrap();
 
         loop {
             terminal.draw(|frame| {

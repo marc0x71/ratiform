@@ -18,7 +18,7 @@ fn main() -> std::io::Result<()> {
         .single_line(Field::Password, "Password")
         .masked()
         .required("Password is required".to_owned())
-        .build();
+        .build().unwrap();
     ratatui::run(|terminal| -> std::io::Result<_> {
         loop {
             terminal.draw(|frame| {

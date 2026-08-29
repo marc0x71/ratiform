@@ -47,7 +47,7 @@ fn main() -> std::io::Result<()> {
                     .ok_or_else(|| "Invalid email address".to_owned())
             })
             .required("Email is required".to_owned())
-            .build();
+            .build().unwrap();
 
         loop {
             terminal.draw(|frame| {

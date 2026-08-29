@@ -52,7 +52,7 @@ fn main() -> std::io::Result<()> {
             .checkbox(LoginField::RememberMe, "Remember me")
             .checked(false)
             .optional()
-            .build();
+            .build().unwrap();
 
         loop {
             terminal.draw(|frame| {

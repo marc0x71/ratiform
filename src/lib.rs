@@ -11,6 +11,7 @@
 //! [project README](https://github.com/marc0x71/ratiform).
 
 pub mod builder;
+pub mod error;
 mod event;
 mod field;
 pub mod layout;
@@ -34,7 +35,7 @@ pub use widget::{
 };
 
 /// The form's current state, returned by [`FormState::result`].
-#[derive(Default, Clone, Copy)]
+#[derive(Debug, Default, Clone, Copy)]
 pub enum FormResult {
     /// The user pressed `Enter` while every field was valid.
     Submitted,
@@ -330,9 +331,9 @@ impl<T> Default for Form<T> {
 ///
 /// ```rust
 /// # use ratiform::{required_height, builder::FormBuilder, FormLayout};
-/// # #[derive(PartialEq)] enum Field { Name }
+/// # #[derive(PartialEq, Debug)] enum Field { Name }
 /// let layout = FormLayout::Horizontal;
-/// let state = FormBuilder::new().single_line(Field::Name, "Name").build();
+/// let state = FormBuilder::new().single_line(Field::Name, "Name").build().unwrap();
 /// required_height(&layout, &state, 50);
 /// ```
 pub fn required_height<T: PartialEq>(
@@ -504,7 +505,8 @@ mod form_state_tests {
             .values_ref(&[("I", "Italia"), ("F", "Francia")])
             .no_selection()
             .required("Scegli un paese".to_owned())
-            .build();
+            .build()
+            .unwrap();
 
         state.handle_input(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
 
