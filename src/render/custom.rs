@@ -142,11 +142,7 @@ fn compute_rows_heights<T: PartialEq>(
     fields: &[Field<T>],
     width: u16,
 ) -> u16 {
-    layout
-        .rows
-        .iter()
-        .map(|row| compute_row_height(row, fields, width))
-        .sum()
+    compute_heights(layout, fields, width).iter().sum()
 }
 
 fn compute_row_height<T: PartialEq>(
