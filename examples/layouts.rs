@@ -5,7 +5,7 @@ use ratatui::{
     layout::Constraint,
     widgets::{Block, Padding},
 };
-use ratiform::{Form, FormLayout, builder::FormBuilder};
+use ratiform::{Form, builder::FormBuilder, layout::FormLayout};
 
 #[derive(Debug, Hash, Eq, PartialEq)]
 enum FormField {

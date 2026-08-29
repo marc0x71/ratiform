@@ -13,6 +13,7 @@
 pub mod builder;
 mod event;
 mod field;
+pub mod layout;
 mod render;
 pub mod style;
 pub mod validators;
@@ -26,6 +27,7 @@ use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 use crate::{event::handle_input_field, style::FormStyle};
 
 pub use field::{Normalizer, Validator};
+pub use layout::FormLayout;
 pub use widget::{
     check_box::CheckboxBuilder, select::SelectBuilder, single_line::SingleLineBuilder,
     text_area::TextAreaBuilder,
@@ -265,25 +267,13 @@ impl<T: PartialEq> FormState<T> {
     }
 }
 
-/// How a form arranges each field's label relative to its value. Set via
-/// [`Form::with_layout`]; defaults to [`FormLayout::Horizontal`].
-#[derive(Debug, Default, Clone, Copy, PartialEq)]
-pub enum FormLayout {
-    /// Label and value side by side, on the same row — the layout used
-    /// throughout this crate's examples and screenshots.
-    #[default]
-    Horizontal,
-    /// Label above, value below, each on its own row.
-    Stacked,
-}
-
 /// The widget that renders a [`FormState`]. Stateless and cheap to
 /// construct — build one fresh on every frame, exactly like any other
 /// Ratatui widget, and pass it to `Frame::render_stateful_widget` together
 /// with the `FormState` you want it to draw.
 pub struct Form<T> {
     style: FormStyle,
-    layout: FormLayout,
+    layout: FormLayout<T>,
     _phantom: PhantomData<T>,
 }
 
@@ -297,7 +287,7 @@ impl<T> Form<T> {
 
     /// Renders using the given [`FormLayout`] instead of the default
     /// `Horizontal` one.
-    pub fn with_layout(mut self, layout: FormLayout) -> Self {
+    pub fn with_layout(mut self, layout: FormLayout<T>) -> Self {
         self.layout = layout;
         self
     }
@@ -327,9 +317,13 @@ impl<T> Default for Form<T> {
 /// # #[derive(PartialEq)] enum Field { Name }
 /// let layout = FormLayout::Horizontal;
 /// let state = FormBuilder::new().single_line(Field::Name, "Name").build();
-/// required_height(layout, &state, 50);
+/// required_height(&layout, &state, 50);
 /// ```
-pub fn required_height<T: PartialEq>(layout: FormLayout, state: &FormState<T>, width: u16) -> u16 {
+pub fn required_height<T: PartialEq>(
+    layout: &FormLayout<T>,
+    state: &FormState<T>,
+    width: u16,
+) -> u16 {
     render::required_height(layout, state, width)
 }
 
