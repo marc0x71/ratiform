@@ -18,7 +18,7 @@ let mut state = FormBuilder::new()
     .select(Field::Country, "Country")
     .values_ref(&[("IT", "Italy"), ("FR", "France"), ("DE", "Germany")])
     .checkbox(Field::Terms, "I accept the terms")
-    .build();
+    .build().unwrap();
 ```
 
 The field identity is a real Rust type — `state.value(&Field::Email)`, not `state.value("email")`. No string keys, no JSON round-trip, no form-specific data model.
@@ -104,14 +104,14 @@ enum Field {
     Password,
 }
 
-fn main() -> std::io::Result<()> {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut state = FormBuilder::new()
         .single_line(Field::Username, "Username")
         .required("Username is required".to_owned())
         .single_line(Field::Password, "Password")
         .masked()
         .required("Password is required".to_owned())
-        .build();
+        .build()?;
 
     ratatui::run(|terminal| -> std::io::Result<_> {
         loop {
@@ -191,6 +191,8 @@ A list of `(value, label)` pairs, navigated with `Up`/`Down`/`Home`/`End`/`PageU
     .selected(1)
     .height(5)
 ```
+
+Two options sharing the same value make `build()` fail too — see [Duplicate ids and values](#duplicate-ids-and-values).
 
 ### Text area
 
@@ -316,10 +318,25 @@ let mut state = FormBuilder::new()
     .values_ref(&[("IT", "Italy"), ("FR", "France"), ("DE", "Germany")])
     .checkbox(FormField::Terms, "I accept the terms")
     .optional()
-    .build();
+    .build().unwrap();
 ```
 
-This is what lets you match each submitted value back to the field that produced it, at compile time — no risk of a typo in a field name going unnoticed until runtime, and the compiler tells you if a `match` on the results forgets a variant. Note that `LastName`/`Country` never call `.required(...)`: every field is required by default (with a built-in message), so `.required(message)` is only needed for your *own* message — `.optional()` is what actually opts a field out.
+This is what lets you match each submitted value back to the field that produced it, at compile time — no risk of a typo in a field name going unnoticed until runtime. Note that `LastName`/`Country` never call `.required(...)`: every field is required by default (with a built-in message), so `.required(message)` is only needed for your *own* message — `.optional()` is what actually opts a field out. Two fields sharing the same id make `build()` fail at runtime instead — see [Duplicate ids and values](#duplicate-ids-and-values).
+
+### Duplicate ids and values
+
+`build()` returns `Result<FormState<T>, BuildError>`, not `FormState<T>` directly — it fails if two fields share the same id, or if a `Select` field has two options with the same value. Both are checked as each field builder finishes, so the error you get is always the *first* one found while building the chain, even though later field builders still run to completion.
+
+```rust
+let result = FormBuilder::new()
+    .single_line(Field::Name, "Name")
+    .single_line(Field::Name, "Name again") // same id twice
+    .build();
+
+assert!(result.is_err());
+```
+
+This is a development-time mistake to catch, not something you'd handle differently at runtime — `.build()?` (with a `Box<dyn std::error::Error>` return type, as in every example) or `.build().unwrap()` are both reasonable, depending on whether `main` itself returns a `Result`.
 
 ### Validation
 
