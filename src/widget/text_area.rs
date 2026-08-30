@@ -196,7 +196,13 @@ pub(crate) fn handle_input_textarea(key_event: KeyEvent, text_area: &mut TextAre
         (_, KeyCode::Delete) => text_area.delete(),
         (_, KeyCode::Up) => text_area.up(),
         (_, KeyCode::Down) => text_area.down(),
-        (_, KeyCode::Char(c)) => text_area.insert(c),
+        (_, KeyCode::Char(c))
+            if !key_event
+                .modifiers
+                .intersects(KeyModifiers::CONTROL | KeyModifiers::ALT) =>
+        {
+            text_area.insert(c)
+        }
         (_, KeyCode::Enter) => text_area.enter(),
         (_, KeyCode::PageUp) => text_area.page_up(),
         (_, KeyCode::PageDown) => text_area.page_down(),
@@ -628,5 +634,33 @@ mod editing_tests {
 
         assert_eq!(text_area.value, "abcdef");
         assert_eq!(text_area.position, 3);
+    }
+
+    #[test]
+    fn ctrl_and_alt_do_not_insert_the_character() {
+        let mut text_area = make_text_area("", 0);
+
+        handle_input_textarea(
+            KeyEvent::new(KeyCode::Char('s'), KeyModifiers::CONTROL),
+            &mut text_area,
+        );
+        handle_input_textarea(
+            KeyEvent::new(KeyCode::Char('x'), KeyModifiers::ALT),
+            &mut text_area,
+        );
+
+        assert_eq!(text_area.value, ""); // niente inserito
+    }
+
+    #[test]
+    fn shift_still_inserts_the_character() {
+        let mut text_area = make_text_area("", 0);
+
+        handle_input_textarea(
+            KeyEvent::new(KeyCode::Char('A'), KeyModifiers::SHIFT),
+            &mut text_area,
+        );
+
+        assert_eq!(text_area.value, "A"); // Shift non blocca, coerente con gli altri due
     }
 }

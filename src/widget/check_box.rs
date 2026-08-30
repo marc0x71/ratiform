@@ -2,7 +2,7 @@ use std::borrow::Cow;
 
 use ratatui::{
     buffer::Buffer,
-    crossterm::event::{KeyCode, KeyEvent},
+    crossterm::event::{KeyCode, KeyEvent, KeyModifiers},
     layout::Rect,
     style::Style,
     text::Span,
@@ -92,7 +92,11 @@ impl CheckBoxStatus {
 
 // EVENT
 pub(crate) fn handle_input_checkbox(key_event: KeyEvent, check_box: &mut CheckBoxStatus) {
-    if let KeyCode::Char(' ') = key_event.code {
+    if let KeyCode::Char(' ') = key_event.code
+        && !key_event
+            .modifiers
+            .intersects(KeyModifiers::CONTROL | KeyModifiers::ALT)
+    {
         check_box.toggle();
     }
 }
@@ -172,6 +176,34 @@ mod checkbox_tests {
             &mut checkbox,
         );
         assert!(!checkbox.checked);
+    }
+
+    #[test]
+    fn ctrl_and_alt_do_not_toggle() {
+        let mut checkbox = make_checkbox(false);
+
+        handle_input_checkbox(
+            KeyEvent::new(KeyCode::Char(' '), KeyModifiers::CONTROL),
+            &mut checkbox,
+        );
+        handle_input_checkbox(
+            KeyEvent::new(KeyCode::Char(' '), KeyModifiers::ALT),
+            &mut checkbox,
+        );
+
+        assert!(!checkbox.checked); // invariato, nessun toggle
+    }
+
+    #[test]
+    fn shift_still_toggles() {
+        let mut checkbox = make_checkbox(false);
+
+        handle_input_checkbox(
+            KeyEvent::new(KeyCode::Char(' '), KeyModifiers::SHIFT),
+            &mut checkbox,
+        );
+
+        assert!(checkbox.checked); // Shift non blocca, coerente con SingleLine
     }
 }
 

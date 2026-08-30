@@ -2,7 +2,7 @@ use std::borrow::Cow;
 
 use ratatui::{
     buffer::Buffer,
-    crossterm::event::{KeyCode, KeyEvent},
+    crossterm::event::{KeyCode, KeyEvent, KeyModifiers},
     layout::Rect,
     style::Style,
     widgets::{Block, Paragraph, Widget},
@@ -184,7 +184,13 @@ pub(crate) fn handle_input_singleline(key_event: KeyEvent, single_line: &mut Sin
         KeyCode::Home => single_line.home(),
         KeyCode::End => single_line.end(),
         KeyCode::Delete => single_line.delete(),
-        KeyCode::Char(c) => single_line.insert(c),
+        KeyCode::Char(c)
+            if !key_event
+                .modifiers
+                .intersects(KeyModifiers::CONTROL | KeyModifiers::ALT) =>
+        {
+            single_line.insert(c)
+        }
         _ => {}
     }
 }
@@ -436,6 +442,47 @@ mod editing_tests {
         );
 
         assert_eq!(status.position, 4);
+    }
+
+    #[test]
+    fn ctrl_and_alt_do_not_insert_the_character() {
+        let mut status = make_status("", 0); // helper già esistente nei test del file
+
+        handle_input_singleline(
+            KeyEvent::new(KeyCode::Char('s'), KeyModifiers::CONTROL),
+            &mut status,
+        );
+        handle_input_singleline(
+            KeyEvent::new(KeyCode::Char('x'), KeyModifiers::ALT),
+            &mut status,
+        );
+
+        assert_eq!(status.value, ""); // niente inserito
+    }
+
+    #[test]
+    fn shift_still_inserts_the_character() {
+        let mut status = make_status("", 0);
+
+        handle_input_singleline(
+            KeyEvent::new(KeyCode::Char('A'), KeyModifiers::SHIFT),
+            &mut status,
+        );
+
+        assert_eq!(status.value, "A"); // maiuscola digitata normalmente, non bloccata
+    }
+
+    #[test]
+    fn plain_char_without_modifiers_still_works() {
+        // non-regressione: il caso base, senza nessun modificatore
+        let mut status = make_status("", 0);
+
+        handle_input_singleline(
+            KeyEvent::new(KeyCode::Char('x'), KeyModifiers::NONE),
+            &mut status,
+        );
+
+        assert_eq!(status.value, "x");
     }
 }
 
