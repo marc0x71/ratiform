@@ -1,7 +1,7 @@
 use ratatui::{
     buffer::Buffer,
-    layout::{Constraint, Layout, Rect},
-    text::Span,
+    layout::{Alignment, Constraint, Layout, Rect},
+    text::Line,
     widgets::{Paragraph, Widget, Wrap},
 };
 
@@ -24,7 +24,7 @@ pub(crate) fn render_horizontal<T: PartialEq>(
         area.width,
     );
 
-    let heights: Vec<u16> = compute_heights(&state.fields, label_width);
+    let heights: Vec<u16> = compute_heights(&state.fields, label_width, area.width);
 
     let (from_field, to_field) = scroll_offset(&heights, area.height, state.focus);
 
@@ -39,10 +39,23 @@ pub(crate) fn render_horizontal<T: PartialEq>(
     for (idx, field) in state.fields[from_field..=to_field].iter_mut().enumerate() {
         let has_focus = (idx + from_field) == state.focus;
         let field_state = field.options.to_field_state(has_focus);
-        let (row, error) = if rows[idx].height >= 2 {
+
+        let error_height = field
+            .error
+            .as_ref()
+            .map(|msg| count_lines(msg.as_str(), area.width))
+            .unwrap_or(1);
+
+        let top_height = field
+            .options
+            .height
+            .max(count_lines(field.label(), label_width));
+
+        let (row, error) = if rows[idx].height >= (top_height + error_height) {
             // there is enough space for the error message
             let [row, error] =
-                Layout::vertical([Constraint::Fill(1), Constraint::Length(1)]).areas(rows[idx]);
+                Layout::vertical([Constraint::Fill(1), Constraint::Length(error_height)])
+                    .areas(rows[idx]);
             (row, Some(error))
         } else {
             // display only the widget
@@ -72,11 +85,10 @@ pub(crate) fn render_horizontal<T: PartialEq>(
         if let Some(message) = field.error.as_ref()
             && let Some(err_area) = error
         {
-            let len = message.chars().count() as u16;
-            let [_, right] =
-                Layout::horizontal([Constraint::Fill(1), Constraint::Length(len)]).areas(err_area);
-            let error_message = Span::raw(message.as_str()).style(style.error);
-            error_message.render(right, buf);
+            let error_message = Paragraph::new(Line::styled(message.as_str(), style.error))
+                .alignment(Alignment::Right)
+                .wrap(Wrap { trim: true });
+            error_message.render(err_area, buf);
         }
     }
 }
@@ -85,7 +97,7 @@ pub(crate) fn required_height_horizontal<T: PartialEq>(state: &FormState<T>, wid
     let label_width =
         resolve_label_width(state.label_width, state.max_label_length() as u16, width);
 
-    let heights: Vec<u16> = compute_heights(&state.fields, label_width);
+    let heights: Vec<u16> = compute_heights(&state.fields, label_width, width);
     heights.iter().sum()
 }
 
@@ -96,10 +108,20 @@ fn resolve_label_width(configured: Option<u16>, computed_max: u16, area_width: u
     }
 }
 
-fn compute_heights<T: PartialEq>(fields: &[Field<T>], width: u16) -> Vec<u16> {
+fn compute_heights<T: PartialEq>(fields: &[Field<T>], label_width: u16, width: u16) -> Vec<u16> {
     let mut heights = Vec::new();
     for field in fields {
-        let height = field.options.height.max(count_lines(field.label(), width)) + 1;
+        let error_height = field
+            .error
+            .as_ref()
+            .map(|msg| count_lines(msg.as_str(), width))
+            .unwrap_or(1);
+
+        let height = field
+            .options
+            .height
+            .max(count_lines(field.label(), label_width))
+            + error_height;
         heights.push(height);
     }
     heights
@@ -169,14 +191,14 @@ mod label_width_tests {
     #[test]
     fn the_configured_height_wins_when_taller_than_the_wrapped_label() {
         let field = make_field("Paese", 5);
-        let heights = compute_heights(std::slice::from_ref(&field), 20);
+        let heights = compute_heights(std::slice::from_ref(&field), 20, 100);
         assert_eq!(heights[0], 6);
     }
 
     #[test]
     fn the_wrapped_label_wins_when_taller_than_the_configured_height() {
         let field = make_field("Nome cognome indirizzo", 1);
-        let heights = compute_heights(std::slice::from_ref(&field), 15);
+        let heights = compute_heights(std::slice::from_ref(&field), 15, 100);
         assert_eq!(heights[0], 3);
     }
 
