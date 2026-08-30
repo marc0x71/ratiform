@@ -27,6 +27,8 @@ use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 
 use crate::{event::handle_input_field, style::FormStyle};
 
+pub(crate) use builder::field_builder_common;
+
 pub use field::{Normalizer, Validator};
 pub use layout::FormLayout;
 pub use widget::{

@@ -134,7 +134,6 @@ impl<T: PartialEq> FormBuilder<T> {
 /// Invoked once per widget builder (see `single_line.rs`, `check_box.rs`,
 /// `select.rs`), so a new field kind gets all of this for free instead of
 /// reimplementing it.
-#[macro_export]
 macro_rules! field_builder_common {
     ($builder:ident<$generic:ident>) => {
         impl<$generic: PartialEq> $builder<$generic> {
@@ -285,3 +284,4 @@ macro_rules! field_builder_common {
         }
     };
 }
+pub(crate) use field_builder_common;
