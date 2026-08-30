@@ -293,6 +293,8 @@ The same grid can be built imperatively with `CustomLayout::builder()` — a flu
 
 Each grid row scrolls independently — unlike `Horizontal`/`Stacked`, where a field's label, value, and error always move together, a `Custom` layout scrolls whichever row currently has focus into view, which can leave a distant `Label`/`Error` row scrolled out of sight. Keep a field's cells on nearby rows if you want them to move together.
 
+A cell whose id doesn't match any of the form's actual fields — a typo, or a layout built separately from the fields it's meant to describe — draws nothing and reports no error; it's silently treated as an empty cell.
+
 See [`examples/custom.rs`](examples/custom.rs) for a runnable version.
 
 ### Field identifiers
