@@ -1,9 +1,7 @@
-use std::rc::Rc;
-
 use ratatui::{
     buffer::Buffer,
-    layout::{Constraint, Layout, Rect},
-    text::Span,
+    layout::{Alignment, Constraint, Layout, Rect},
+    text::Line,
     widgets::{Paragraph, Widget, Wrap},
 };
 
@@ -21,9 +19,10 @@ pub(crate) fn render_stacked<T: PartialEq>(
     state: &mut FormState<T>,
 ) {
     let heights: Vec<u16> = compute_heights(&state.fields, area.width);
-    let (from_field, to_field) = scroll_offset(&heights, area.height, state.focus);
+    let focus_block = state.focus * 3 + 2;
+    let (from_row, to_row) = scroll_offset(&heights, area.height, focus_block);
 
-    let constraints: Vec<_> = heights[from_field..=to_field]
+    let constraints: Vec<_> = heights[from_row..=to_row]
         .iter()
         .map(|f| Constraint::Length(*f))
         .collect();
@@ -31,25 +30,26 @@ pub(crate) fn render_stacked<T: PartialEq>(
 
     state.cursor_position = None;
 
-    for (idx, field) in state.fields[from_field..=to_field].iter_mut().enumerate() {
-        let has_focus = (idx + from_field) == state.focus;
+    for (row_idx, row) in rows.iter().enumerate() {
+        let field_index = (from_row + row_idx) / 3;
+        let field = state.fields.get_mut(field_index).unwrap();
+        let has_focus = field_index == state.focus;
         let field_state = field.options.to_field_state(has_focus);
 
-        let label_height = count_lines(field.label(), area.width);
-        let value_height = field.options.height;
-        let areas = compute_areas(label_height, value_height, 1, rows[idx]);
+        let area = *row;
 
+        let element = (from_row + row_idx) % 3;
         // label
-        if !areas.is_empty() {
+        if element == 0 {
             let label = Paragraph::new(field.label())
                 .style(style.label.style_for(&field_state))
                 .wrap(Wrap { trim: true });
-            label.render(areas[0], buf);
+            label.render(area, buf);
         }
         // value
-        if areas.len() > 1
+        if element == 1
             && let Some(position) = render_field(
-                areas[1],
+                area,
                 buf,
                 field,
                 style.value.style_for(&field_state),
@@ -62,13 +62,12 @@ pub(crate) fn render_stacked<T: PartialEq>(
         }
         // error
         if let Some(message) = field.error.as_ref()
-            && areas.len() > 2
+            && element == 2
         {
-            let len = message.chars().count() as u16;
-            let [_, right] =
-                Layout::horizontal([Constraint::Fill(1), Constraint::Length(len)]).areas(areas[2]);
-            let error_message = Span::raw(message.as_str()).style(style.error);
-            error_message.render(right, buf);
+            let error_message = Paragraph::new(Line::styled(message.as_str(), style.error))
+                .alignment(Alignment::Right)
+                .wrap(Wrap { trim: true });
+            error_message.render(area, buf);
         }
     }
 }
@@ -77,35 +76,19 @@ pub(crate) fn required_height_stacked<T: PartialEq>(state: &FormState<T>, width:
     compute_heights(&state.fields, width).into_iter().sum()
 }
 
-fn compute_areas(
-    label_height: u16,
-    value_height: u16,
-    error_height: u16,
-    area: Rect,
-) -> Rc<[Rect]> {
-    let heights = [label_height, value_height, error_height];
-
-    let mut available = area.height;
-    let mut constraints = Vec::with_capacity(heights.len());
-
-    for height in heights {
-        if height > available {
-            break;
-        }
-
-        constraints.push(Constraint::Length(height));
-        available -= height;
-    }
-
-    Layout::vertical(constraints).split(area)
-}
-
 fn compute_heights<T: PartialEq>(fields: &[Field<T>], width: u16) -> Vec<u16> {
     let mut heights = Vec::new();
     for field in fields {
         let label_height = count_lines(field.label(), width);
         let value_height = field.options.height;
-        heights.push(value_height + label_height + 1);
+        let error_height = field
+            .error
+            .as_ref()
+            .map(|msg| count_lines(msg.as_str(), width))
+            .unwrap_or(1);
+        heights.push(label_height);
+        heights.push(value_height);
+        heights.push(error_height);
     }
     heights
 }
