@@ -186,9 +186,10 @@ macro_rules! field_builder_common {
             }
 
             /// Sets the field's height in terminal rows, not counting the
-            /// row reserved for its error message (added automatically).
-            /// Defaults to 1; mainly useful for `Select`, to control how
-            /// many options are visible without scrolling.
+            /// row(s) reserved for its error message (added automatically,
+            /// growing to fit a message that wraps onto more than one
+            /// line). Defaults to 1; mainly useful for `Select`, to
+            /// control how many options are visible without scrolling.
             pub fn height(mut self, height: u16) -> Self {
                 self.options.height = height;
                 self

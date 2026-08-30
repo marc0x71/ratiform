@@ -289,7 +289,7 @@ frame.render_stateful_widget(
 );
 ```
 
-The same grid can be built imperatively with `CustomLayout::builder()` — a fluent `.row()...label()/value()/error()/empty()...build()` — when the rows aren't known until runtime. `Label` wraps onto multiple lines if the column is too narrow, the same as `Horizontal`/`Stacked`; `Error`, like in every layout, is always a single line and always reserves its row's height, whether or not the field currently has an error. Adjacent cells get a small horizontal gap by default (`CustomLayout::with_column_gap` to change it).
+The same grid can be built imperatively with `CustomLayout::builder()` — a fluent `.row()...label()/value()/error()/empty()...build()` — when the rows aren't known until runtime. `Label` and `Error` both wrap onto multiple lines if the column is too narrow, the same as each other — `Error`'s row reserves at least one line even when the field currently has no error, growing to fit whatever message is actually there, so the layout doesn't jump the moment one appears. Adjacent cells get a small horizontal gap by default (`CustomLayout::with_column_gap` to change it).
 
 Each grid row scrolls independently — unlike `Horizontal`/`Stacked`, where a field's label, value, and error always move together, a `Custom` layout scrolls whichever row currently has focus into view, which can leave a distant `Label`/`Error` row scrolled out of sight. Keep a field's cells on nearby rows if you want them to move together.
 
