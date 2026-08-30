@@ -19,9 +19,10 @@ use crate::{
 // BUILDER
 /// Builder for a select field: a list of options the user picks from with
 /// the arrow keys. Started with
-/// [`FormBuilder::select`](crate::builder::FormBuilder::select). For the
-/// options shared with every other field kind, see
-/// [`field_builder_common`](crate::field_builder_common).
+/// [`FormBuilder::select`](crate::builder::FormBuilder::select).
+/// Like the other field builders, it supports the common options
+/// `required`, `optional`, `disabled`, `readonly`, `height`,
+/// `validator`, and `normalizer`.
 pub struct SelectBuilder<T> {
     pub(crate) id: T,
     pub(crate) form: FormBuilder<T>,

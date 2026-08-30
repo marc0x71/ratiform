@@ -18,9 +18,10 @@ use crate::{
 
 // BUILDER
 /// Builder for a checkbox field, started with
-/// [`FormBuilder::checkbox`](crate::builder::FormBuilder::checkbox). For
-/// the options shared with every other field kind, see
-/// [`field_builder_common`](crate::field_builder_common).
+/// [`FormBuilder::checkbox`](crate::builder::FormBuilder::checkbox).
+/// Like the other field builders, it supports the common options
+/// `required`, `optional`, `disabled`, `readonly`, `height`,
+/// `validator`, and `normalizer`.
 pub struct CheckboxBuilder<T> {
     pub(crate) id: T,
     pub(crate) form: FormBuilder<T>,

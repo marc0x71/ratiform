@@ -18,9 +18,10 @@ use crate::{
 
 // BUILDER
 /// Builder for a multi-line text field, started with
-/// [`FormBuilder::text_area`](crate::builder::FormBuilder::text_area). For
-/// the options shared with every other field kind, see
-/// [`field_builder_common`](crate::field_builder_common).
+/// [`FormBuilder::text_area`](crate::builder::FormBuilder::text_area).
+/// Like the other field builders, it supports the common options
+/// `required`, `optional`, `disabled`, `readonly`, `height`,
+/// `validator`, and `normalizer`.
 pub struct TextAreaBuilder<T> {
     pub(crate) id: T,
     pub(crate) form: FormBuilder<T>,

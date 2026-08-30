@@ -18,9 +18,9 @@ use crate::{
 // BUILDER
 /// Builder for a single-line text field, started with
 /// [`FormBuilder::single_line`](crate::builder::FormBuilder::single_line).
-/// For the options shared with every other field kind (`required`,
-/// `optional`, `disabled`, `readonly`, `height`, `validator`), see
-/// [`field_builder_common`](crate::field_builder_common).
+/// Like the other field builders, it supports the common options
+/// `required`, `optional`, `disabled`, `readonly`, `height`,
+/// `validator`, and `normalizer`.
 pub struct SingleLineBuilder<T> {
     pub(crate) id: T,
     pub(crate) form: FormBuilder<T>,
