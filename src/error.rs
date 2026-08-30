@@ -1,18 +1,33 @@
+//! The error type returned by [`FormBuilder::build`](crate::builder::FormBuilder::build)
+//! when the fields as constructed can't be turned into a valid `FormState`.
+
 use std::fmt;
 
-/// Why [`crate::builder::FormBuilder::build`] refused to build the form. Refers to fields
-/// by their position in the order they were added — the same order
-/// [`crate::FormState::values`] and friends walk them in.
+/// Why [`FormBuilder::build`](crate::builder::FormBuilder::build) refused to
+/// build the form.
+///
+/// Refers to fields and values by their position (the order they were
+/// added in), not by id — this keeps `BuildError` non-generic, so it needs
+/// no bound on your id type beyond what the rest of the crate already
+/// requires (`PartialEq`).
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum BuildError {
-    /// The field at `duplicate` has the same id as the field at `first`
-    /// (`first < duplicate`).
-    DuplicateFieldId { first: usize, duplicate: usize },
-    /// The `Select` field has two options with the same
-    /// value — the one at `duplicate` repeats the one already at `first`
-    /// (`first < duplicate`, both indices into that field's own list of
-    /// values, not into the form's fields).
-    DuplicateSelectValue { first: usize, duplicate: usize },
+    /// Two fields were given the same id. `first` and `duplicate` are the
+    /// positions of both fields in the order they were added
+    DuplicateFieldId {
+        /// Position of the first field with this id.
+        first: usize,
+        /// Position of the field that repeats it.
+        duplicate: usize,
+    },
+    /// A `Select` field has two options with the same value. `first` and
+    /// `duplicate` are positions within that field's own list of values
+    DuplicateSelectValue {
+        /// Position of the first option with this value.
+        first: usize,
+        /// Position of the option that repeats it.
+        duplicate: usize,
+    },
 }
 
 impl fmt::Display for BuildError {
@@ -27,8 +42,7 @@ impl fmt::Display for BuildError {
             BuildError::DuplicateSelectValue { first, duplicate } => {
                 write!(
                     f,
-                    "Select has an option at index {duplicate} \
-                     with the same value as the option at index {first}"
+                    "Select option at index {duplicate} has the same value as the option at index {first}"
                 )
             }
         }
