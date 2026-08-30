@@ -1,7 +1,7 @@
 use ratatui::{
     buffer::Buffer,
-    layout::{Constraint, Layout, Rect},
-    text::Span,
+    layout::{Alignment, Constraint, Layout, Rect},
+    text::Line,
     widgets::{Paragraph, Widget, Wrap},
 };
 
@@ -115,11 +115,10 @@ fn render_object<T: PartialEq>(
         }
         ObjectKind::Error => {
             if let Some(message) = field.error.as_ref() {
-                let len = message.chars().count() as u16;
-                let [_, right] =
-                    Layout::horizontal([Constraint::Fill(1), Constraint::Length(len)]).areas(area);
-                let error_message = Span::raw(message.as_str()).style(style.error);
-                error_message.render(right, buf);
+                let error_message = Paragraph::new(Line::styled(message.as_str(), style.error))
+                    .alignment(Alignment::Right)
+                    .wrap(Wrap { trim: true });
+                error_message.render(area, buf);
             }
         }
     }
@@ -179,7 +178,11 @@ fn object_height<T: PartialEq>(area: Rect, fields: &[Field<T>], obj: &Object<T>)
         match obj.kind {
             ObjectKind::Label => count_lines(field.label(), area.width),
             ObjectKind::Value => field.options.height,
-            ObjectKind::Error => 1,
+            ObjectKind::Error => field
+                .error
+                .as_ref()
+                .map(|msg| count_lines(msg.as_str(), area.width))
+                .unwrap_or(1),
         }
     } else {
         // id not in FormState.fields
