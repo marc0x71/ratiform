@@ -9,6 +9,7 @@ repository = "https://github.com/marc0x71/ratiform"
 readme = "README.md"
 keywords = ["ratatui", "tui", "form", "widget"]
 categories = ["command-line-interface"]
+rust-version = "1.88.0"
 
 [dependencies]
 ratatui = "0.30"
