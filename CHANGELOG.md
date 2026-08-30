@@ -8,6 +8,8 @@ for `0.x` releases (a breaking change bumps the minor version, not the patch).
 ## Unreleased
 
 ### Fixed
+- Fixed public field builder documentation linking to the private
+  `field_builder_common!` macro.
 - `Ctrl`/`Alt` held with a character no longer inserts it into `SingleLine`,
   `TextArea`, or toggles `Checkbox` (`Ctrl+Space`) — lets an application
   treat those combinations as global shortcuts without the keystroke also
