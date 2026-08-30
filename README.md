@@ -51,7 +51,7 @@ I doubt I'm the only one this has bothered — hence this project. 😅
 │                              │
 │   domain model, business     │
 │   logic, persistence         │
-└─────────────┬────────────────┘
+└──────────────┬───────────────┘
                │ field values, typed by you
                ▼
 ┌──────────────────────────────┐
