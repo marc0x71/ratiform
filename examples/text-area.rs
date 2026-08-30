@@ -18,28 +18,27 @@ enum FormField {
     Terms,
 }
 
-fn main() -> std::io::Result<()> {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     let placeholder_text = String::from(
         "First line\nSecond line\nLorem ipsum dolor sit amet, consectetur adipiscing elit. \
          Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.",
     );
 
-    let result = ratatui::run(|terminal| -> std::io::Result<_> {
-        let mut state = FormBuilder::new()
-            .single_line(FormField::Title, "Title")
-            .required("Title is required".to_owned())
-            // A multi-line field: wraps long lines, scrolls vertically,
-            // Ctrl+Enter submits since Enter itself inserts a newline.
-            .text_area(FormField::Body, "Body")
-            .placeholder("Write the article body here...")
-            .value(placeholder_text)
-            .height(5)
-            .checkbox(FormField::Terms, "I accept the terms")
-            .checked(false)
-            .optional()
-            .build()
-            .unwrap();
+    let mut state = FormBuilder::new()
+        .single_line(FormField::Title, "Title")
+        .required("Title is required".to_owned())
+        // A multi-line field: wraps long lines, scrolls vertically,
+        // Ctrl+Enter submits since Enter itself inserts a newline.
+        .text_area(FormField::Body, "Body")
+        .placeholder("Write the article body here...")
+        .value(placeholder_text)
+        .height(5)
+        .checkbox(FormField::Terms, "I accept the terms")
+        .checked(false)
+        .optional()
+        .build()?;
 
+    let result = ratatui::run(|terminal| -> std::io::Result<_> {
         loop {
             terminal.draw(|frame| {
                 let [area, _] = Layout::vertical([Constraint::Length(19), Constraint::Fill(1)])

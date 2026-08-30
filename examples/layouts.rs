@@ -14,19 +14,19 @@ enum FormField {
     Bio,
 }
 
-fn main() -> std::io::Result<()> {
-    let result = ratatui::run(|terminal| -> std::io::Result<_> {
-        let mut state = FormBuilder::new()
-            .single_line(FormField::FirstName, "First name")
-            .required("First name is required".to_owned())
-            .single_line(FormField::LastName, "Last name")
-            .required("Last name is required".to_owned())
-            .text_area(FormField::Bio, "Short bio")
-            .placeholder("A couple of lines about yourself")
-            .height(3)
-            .optional()
-            .build().unwrap();
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let mut state = FormBuilder::new()
+        .single_line(FormField::FirstName, "First name")
+        .required("First name is required".to_owned())
+        .single_line(FormField::LastName, "Last name")
+        .required("Last name is required".to_owned())
+        .text_area(FormField::Bio, "Short bio")
+        .placeholder("A couple of lines about yourself")
+        .height(3)
+        .optional()
+        .build()?;
 
+    let result = ratatui::run(|terminal| -> std::io::Result<_> {
         loop {
             terminal.draw(|frame| {
                 let area = frame

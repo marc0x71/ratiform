@@ -17,30 +17,30 @@ enum FormField {
     Terms,
 }
 
-fn main() -> std::io::Result<()> {
-    let result = ratatui::run(|terminal| -> std::io::Result<_> {
-        let mut state = FormBuilder::new()
-            .single_line(FormField::FirstName, "First name")
-            .value("Mario")
-            .validator(|v| {
-                (v.len() > 2)
-                    .then_some(())
-                    .ok_or_else(|| "First name must be longer than 2 characters".to_owned())
-            })
-            .single_line(FormField::LastName, "Last name")
-            .value("Rossi")
-            .select(FormField::Country, "Country")
-            .values_ref(&[("IT", "Italy"), ("FR", "France"), ("DE", "Germany")])
-            // .selected(1)
-            .no_selection()
-            .height(5)
-            // required by default; .optional() is what actually changes
-            // behavior -- an unchecked box here doesn't block submission.
-            .checkbox(FormField::Terms, "I accept the terms")
-            .checked(false)
-            .optional()
-            .build().unwrap();
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let mut state = FormBuilder::new()
+        .single_line(FormField::FirstName, "First name")
+        .value("Mario")
+        .validator(|v| {
+            (v.len() > 2)
+                .then_some(())
+                .ok_or_else(|| "First name must be longer than 2 characters".to_owned())
+        })
+        .single_line(FormField::LastName, "Last name")
+        .value("Rossi")
+        .select(FormField::Country, "Country")
+        .values_ref(&[("IT", "Italy"), ("FR", "France"), ("DE", "Germany")])
+        // .selected(1)
+        .no_selection()
+        .height(5)
+        // required by default; .optional() is what actually changes
+        // behavior -- an unchecked box here doesn't block submission.
+        .checkbox(FormField::Terms, "I accept the terms")
+        .checked(false)
+        .optional()
+        .build()?;
 
+    let result = ratatui::run(|terminal| -> std::io::Result<_> {
         loop {
             terminal.draw(|frame| {
                 let [area, _] = Layout::vertical([Constraint::Length(19), Constraint::Fill(1)])

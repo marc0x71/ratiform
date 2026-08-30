@@ -22,51 +22,50 @@ enum FormField {
     Debug,
 }
 
-fn main() -> std::io::Result<()> {
-    let result = ratatui::run(|terminal| -> std::io::Result<_> {
-        let mut state = FormBuilder::new()
-            // A deliberately long label -- wraps onto a second line
-            // instead of squeezing the value column. See the README's
-            // "Label width" section.
-            .single_line(
-                FormField::FirstName,
-                "First name of the user to add to the database",
-            )
-            .placeholder("Enter the first name of the user you want to add")
-            .validator(validators::min_length(
-                2,
-                "First name must be at least 2 characters".to_owned(),
-            ))
-            .required("This field is required".to_owned())
-            .single_line(FormField::LastName, "Last name")
-            .placeholder("Enter the last name")
-            .validator(validators::min_length(
-                2,
-                "Last name must be at least 2 characters".to_owned(),
-            ))
-            .validator(validators::max_length(
-                10,
-                "Last name is at most 10 characters".to_owned(),
-            ))
-            .select(FormField::Country, "Country")
-            .values_ref(&[("IT", "Italy"), ("FR", "France"), ("DE", "Germany")])
-            .selected(1)
-            .height(5)
-            .checkbox(FormField::Terms, "I accept the terms")
-            .checked(false)
-            .optional()
-            .single_line(FormField::Password, "Password")
-            .placeholder("Enter the password")
-            .masked_with('•')
-            .required("Password cannot be empty".to_owned())
-            // A disabled field used purely to show live form state below --
-            // not something you'd normally ship, just handy for a demo.
-            .single_line(FormField::Debug, "Debug")
-            .disabled()
-            .label_width(25)
-            .build()
-            .unwrap();
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let mut state = FormBuilder::new()
+        // A deliberately long label -- wraps onto a second line
+        // instead of squeezing the value column. See the README's
+        // "Label width" section.
+        .single_line(
+            FormField::FirstName,
+            "First name of the user to add to the database",
+        )
+        .placeholder("Enter the first name of the user you want to add")
+        .validator(validators::min_length(
+            2,
+            "First name must be at least 2 characters".to_owned(),
+        ))
+        .required("This field is required".to_owned())
+        .single_line(FormField::LastName, "Last name")
+        .placeholder("Enter the last name")
+        .validator(validators::min_length(
+            2,
+            "Last name must be at least 2 characters".to_owned(),
+        ))
+        .validator(validators::max_length(
+            10,
+            "Last name is at most 10 characters".to_owned(),
+        ))
+        .select(FormField::Country, "Country")
+        .values_ref(&[("IT", "Italy"), ("FR", "France"), ("DE", "Germany")])
+        .selected(1)
+        .height(5)
+        .checkbox(FormField::Terms, "I accept the terms")
+        .checked(false)
+        .optional()
+        .single_line(FormField::Password, "Password")
+        .placeholder("Enter the password")
+        .masked_with('•')
+        .required("Password cannot be empty".to_owned())
+        // A disabled field used purely to show live form state below --
+        // not something you'd normally ship, just handy for a demo.
+        .single_line(FormField::Debug, "Debug")
+        .disabled()
+        .label_width(25)
+        .build()?;
 
+    let result = ratatui::run(|terminal| -> std::io::Result<_> {
         loop {
             let focus = format!("focus={:?}", state.focused_field());
             state.set_value(&FormField::Debug, &focus);

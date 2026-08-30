@@ -16,37 +16,37 @@ enum ConnectionField {
     SaveCredentials,
 }
 
-fn main() -> std::io::Result<()> {
-    let result = ratatui::run(|terminal| -> std::io::Result<_> {
-        let mut state = FormBuilder::new()
-            .single_line(ConnectionField::Host, "Host")
-            .value("localhost")
-            .required("Host is required".to_owned())
-            // alphabet() rejects a character at the keystroke, before it
-            // ever becomes part of the value -- parsable() still checks
-            // the result is a valid u16.
-            .single_line(ConnectionField::Port, "Port")
-            .alphabet("0123456789")
-            .value("5432")
-            .validator(validators::parsable::<u16>(
-                "Port must be a number between 0 and 65535".to_owned(),
-            ))
-            .required("Port is required".to_owned())
-            .select(ConnectionField::Protocol, "Protocol")
-            .values_ref(&[("tcp", "TCP"), ("ssl", "TCP + SSL")])
-            .selected(0)
-            .height(2)
-            .single_line(ConnectionField::Username, "Username")
-            .placeholder("postgres")
-            .optional()
-            .single_line(ConnectionField::Password, "Password")
-            .masked()
-            .optional()
-            .checkbox(ConnectionField::SaveCredentials, "Save credentials")
-            .checked(false)
-            .optional()
-            .build().unwrap();
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let mut state = FormBuilder::new()
+        .single_line(ConnectionField::Host, "Host")
+        .value("localhost")
+        .required("Host is required".to_owned())
+        // alphabet() rejects a character at the keystroke, before it
+        // ever becomes part of the value -- parsable() still checks
+        // the result is a valid u16.
+        .single_line(ConnectionField::Port, "Port")
+        .alphabet("0123456789")
+        .value("5432")
+        .validator(validators::parsable::<u16>(
+            "Port must be a number between 0 and 65535".to_owned(),
+        ))
+        .required("Port is required".to_owned())
+        .select(ConnectionField::Protocol, "Protocol")
+        .values_ref(&[("tcp", "TCP"), ("ssl", "TCP + SSL")])
+        .selected(0)
+        .height(2)
+        .single_line(ConnectionField::Username, "Username")
+        .placeholder("postgres")
+        .optional()
+        .single_line(ConnectionField::Password, "Password")
+        .masked()
+        .optional()
+        .checkbox(ConnectionField::SaveCredentials, "Save credentials")
+        .checked(false)
+        .optional()
+        .build()?;
 
+    let result = ratatui::run(|terminal| -> std::io::Result<_> {
         loop {
             terminal.draw(|frame| {
                 let [area, _] = Layout::vertical([Constraint::Length(16), Constraint::Fill(1)])

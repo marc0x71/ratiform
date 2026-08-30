@@ -15,7 +15,7 @@ enum Field {
     Zip,
 }
 
-fn main() -> std::io::Result<()> {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut state = FormBuilder::new()
         .single_line(Field::Email, "Username")
         .single_line(Field::Password, "Password")
@@ -25,8 +25,7 @@ fn main() -> std::io::Result<()> {
         .single_line(Field::City, "City")
         .single_line(Field::State, "State")
         .single_line(Field::Zip, "Zip")
-        .build()
-        .unwrap();
+        .build()?;
 
     // Email                   Password
     // _______________________ ____________________

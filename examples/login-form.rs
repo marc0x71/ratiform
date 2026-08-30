@@ -14,46 +14,46 @@ enum LoginField {
     RememberMe,
 }
 
-fn main() -> std::io::Result<()> {
-    let result = ratatui::run(|terminal| -> std::io::Result<_> {
-        let mut state = FormBuilder::new()
-            .single_line(LoginField::Username, "Username")
-            .placeholder("mario.rossi")
-            .validator(validators::min_length(
-                3,
-                "Username must be at least 3 characters".to_owned(),
-            ))
-            .required("Username is required".to_owned())
-            // A validator built from a plain closure -- for anything the
-            // built-in ones in `validators::` don't cover.
-            .single_line(LoginField::Password, "Password")
-            .masked()
-            .validator(validators::min_length(
-                8,
-                "Password must be at least 8 characters".to_owned(),
-            ))
-            .validator(|value: &str| {
-                let has_uppercase = value.chars().any(|c| c.is_uppercase());
-                let has_lowercase = value.chars().any(|c| c.is_lowercase());
-                let has_digit = value.chars().any(|c| c.is_ascii_digit());
-                let has_special = value
-                    .chars()
-                    .any(|c| !c.is_alphanumeric() && !c.is_whitespace());
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let mut state = FormBuilder::new()
+        .single_line(LoginField::Username, "Username")
+        .placeholder("mario.rossi")
+        .validator(validators::min_length(
+            3,
+            "Username must be at least 3 characters".to_owned(),
+        ))
+        .required("Username is required".to_owned())
+        // A validator built from a plain closure -- for anything the
+        // built-in ones in `validators::` don't cover.
+        .single_line(LoginField::Password, "Password")
+        .masked()
+        .validator(validators::min_length(
+            8,
+            "Password must be at least 8 characters".to_owned(),
+        ))
+        .validator(|value: &str| {
+            let has_uppercase = value.chars().any(|c| c.is_uppercase());
+            let has_lowercase = value.chars().any(|c| c.is_lowercase());
+            let has_digit = value.chars().any(|c| c.is_ascii_digit());
+            let has_special = value
+                .chars()
+                .any(|c| !c.is_alphanumeric() && !c.is_whitespace());
 
-                (has_uppercase && has_lowercase && has_digit && has_special)
-                    .then_some(())
-                    .ok_or_else(|| {
-                        "Password must contain at least one uppercase letter, one \
+            (has_uppercase && has_lowercase && has_digit && has_special)
+                .then_some(())
+                .ok_or_else(|| {
+                    "Password must contain at least one uppercase letter, one \
                          lowercase letter, one digit and one special character"
-                            .to_owned()
-                    })
-            })
-            .required("Password is required".to_owned())
-            .checkbox(LoginField::RememberMe, "Remember me")
-            .checked(false)
-            .optional()
-            .build().unwrap();
+                        .to_owned()
+                })
+        })
+        .required("Password is required".to_owned())
+        .checkbox(LoginField::RememberMe, "Remember me")
+        .checked(false)
+        .optional()
+        .build()?;
 
+    let result = ratatui::run(|terminal| -> std::io::Result<_> {
         loop {
             terminal.draw(|frame| {
                 let area = frame

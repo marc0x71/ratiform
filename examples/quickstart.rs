@@ -11,14 +11,14 @@ enum Field {
     Password,
 }
 
-fn main() -> std::io::Result<()> {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut state = FormBuilder::new()
         .single_line(Field::Username, "Username")
         .required("Username is required".to_owned())
         .single_line(Field::Password, "Password")
         .masked()
         .required("Password is required".to_owned())
-        .build().unwrap();
+        .build()?;
     ratatui::run(|terminal| -> std::io::Result<_> {
         loop {
             terminal.draw(|frame| {
