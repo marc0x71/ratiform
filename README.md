@@ -1,5 +1,6 @@
 # ratiform
 [![CI](https://github.com/marc0x71/ratiform/actions/workflows/ci.yml/badge.svg)](https://github.com/marc0x71/ratiform/actions/workflows/ci.yml)
+[![Crates.io](https://img.shields.io/crates/v/ratiform.svg)](https://crates.io/crates/ratiform)
 
 **A small, composable, stateful form widget for [Ratatui](https://ratatui.rs/), with typed field identifiers and application-owned data.**
 
