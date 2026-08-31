@@ -28,6 +28,8 @@ pub struct CheckboxBuilder<T> {
     pub(crate) label: String,
     pub(crate) checked: bool,
     pub(crate) options: FieldOptions,
+    pub(crate) checked_symbol: String,
+    pub(crate) unchecked_symbol: String,
 }
 
 impl<T: PartialEq> CheckboxBuilder<T> {
@@ -49,6 +51,19 @@ impl<T: PartialEq> CheckboxBuilder<T> {
         self
     }
 
+    /// Sets the symbols shown for the checked and unchecked states.
+    ///
+    /// Defaults to `"[✓]"` and `"[ ]"`.
+    pub fn symbols(
+        mut self,
+        checked_symbol: impl Into<String>,
+        unchecked_symbol: impl Into<String>,
+    ) -> Self {
+        self.checked_symbol = checked_symbol.into();
+        self.unchecked_symbol = unchecked_symbol.into();
+        self
+    }
+
     fn finish(mut self) -> FormBuilder<T> {
         let initial_value = self.checked.to_string();
         self.form.push_field(Field {
@@ -56,6 +71,8 @@ impl<T: PartialEq> CheckboxBuilder<T> {
             kind: FieldKind::CheckBox(CheckBoxStatus {
                 label: self.label,
                 checked: self.checked,
+                checked_symbol: self.checked_symbol,
+                unchecked_symbol: self.unchecked_symbol,
             }),
             options: self.options,
             error: None,
@@ -72,6 +89,8 @@ field_builder_common!(CheckboxBuilder<T>);
 pub struct CheckBoxStatus {
     pub(crate) label: String,
     pub(crate) checked: bool,
+    pub(crate) checked_symbol: String,
+    pub(crate) unchecked_symbol: String,
 }
 
 impl CheckBoxStatus {
@@ -110,7 +129,11 @@ pub(crate) fn render_checkbox(
     value_style: Style,
     _highlight_style: Style,
 ) -> Option<(u16, u16)> {
-    let flag = if checkbox.checked { "[✓]" } else { "[ ]" };
+    let flag = if checkbox.checked {
+        checkbox.checked_symbol.as_str()
+    } else {
+        checkbox.unchecked_symbol.as_str()
+    };
 
     let value = Span::raw(flag).style(value_style);
 
@@ -129,6 +152,8 @@ mod checkbox_tests {
         CheckBoxStatus {
             label: "Test".to_owned(),
             checked,
+            checked_symbol: "[✓]".to_string(),
+            unchecked_symbol: "[ ]".to_string(),
         }
     }
 

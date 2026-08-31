@@ -73,6 +73,8 @@ impl<T: PartialEq> FormBuilder<T> {
             label: label.into(),
             checked: false,
             options: FieldOptions::default(),
+            checked_symbol: "[✓]".to_string(),
+            unchecked_symbol: "[ ]".to_string(),
         }
     }
 
@@ -87,6 +89,7 @@ impl<T: PartialEq> FormBuilder<T> {
             values: Vec::new(),
             options: FieldOptions::default(),
             selected: Some(0),
+            highlight_symbol: "> ".to_string(),
         }
     }
 

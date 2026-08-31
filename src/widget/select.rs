@@ -30,6 +30,7 @@ pub struct SelectBuilder<T> {
     pub(crate) values: Vec<(String, String)>,
     pub(crate) selected: Option<usize>,
     pub(crate) options: FieldOptions,
+    pub(crate) highlight_symbol: String,
 }
 
 impl<T: PartialEq> SelectBuilder<T> {
@@ -92,6 +93,19 @@ impl<T: PartialEq> SelectBuilder<T> {
         self
     }
 
+    /// Sets the symbol shown before the currently selected row.
+    ///
+    /// Applied only to the highlighted list item; it does not affect the
+    /// symbols or spacing of unselected rows. Has no effect when the field
+    /// has no selection (see [`no_selection`](Self::no_selection)), since in
+    /// that state no row is highlighted.
+    ///
+    /// Defaults to `"> "`.
+    pub fn highlight_symbol(mut self, highlight_symbol: impl Into<String>) -> Self {
+        self.highlight_symbol = highlight_symbol.into();
+        self
+    }
+
     fn validate_field(&mut self) {
         if self.form.pending_error.is_some() {
             return;
@@ -122,6 +136,7 @@ impl<T: PartialEq> SelectBuilder<T> {
                 values: self.values,
                 list_state: ListState::default().with_selected(self.selected),
                 height: self.options.height,
+                highlight_symbol: self.highlight_symbol,
             }),
             options: self.options,
             error: None,
@@ -140,6 +155,7 @@ pub struct SelectStatus {
     pub(crate) values: Vec<(String, String)>,
     pub(crate) list_state: ListState,
     pub(crate) height: u16,
+    pub(crate) highlight_symbol: String,
 }
 
 impl SelectStatus {
@@ -218,7 +234,7 @@ pub(crate) fn render_select(
     let list = List::new(items)
         .style(value_style)
         .highlight_style(highlight_style)
-        .highlight_symbol("> ");
+        .highlight_symbol(select.highlight_symbol.as_str());
 
     StatefulWidget::render(list, area, buf, &mut select.list_state);
 
@@ -241,6 +257,7 @@ mod select_tests {
                 None => ListState::default(),
             },
             height: 5,
+            highlight_symbol: "> ".to_string(),
         }
     }
 

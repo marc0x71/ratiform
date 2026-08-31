@@ -7,6 +7,11 @@ for `0.x` releases (a breaking change bumps the minor version, not the patch).
 
 ## Unreleased
 
+### Added
+- Configurable symbols for `Select` and `Checkbox`:
+  - `SelectBuilder::highlight_symbol(...)` — symbol shown before the selected row (defaults to `"> "`).
+  - `CheckboxBuilder::symbols(...)` — checked/unchecked symbols (defaults to `"[✓]"` / `"[ ]"`).
+
 ### Fixed
 - Fixed public field builder documentation linking to the private
   `field_builder_common!` macro.
