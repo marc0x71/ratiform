@@ -42,7 +42,10 @@ const DEFAULT_COLUMN_GAP: u16 = 1;
 /// > **Tip:** give every field a `Value` cell somewhere in the grid.
 /// > Focus cycles through every field regardless of the layout, so one
 /// > left out can still receive focus — just with no visible cursor and
-/// > no error to explain why.
+/// > no error to explain why. For the same reason, `Tab`/`BackTab` move
+/// > through fields in the order they were declared, not the order they
+/// > appear on screen — lay out the grid to match if you want the two to
+/// > agree.
 ///
 /// Built with [`CustomLayout::new`] from a raw `Vec` of rows, with
 /// [`CustomLayout::builder`]'s fluent API, or with the
