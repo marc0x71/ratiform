@@ -258,6 +258,8 @@ impl<T: PartialEq> FormState<T> {
     pub fn reset(&mut self) {
         self.fields.iter_mut().for_each(|f| f.reset());
         self.result = FormResult::Working;
+        self.focus = 0;
+        self.cursor_position = None;
     }
 
     /// Whether any field's value has changed since the form was built.
@@ -678,5 +680,32 @@ mod form_state_tests {
 
         assert!(matches!(state.result(), FormResult::Working));
         assert_eq!(state.value(&2), Some("ciao".to_owned())); // niente newline inserito
+    }
+
+    #[test]
+    fn reset_restores_the_initial_form_state() {
+        let mut state = FormState::new(
+            vec![
+                make_field(1, "Nome", "", None),
+                make_field(2, "Città", "", None),
+            ],
+            None,
+        );
+
+        // mutate fields
+        state.set_value(&1, "changed");
+
+        // move focus
+        state.handle_input(key(KeyCode::Tab));
+
+        // finish form
+        state.handle_input(key(KeyCode::Esc));
+
+        state.reset();
+
+        assert!(matches!(state.result(), FormResult::Working));
+        assert_eq!(state.focused_field(), Some(&1));
+        assert!(!state.is_dirty());
+        assert_eq!(state.cursor_position(), None);
     }
 }
