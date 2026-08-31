@@ -257,6 +257,7 @@ impl<T: PartialEq> FormState<T> {
     /// and re-validates each one against the restored value.
     pub fn reset(&mut self) {
         self.fields.iter_mut().for_each(|f| f.reset());
+        self.result = FormResult::Working;
     }
 
     /// Whether any field's value has changed since the form was built.
