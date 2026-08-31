@@ -256,12 +256,13 @@ impl<T: PartialEq> FormState<T> {
         self.fields.iter_mut().for_each(|f| f.reset());
     }
 
-    /// Whether the value of the field with the given id has changed since
-    /// the form was built, or `None` if no field has that id.
+    /// Whether any field's value has changed since the form was built.
     pub fn is_dirty(&self) -> bool {
         self.fields.iter().any(|f| f.is_dirty())
     }
 
+    /// Whether the value of the field with the given id has changed since
+    /// the form was built, or `None` if no field has that id.
     pub fn is_field_dirty(&self, id: &T) -> Option<bool> {
         self.fields
             .iter()
