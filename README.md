@@ -30,7 +30,7 @@ The field identity is a real Rust type — `state.value(&Field::Email)`, not `st
 
 The project is dual-licensed under the **MIT License** and the **Apache License 2.0** (see [License](#license) below).
 
-<img width="1000" height="600" alt="ratiform" src="https://github.com/user-attachments/assets/1652a596-cbf9-4cd1-b58c-cd9f2815a0f7" />
+<img width="1000" height="600" alt="ratiform" src="https://github.com/user-attachments/assets/84f988ac-e845-4cce-9260-f50dfdbd1cb0" />
 
 ## Why ratiform?
 
