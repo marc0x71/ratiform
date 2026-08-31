@@ -20,6 +20,19 @@ for `0.x` releases (a breaking change bumps the minor version, not the patch).
   validation, so a required-but-empty field doesn't block submission while
   hidden.
 
+### Fixed
+- `FormState::reset()` now also resets `result` back to `Working`, `focus`
+  to the first field, and clears `cursor_position` — previously it only
+  restored field values, leaving a `Submitted`/`Cancelled` form with no way
+  to become usable again short of rebuilding it from scratch.
+
+### Documentation
+- Added `examples/todo-list.rs`, a small in-memory todo app demonstrating
+  the form as a transient overlay for adding/editing a task rather than
+  the whole screen: `reset()` before opening it empty, `set_value()` to
+  pre-fill it for editing, and `value_as::<Priority>()` parsing a `Select`
+  into a custom enum via `FromStr`.
+
 ## [0.5.2] - 2026-08-31
 
 ### Added

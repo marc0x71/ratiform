@@ -401,6 +401,7 @@ For anything these don't cover, `.validator(...)` still takes a plain closure �
 * [`examples/text-area.rs`](examples/text-area.rs) — a form built entirely around a `TextArea`.
 * [`examples/layouts.rs`](examples/layouts.rs) — `Horizontal` vs `Stacked` [`FormLayout`](#layout), recomputed from the available width every frame so it reacts to a terminal resize on its own.
 * [`examples/custom.rs`](examples/custom.rs) — `FormLayout::Custom` grid layout (see [Custom layout](#custom-layout)), two fields side by side, a field spanning the full row, and a three-column address group.
+* [`examples/todo-list.rs`](examples/todo-list.rs) — a small in-memory todo app where the form is a transient overlay for adding/editing a task, not the whole screen: `reset()` before opening it empty, `set_value()` to pre-fill it for editing, and `value_as::<Priority>()` parsing a `Select`'s value into a custom enum via `FromStr`.
 
 Run any of them with `cargo run --example <n>`.
 

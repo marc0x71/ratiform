@@ -254,7 +254,9 @@ impl<T: PartialEq> FormState<T> {
     }
 
     /// Restores every field to the value it had when the form was built,
-    /// and re-validates each one against the restored value.
+    /// re-validates each one against the restored value, moves focus back to
+    /// the first field, and resets `result` to `Working` — a `Submitted` or
+    /// `Cancelled` form becomes usable again, not a dead end.
     pub fn reset(&mut self) {
         self.fields.iter_mut().for_each(|f| f.reset());
         self.result = FormResult::Working;
