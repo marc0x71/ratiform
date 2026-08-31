@@ -5,7 +5,7 @@ All notable changes to `ratiform` are documented here. Format loosely follows
 [Cargo's SemVer rules](https://doc.rust-lang.org/cargo/reference/semver.html)
 for `0.x` releases (a breaking change bumps the minor version, not the patch).
 
-## Unreleased
+## [0.5.2] - 2026-08-31
 
 ### Added
 - Configurable symbols for `Select` and `Checkbox`:
@@ -22,9 +22,10 @@ for `0.x` releases (a breaking change bumps the minor version, not the patch).
   is normal typing (uppercase, symbols), not a shortcut.
 
 ### Changed
-- `field_builder_common!` is no longer `#[macro_export]`-ed — it was never
-  meant to be used outside the crate, just shared internal wiring between the
-  four field builders.
+- `field_builder_common!` is no longer `#[macro_export]`-ed. Technically a
+  public item removal, but the macro referenced `pub(crate)` fields of
+  `FieldOptions` internally, so it could never compile when invoked from
+  outside the crate — not a real capability lost.
 
 ### Chore
 - Declared `rust-version = "1.88.0"` in `Cargo.toml` (found with
