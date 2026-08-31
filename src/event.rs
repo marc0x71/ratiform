@@ -43,6 +43,7 @@ mod handle_input_field_tests {
                 required,
                 disabled: false,
                 readonly: false,
+                visible: true,
                 height: 1,
                 validator: vec![],
                 normalizer: None,

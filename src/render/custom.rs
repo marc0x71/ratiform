@@ -92,6 +92,9 @@ fn render_object<T: PartialEq>(
     let area = apply_padding(area, column_index, column_padding);
     let has_focus = state.fields[state.focus].id == object.id;
     let field = &mut state.fields[field_position];
+    if !field.options.visible {
+        return;
+    }
     let field_state = field.options.to_field_state(has_focus);
     match object.kind {
         ObjectKind::Label => {
@@ -175,6 +178,9 @@ fn apply_padding(area: Rect, index: usize, column_padding: u16) -> Rect {
 
 fn object_height<T: PartialEq>(area: Rect, fields: &[Field<T>], obj: &Object<T>) -> u16 {
     if let Some(field) = find_field(fields, &obj.id) {
+        if !field.options.visible {
+            return 0;
+        }
         match obj.kind {
             ObjectKind::Label => count_lines(field.label(), area.width),
             ObjectKind::Value => field.options.height,
@@ -232,6 +238,7 @@ mod required_height_tests {
                 required: None,
                 disabled: false,
                 readonly: false,
+                visible: true,
                 height,
                 validator: vec![],
                 normalizer: None,
@@ -458,6 +465,7 @@ mod focused_row_index_tests {
                 required: None,
                 disabled: false,
                 readonly: false,
+                visible: true,
                 height,
                 validator: vec![],
                 normalizer: None,

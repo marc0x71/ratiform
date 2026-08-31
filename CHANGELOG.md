@@ -5,6 +5,21 @@ All notable changes to `ratiform` are documented here. Format loosely follows
 [Cargo's SemVer rules](https://doc.rust-lang.org/cargo/reference/semver.html)
 for `0.x` releases (a breaking change bumps the minor version, not the patch).
 
+## [Unreleased]
+
+### Added
+- Field visibility: `hide()`/`show()` on any field builder set the starting
+  state; `FormState::set_visible(&id, bool)` toggles it at runtime,
+  `is_field_visible(&id)` reads it back. A hidden field draws nothing —
+  label, value, and error alike — in every layout, and is skipped by
+  `Tab`/`Shift+Tab`, same as `disabled()`. `Horizontal`/`Stacked` reclaim
+  its space automatically; `Custom` draws its cells as empty rather than
+  removing them from the grid, so surrounding cells don't reflow — build
+  a different `CustomLayout` for that state if you want the space back.
+  Unlike `disabled()`/`readonly()`, a hidden field is also excluded from
+  validation, so a required-but-empty field doesn't block submission while
+  hidden.
+
 ## [0.5.2] - 2026-08-31
 
 ### Added

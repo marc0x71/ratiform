@@ -33,6 +33,11 @@ pub(crate) fn render_stacked<T: PartialEq>(
     for (row_idx, row) in rows.iter().enumerate() {
         let field_index = (from_row + row_idx) / 3;
         let field = state.fields.get_mut(field_index).unwrap();
+
+        if !field.options.visible {
+            continue;
+        }
+
         let has_focus = field_index == state.focus;
         let field_state = field.options.to_field_state(has_focus);
 
@@ -79,6 +84,12 @@ pub(crate) fn required_height_stacked<T: PartialEq>(state: &FormState<T>, width:
 fn compute_heights<T: PartialEq>(fields: &[Field<T>], width: u16) -> Vec<u16> {
     let mut heights = Vec::new();
     for field in fields {
+        if !field.options.visible {
+            heights.push(0); // label
+            heights.push(0); // value
+            heights.push(0); // error
+            continue;
+        }
         let label_height = count_lines(field.label(), width);
         let value_height = field.options.height;
         let error_height = field

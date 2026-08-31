@@ -137,6 +137,7 @@ impl<T: PartialEq> FormState<T> {
                     && let Some(field) = self.fields.get_mut(self.focus)
                     && !field.options.disabled
                     && !field.options.readonly
+                    && field.options.visible
                 {
                     handle_input_field(key_event, field);
                 }
@@ -160,6 +161,7 @@ impl<T: PartialEq> FormState<T> {
             prev = (prev + self.fields.len() - 1) % self.fields.len();
             if let Some(f) = self.fields.get(prev)
                 && !f.options.disabled
+                && f.options.visible
             {
                 break;
             }
@@ -177,6 +179,7 @@ impl<T: PartialEq> FormState<T> {
             next = next.wrapping_add(1) % self.fields.len();
             if let Some(f) = self.fields.get(next)
                 && !f.options.disabled
+                && f.options.visible
             {
                 break;
             }
@@ -285,6 +288,19 @@ impl<T: PartialEq> FormState<T> {
     pub fn label_width(&mut self, width: u16) {
         self.label_width = Some(width);
     }
+
+    /// Shows or hides the field. A hidden field draws nothing (label, value,
+    /// and error alike) and is skipped by `Tab`/`BackTab`.
+    ///
+    /// If `id` currently has focus when hidden, it stays technically focused
+    /// but stops receiving input until focus moves elsewhere (e.g. via `Tab`)
+    /// — same caveat as `disabled()`/`readonly()`.
+    pub fn set_visible(&mut self, id: &T, visible: bool) {
+        if let Some(f) = self.fields.iter_mut().find(|f| f.id == *id) {
+            f.options.visible = visible;
+            f.validate();
+        }
+    }
 }
 
 /// The widget that renders a [`FormState`]. Stateless and cheap to
@@ -374,6 +390,7 @@ mod form_state_tests {
             options: FieldOptions {
                 required: None,
                 disabled: false,
+                visible: true,
                 readonly,
                 height: 3,
                 validator: vec![],
@@ -409,6 +426,7 @@ mod form_state_tests {
                 required,
                 disabled: false,
                 readonly: false,
+                visible: true,
                 height: 1,
                 validator: vec![],
                 normalizer: None,

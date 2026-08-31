@@ -209,7 +209,7 @@ Since `Enter` inserts a newline instead of submitting the form, submitting while
 
 ## Form builder
 
-Fields are chained together and configured with options shared across every kind: `required(message)`/`optional()`, `disabled()`, `readonly()`, `height()`, `validator(...)`, `normalizer(...)`. Full details on each are in the generated docs (`cargo doc --open`) — the sections below cover the ones with enough behavior to be worth a walkthrough.
+Fields are chained together and configured with options shared across every kind: `required(message)`/`optional()`, `disabled()`, `readonly()`, `hide()`/`show()`, `height()`, `validator(...)`, `normalizer(...)`. Full details on each are in the generated docs (`cargo doc --open`) — the sections below cover the ones with enough behavior to be worth a walkthrough.
 
 ### Label width
 
@@ -359,6 +359,16 @@ An empty value is never handed to a validator — the required check decides on 
 Validation runs on every keystroke, on `set_value`, and once up front when the form is built, so a field that starts out invalid shows its error from the very first render. While any field is invalid, `Enter` doesn't submit the form.
 
 `disabled()`/`readonly()` don't skip validation — and since every field is required by default, disabling one with no initial value and no `.optional()` leaves it permanently invalid *and* permanently unreachable, since `Tab`/`BackTab` skip disabled fields. Call `.optional()` on any field you disable without giving it a value.
+
+### Field visibility
+
+`hide()` on any field builder starts it hidden; `.show()` starts it visible (the default). At runtime, `FormState::set_visible(&id, bool)` toggles it, and `is_field_visible(&id)` reads it back (`None` if the id doesn't exist).
+
+A hidden field draws nothing — label, value, and error alike — in every layout, and is skipped by `Tab`/`Shift+Tab` just like a `disabled()` field. In `Horizontal`/`Stacked`, hiding a field also reclaims its space automatically, since each field owns its own rows. In `Custom`, a hidden field's cells are drawn as empty rather than removed from the grid — the same as [a cell referencing an unknown id](#custom-layout) — so surrounding cells don't reflow into the freed space. Build a different `CustomLayout` for that state and swap it in with `.with_layout(...)` (rebuilt every frame anyway) if you want the space reclaimed instead.
+
+On `CustomLayout` a field on rows of its own — no cell shared with another field — disappears entirely when hidden, since every cell on those rows resolves to zero height together; the rows below shift up to fill the gap. A field sharing a row with a still-visible one only clears its own cell, leaving the row's reserved width in place.
+
+Unlike `disabled()`/`readonly()` (see above), a hidden field is also excluded from validation, so a required-but-empty field doesn't block submission while hidden.
 
 ### Normalizing values
 

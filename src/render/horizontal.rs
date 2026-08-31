@@ -37,6 +37,9 @@ pub(crate) fn render_horizontal<T: PartialEq>(
     state.cursor_position = None;
 
     for (idx, field) in state.fields[from_field..=to_field].iter_mut().enumerate() {
+        if !field.options.visible {
+            continue;
+        }
         let has_focus = (idx + from_field) == state.focus;
         let field_state = field.options.to_field_state(has_focus);
 
@@ -111,6 +114,10 @@ fn resolve_label_width(configured: Option<u16>, computed_max: u16, area_width: u
 fn compute_heights<T: PartialEq>(fields: &[Field<T>], label_width: u16, width: u16) -> Vec<u16> {
     let mut heights = Vec::new();
     for field in fields {
+        if !field.options.visible {
+            heights.push(0);
+            continue;
+        }
         let error_height = field
             .error
             .as_ref()
@@ -150,6 +157,7 @@ mod label_width_tests {
                 required: None,
                 disabled: false,
                 readonly: false,
+                visible: true,
                 height,
                 validator: vec![],
                 normalizer: None,

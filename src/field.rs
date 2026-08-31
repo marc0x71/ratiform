@@ -29,6 +29,7 @@ pub struct FieldOptions {
     pub(crate) required: Option<Validator>, // None = optional
     pub(crate) disabled: bool,
     pub(crate) readonly: bool,
+    pub(crate) visible: bool,
     pub(crate) height: u16,
     pub(crate) validator: Vec<Validator>,
     pub(crate) normalizer: Option<Normalizer>, // None = optional
@@ -40,6 +41,7 @@ impl Default for FieldOptions {
             required: Some(validators::required("<*>".to_string())),
             disabled: false,
             readonly: false,
+            visible: true,
             height: 1,
             validator: Vec::new(),
             normalizer: None,
@@ -122,6 +124,10 @@ impl<T> Field<T> {
     /// section for the exact required/validator/empty-value interaction
     /// this implements — this is the one place it's enforced.
     pub(crate) fn validate(&mut self) {
+        if !self.options.visible {
+            self.error = None;
+            return;
+        }
         let value = self.get_ref();
         let required_error = self.options.required.as_ref().and_then(|f| f(&value).err());
         self.error = if let Some(error) = required_error {
@@ -247,6 +253,7 @@ mod validate_tests {
                 required,
                 disabled: false,
                 readonly: false,
+                visible: true,
                 height: 1,
                 validator,
                 normalizer: None,

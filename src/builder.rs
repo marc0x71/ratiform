@@ -187,6 +187,16 @@ macro_rules! field_builder_common {
                 self
             }
 
+            pub fn show(mut self) -> Self {
+                self.options.visible = true;
+                self
+            }
+
+            pub fn hide(mut self) -> Self {
+                self.options.visible = false;
+                self
+            }
+
             /// Sets the field's height in terminal rows, not counting the
             /// row(s) reserved for its error message (added automatically,
             /// growing to fit a message that wraps onto more than one
