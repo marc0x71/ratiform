@@ -33,11 +33,12 @@ pub use field::FieldRef;
 pub use field::{Normalizer, Validator};
 pub use layout::FormLayout;
 pub use widget::{
-    check_box::CheckBoxRef, select::SelectRef, single_line::SingleLineRef, text_area::TextAreaRef,
+    check_box::CheckBoxRef, multi_select::MultiSelectRef, select::SelectRef,
+    single_line::SingleLineRef, text_area::TextAreaRef,
 };
 pub use widget::{
-    check_box::CheckboxBuilder, select::SelectBuilder, single_line::SingleLineBuilder,
-    text_area::TextAreaBuilder,
+    check_box::CheckboxBuilder, multi_select::MultiSelectBuilder, select::SelectBuilder,
+    single_line::SingleLineBuilder, text_area::TextAreaBuilder,
 };
 /// The form's current state, returned by [`FormState::result`].
 #[derive(Debug, Default, Clone, Copy)]
@@ -352,6 +353,13 @@ impl<T: PartialEq> FormState<T> {
     /// `None` if no field with that id exists, or if it isn't a select field.
     pub fn select(&self, id: &T) -> Option<SelectRef<'_>> {
         self.field(id).and_then(|f| f.to_select())
+    }
+
+    /// Returns a [`MultiSelectRef`] for the field identified by `id`.
+    ///
+    /// `None` if no field with that id exists, or if it isn't a select field.
+    pub fn multi_select(&self, id: &T) -> Option<MultiSelectRef<'_>> {
+        self.field(id).and_then(|f| f.to_multiselect())
     }
 
     /// Returns a [`CheckBoxRef`] for the field identified by `id`.

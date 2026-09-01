@@ -3,8 +3,9 @@ use ratatui::crossterm::event::KeyEvent;
 use crate::{
     field::{Field, FieldKind},
     widget::{
-        check_box::handle_input_checkbox, select::handle_input_select,
-        single_line::handle_input_singleline, text_area::handle_input_textarea,
+        check_box::handle_input_checkbox, multi_select::handle_input_multiselect,
+        select::handle_input_select, single_line::handle_input_singleline,
+        text_area::handle_input_textarea,
     },
 };
 
@@ -16,6 +17,9 @@ pub fn handle_input_field<T>(key_event: KeyEvent, field: &mut Field<T>) {
         FieldKind::CheckBox(ref mut check_box) => handle_input_checkbox(key_event, check_box),
         FieldKind::Select(ref mut select) => handle_input_select(key_event, select),
         FieldKind::TextArea(ref mut text_area) => handle_input_textarea(key_event, text_area),
+        FieldKind::MultiSelect(ref mut multi_select) => {
+            handle_input_multiselect(key_event, multi_select)
+        }
     }
     field.normalize();
     field.validate();

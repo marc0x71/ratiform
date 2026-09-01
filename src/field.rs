@@ -7,6 +7,7 @@ use crate::{
     validators,
     widget::{
         check_box::{CheckBoxRef, CheckBoxStatus},
+        multi_select::{MultiSelectRef, MultiSelectStatus},
         select::{SelectRef, SelectStatus},
         single_line::{SingleLineRef, SingleLineStatus},
         text_area::{TextAreaRef, TextAreaStatus},
@@ -197,6 +198,7 @@ pub enum FieldKind {
     CheckBox(CheckBoxStatus),
     Select(SelectStatus),
     TextArea(TextAreaStatus),
+    MultiSelect(MultiSelectStatus),
 }
 
 impl FieldKind {
@@ -206,6 +208,7 @@ impl FieldKind {
             FieldKind::CheckBox(k) => k.label.as_str(),
             FieldKind::Select(k) => k.label.as_str(),
             FieldKind::TextArea(k) => k.label.as_str(),
+            FieldKind::MultiSelect(k) => k.label.as_str(),
         }
     }
 
@@ -218,6 +221,7 @@ impl FieldKind {
             FieldKind::CheckBox(k) => k.get(),
             FieldKind::Select(k) => k.get(),
             FieldKind::TextArea(k) => k.get(),
+            FieldKind::MultiSelect(k) => k.get(),
         }
     }
 
@@ -229,6 +233,7 @@ impl FieldKind {
             FieldKind::CheckBox(k) => k.get_ref(),
             FieldKind::Select(k) => k.get_ref(),
             FieldKind::TextArea(k) => k.get_ref(),
+            FieldKind::MultiSelect(k) => k.get_ref(),
         }
     }
 
@@ -238,6 +243,7 @@ impl FieldKind {
             FieldKind::CheckBox(k) => k.set(value),
             FieldKind::Select(k) => k.set(value),
             FieldKind::TextArea(k) => k.set(value),
+            FieldKind::MultiSelect(k) => k.set(value),
         }
     }
 
@@ -255,6 +261,7 @@ impl FieldKind {
             FieldKind::CheckBox(inner) => FieldRef::CheckBox(CheckBoxRef { inner }),
             FieldKind::Select(inner) => FieldRef::Select(SelectRef { inner }),
             FieldKind::TextArea(inner) => FieldRef::TextArea(TextAreaRef { inner }),
+            FieldKind::MultiSelect(inner) => FieldRef::MultiSelect(MultiSelectRef { inner }),
         }
     }
 }
@@ -265,11 +272,13 @@ impl FieldKind {
 /// field. Since the field's kind isn't known at compile time from a bare
 /// [`crate::FormState::field`] call, downcast it to the concrete `*Ref` type with
 /// [`to_singleline`](crate::FieldRef::to_singleline), [`to_select`](crate::FieldRef::to_select),
-/// [`to_checkbox`](crate::FieldRef::to_checkbox), or [`to_textarea`](crate::FieldRef::to_textarea) —
+/// [`to_checkbox`](crate::FieldRef::to_checkbox), [`to_textarea`](crate::FieldRef::to_textarea),
+/// or [`to_multiselect`](crate::FieldRef::to_multiselect) —
 /// each returns `None` if the field is of a different kind.
 ///
 /// In most cases, [`crate::FormState::single_line`], [`crate::FormState::select`],
-/// [`crate::FormState::checkbox`], and [`crate::FormState::text_area`] are more direct:
+/// [`crate::FormState::checkbox`], [`crate::FormState::text_area`], and
+/// [`crate::FormState::multi_select`] are more direct:
 /// they combine the lookup and the downcast in one call.
 #[derive(Debug, Copy, Clone)]
 pub enum FieldRef<'a> {
@@ -277,6 +286,7 @@ pub enum FieldRef<'a> {
     CheckBox(CheckBoxRef<'a>),
     Select(SelectRef<'a>),
     TextArea(TextAreaRef<'a>),
+    MultiSelect(MultiSelectRef<'a>),
 }
 impl<'a> FieldRef<'a> {
     /// Downcasts to a [`SingleLineRef`], or `None` if this field is a different kind.
@@ -307,6 +317,14 @@ impl<'a> FieldRef<'a> {
     pub fn to_textarea(self) -> Option<TextAreaRef<'a>> {
         match self {
             FieldRef::TextArea(inner) => Some(inner),
+            _ => None,
+        }
+    }
+
+    /// Downcasts to a [`MultiSelectRef`], or `None` if this field is a different kind.
+    pub fn to_multiselect(self) -> Option<MultiSelectRef<'a>> {
+        match self {
+            FieldRef::MultiSelect(inner) => Some(inner),
             _ => None,
         }
     }

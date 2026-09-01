@@ -20,13 +20,20 @@ pub enum BuildError {
         /// Position of the field that repeats it.
         duplicate: usize,
     },
-    /// A `Select` field has two options with the same value. `first` and
+    /// A `Select` or `MultiSelect` field has two options with the same value. `first` and
     /// `duplicate` are positions within that field's own list of values
     DuplicateSelectValue {
         /// Position of the first option with this value.
         first: usize,
         /// Position of the option that repeats it.
         duplicate: usize,
+    },
+    /// A `MultiSelect` field has an option whose value contains the `,`
+    /// separator used to encode multiple selections into a single `String`.
+    /// `position` is where that option sits in the field's own list of values.
+    InvalidMultiSelectValue {
+        /// Position of the offending option within its field's list of values.
+        position: usize,
     },
 }
 
@@ -43,6 +50,12 @@ impl fmt::Display for BuildError {
                 write!(
                     f,
                     "Select option at index {duplicate} has the same value as the option at index {first}"
+                )
+            }
+            BuildError::InvalidMultiSelectValue { position } => {
+                write!(
+                    f,
+                    "MultiSelect option contains an invalid value at {position}"
                 )
             }
         }

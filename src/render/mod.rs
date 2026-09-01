@@ -10,8 +10,8 @@ use crate::{
     },
     style::FormStyle,
     widget::{
-        check_box::render_checkbox, select::render_select, single_line::render_singleline,
-        text_area::render_textarea,
+        check_box::render_checkbox, multi_select::render_multiselect, select::render_select,
+        single_line::render_singleline, text_area::render_textarea,
     },
 };
 
@@ -151,6 +151,9 @@ pub(crate) fn render_field<T>(
             highlight_style,
             placeholder_style,
         ),
+        FieldKind::MultiSelect(ref mut multi_select) => {
+            render_multiselect(area, buf, multi_select, value_style, highlight_style)
+        }
     }
 }
 

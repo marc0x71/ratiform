@@ -20,6 +20,19 @@ for `0.x` releases (a breaking change bumps the minor version, not the patch).
   existing record for editing (`set_value()` doesn't move the baseline on
   its own) or after a successful save. Revalidates in the process, so
   `error` stays accurate even if the committed value isn't valid.
+- `MultiSelect`, a new field kind: a list of `(value, label)` pairs where
+  any number can be checked with `Space`, navigated the same way as
+  `Select` (`Up`/`Down`/`Home`/`End`/`PageUp`/`PageDown`). Unlike `Select`,
+  the keyboard cursor and the selection are independent — moving the
+  cursor never (de)selects anything. `value()` returns every selected
+  value, in list order, joined with `,`. Duplicate values are rejected at
+  `build()` time, same as `Select`, plus one more case specific to
+  `MultiSelect`: an option's value containing `,`
+  (`BuildError::InvalidMultiSelectValue`). `FormState::multi_select(&id)
+  -> Option<MultiSelectRef<'_>>` exposes `selected_index()` (the cursor)
+  and `selected()`/`selected_values()`/`selected_labels()` (the actual
+  selection, in list order regardless of the order options were checked
+  in).
 
 ## [0.5.3] - 2026-09-01
 

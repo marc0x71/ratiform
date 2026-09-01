@@ -195,6 +195,19 @@ A list of `(value, label)` pairs, navigated with `Up`/`Down`/`Home`/`End`/`PageU
 
 Two options sharing the same value make `build()` fail too — see [Duplicate ids and values](#duplicate-ids-and-values).
 
+### MultiSelect
+
+A list of `(value, label)` pairs where any number can be checked with `Space`, navigated the same way as `Select`. Unlike `Select`, the keyboard cursor and the selection are independent — moving `Up`/`Down` never changes what's checked. `value()` returns every selected value, comma-separated:
+
+```rust
+.multi_select(Field::Tags, "Tags")
+    .values_ref(&[("bug", "Bug"), ("docs", "Documentation"), ("backend", "Backend")])
+    .selected(&[0, 2])
+    .height(3)
+```
+
+Same duplicate-value rule as `Select` applies — see [Duplicate ids and values](#duplicate-ids-and-values) — plus one more: no value may contain `,`, since it's the separator `value()` uses to join multiple selections.
+
 ### Text area
 
 Multi-line text, with the same insertion/deletion/placeholder support as single-line input, plus `Up`/`Down`, scrolling, and `PageUp`/`PageDown`. `Home`/`End` jump to the start/end of the current visual line; `Ctrl+Home`/`Ctrl+End` jump to the start/end of the whole text. Long lines wrap at the character level, not at word boundaries (the same default `vim` uses).
@@ -328,7 +341,7 @@ This is what lets you match each submitted value back to the field that produced
 
 ### Duplicate ids and values
 
-`build()` returns `Result<FormState<T>, BuildError>`, not `FormState<T>` directly — it fails if two fields share the same id, or if a `Select` field has two options with the same value. Both are checked as each field builder finishes, so the error you get is always the *first* one found while building the chain, even though later field builders still run to completion.
+`build()` returns `Result<FormState<T>, BuildError>`, not `FormState<T>` directly — it fails if two fields share the same id, or if a `Select`/`MultiSelect` field has two options with the same value. `MultiSelect` has one more failure mode: an option's value containing `,`, since that's the separator `value()` uses to join multiple selections. All are checked as each field builder finishes, so the error you get is always the *first* one found while building the chain, even though later field builders still run to completion.
 
 ```rust
 let result = FormBuilder::new()
@@ -467,10 +480,11 @@ println!("{:?}", sel.selected_index()); // Some(0) — not available any other w
 
 * `single_line(&self, id: &T) -> Option<SingleLineRef<'_>>` — `value()` and `cursor_position()`.
 * `select(&self, id: &T) -> Option<SelectRef<'_>>` — `selected_index()`, `selected_value()`, `selected_label()`.
+* `multi_select(&self, id: &T) -> Option<MultiSelectRef<'_>>` — `selected_index()`, `selected()`, `selected_values()`, `selected_labels()`.
 * `checkbox(&self, id: &T) -> Option<CheckBoxRef<'_>>` — `checked()`.
 * `text_area(&self, id: &T) -> Option<TextAreaRef<'_>>` — `value()`, `cursor_position()`, `lines()`, `line_count()`, `scroll_offset()`.
 
-Each returns `None` if the field doesn't exist, or exists but isn't of that kind — there's no compile-time link between a field's id and its widget kind, unlike `value()`, which works uniformly across all four. `field(&self, id: &T) -> Option<FieldRef<'_>>` returns the kind-erased version, if you need to inspect a field without already knowing what it is.
+Each returns `None` if the field doesn't exist, or exists but isn't of that kind — there's no compile-time link between a field's id and its widget kind, unlike `value()`, which works uniformly across all five. `field(&self, id: &T) -> Option<FieldRef<'_>>` returns the kind-erased version, if you need to inspect a field without already knowing what it is.
 
 `TextAreaRef::scroll_offset()` reflects the field as it was last rendered — before the first render, the field doesn't yet know how much vertical space it has, and it returns `0` regardless of the cursor's real position.
 
@@ -517,7 +531,7 @@ Full signatures and edge cases for all of these are in the generated docs.
 
 This project is still in an early stage. The core design — typed field identifiers, the builder/state/widget split, validation — is becoming stable, but breaking changes are still possible before a first tagged release.
 
-Contributions, ideas and bug reports are welcome. If you're thinking about adding a new field kind, see [`docs/adding-a-widget.md`](docs/adding-a-widget.md) for the wiring points and conventions the existing four already follow.
+Contributions, ideas and bug reports are welcome. If you're thinking about adding a new field kind, see [`docs/adding-a-widget.md`](docs/adding-a-widget.md) for the wiring points and conventions the existing five already follow.
 
 ## License
 

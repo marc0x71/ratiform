@@ -3,8 +3,8 @@ use crate::{
     error::BuildError,
     field::{Field, FieldOptions},
     widget::{
-        check_box::CheckboxBuilder, select::SelectBuilder, single_line::SingleLineBuilder,
-        text_area::TextAreaBuilder,
+        check_box::CheckboxBuilder, multi_select::MultiSelectBuilder, select::SelectBuilder,
+        single_line::SingleLineBuilder, text_area::TextAreaBuilder,
     },
 };
 
@@ -90,6 +90,20 @@ impl<T: PartialEq> FormBuilder<T> {
             options: FieldOptions::default(),
             selected: Some(0),
             highlight_symbol: "> ".to_string(),
+        }
+    }
+
+    /// Adds a multi-select field.
+    pub fn multi_select(self, id: T, label: impl Into<String>) -> MultiSelectBuilder<T> {
+        MultiSelectBuilder {
+            id,
+            form: self,
+            label: label.into(),
+            values: Vec::new(),
+            options: FieldOptions::default(),
+            selected: Vec::new(),
+            selected_symbol: "✓ ".to_string(),
+            unselected_symbol: "  ".to_string(),
         }
     }
 
@@ -271,6 +285,16 @@ macro_rules! field_builder_common {
                 label: impl Into<String>,
             ) -> $crate::widget::select::SelectBuilder<$generic> {
                 self.finish().select(id, label)
+            }
+
+            /// Finishes this field and starts a new multi-select field,
+            /// continuing the same builder chain.
+            pub fn multi_select(
+                self,
+                id: $generic,
+                label: impl Into<String>,
+            ) -> $crate::widget::multi_select::MultiSelectBuilder<$generic> {
+                self.finish().multi_select(id, label)
             }
 
             /// Finishes this field and starts a new multi-line text field,
