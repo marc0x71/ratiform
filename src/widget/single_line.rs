@@ -100,6 +100,27 @@ impl<T: PartialEq> SingleLineBuilder<T> {
 
 field_builder_common!(SingleLineBuilder<T>);
 
+/// A read-only view into a single_line field's state.
+#[derive(Debug, Copy, Clone)]
+pub struct SingleLineRef<'a> {
+    pub(crate) inner: &'a SingleLineStatus,
+}
+
+impl SingleLineRef<'_> {
+    /// The field's current value.
+    ///
+    /// Equivalent to [`FormState::value`] for this field, without the
+    /// `String` allocation and the extra lookup.
+    pub fn value(&self) -> &str {
+        &self.inner.value
+    }
+
+    /// The cursor's position within the value, in characters from the start.
+    pub fn cursor_position(&self) -> u16 {
+        self.inner.position
+    }
+}
+
 // STATUS
 #[derive(Debug)]
 pub struct SingleLineStatus {

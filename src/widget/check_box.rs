@@ -84,6 +84,19 @@ impl<T: PartialEq> CheckboxBuilder<T> {
 }
 field_builder_common!(CheckboxBuilder<T>);
 
+/// A read-only view into a checkbox field's state.
+#[derive(Debug, Copy, Clone)]
+pub struct CheckBoxRef<'a> {
+    pub(crate) inner: &'a CheckBoxStatus,
+}
+
+impl CheckBoxRef<'_> {
+    /// Whether the checkbox is currently checked.
+    pub fn checked(&self) -> bool {
+        self.inner.checked
+    }
+}
+
 // STATUS
 #[derive(Debug)]
 pub struct CheckBoxStatus {

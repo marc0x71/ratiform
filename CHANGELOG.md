@@ -20,6 +20,22 @@ for `0.x` releases (a breaking change bumps the minor version, not the patch).
   validation, so a required-but-empty field doesn't block submission while
   hidden.
 
+- `FormState::field(&id) -> Option<FieldRef<'_>>` and its per-kind
+  shortcuts — `single_line()`, `select()`, `checkbox()`, `text_area()` —
+  read-only, widget-specific views into a field's state, for information
+  `value()`/`value_as()` can't express as a `String`:
+  - `SingleLineRef`: `value()`, `cursor_position()`.
+  - `SelectRef`: `selected_index()`, `selected_value()`, `selected_label()`
+    — `selected_index()` in particular has no `String`-based equivalent.
+  - `CheckBoxRef`: `checked()`.
+  - `TextAreaRef`: `value()`, `cursor_position()`, `lines()`,
+    `line_count()`, `scroll_offset()` (meaningful only after the field has
+    been rendered at least once).
+
+  Each accessor returns `None` if the field doesn't exist or isn't of that
+  kind — unlike the rest of the crate's typed-id guarantees, there's no
+  compile-time link between a field's id and its widget kind.
+
 ### Fixed
 - `FormState::reset()` now also resets `result` back to `Working`, `focus`
   to the first field, and clears `cursor_position` — previously it only
@@ -32,6 +48,11 @@ for `0.x` releases (a breaking change bumps the minor version, not the patch).
   the whole screen: `reset()` before opening it empty, `set_value()` to
   pre-fill it for editing, and `value_as::<Priority>()` parsing a `Select`
   into a custom enum via `FromStr`.
+
+- Documented `FieldRef` in the README ("Reading widget-specific state",
+  "Choosing between `value()`, `value_as()`, and `FieldRef`"), including
+  the three equivalent ways `examples/todo-list.rs` reads its `Priority`
+  field.
 
 ## [0.5.2] - 2026-08-31
 

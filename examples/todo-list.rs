@@ -43,7 +43,18 @@ impl Priority {
         }
     }
 }
+impl TryFrom<usize> for Priority {
+    type Error = String;
 
+    fn try_from(value: usize) -> Result<Self, Self::Error> {
+        match value {
+            0 => Ok(Self::Low),
+            1 => Ok(Self::Medium),
+            2 => Ok(Self::High),
+            value => Err(format!("invalid priority: {value}")), // this should be impossible! :)
+        }
+    }
+}
 impl FromStr for Priority {
     type Err = String;
 
@@ -134,7 +145,7 @@ impl App {
     }
 
     fn save(&mut self) {
-        let title = self.form.value(&TaskField::Title).unwrap_or_default();
+        let title_ref = self.form.single_line(&TaskField::Title).unwrap();
         let description = self.form.value(&TaskField::Description).unwrap_or_default();
         let priority = match self.form.value_as(&TaskField::Priority) {
             Some(Ok(p)) => p,
@@ -145,7 +156,16 @@ impl App {
             None => Priority::Medium,
         };
 
-        // alternatively we can also use:
+        // alternatively we can use FieldRef:
+        // let prio = self
+        //     .form
+        //     .select(&TaskField::Priority)
+        //     .expect("priority field should have a value")
+        //     .selected_index()
+        //     .expect("priority value should be valid");
+        // let priority = prio.try_into().unwrap();
+
+        // or we can also use FormState::value_as:
         //
         // let priority = self
         //     .form
@@ -156,7 +176,7 @@ impl App {
         match self.mode {
             Mode::Add => {
                 self.todos.push(Todo {
-                    title,
+                    title: title_ref.value().to_owned(),
                     description,
                     priority,
                     done: false,
@@ -166,7 +186,7 @@ impl App {
 
             Mode::Edit => {
                 let todo = &mut self.todos[self.selected];
-                todo.title = title;
+                todo.title = title_ref.value().to_owned();
                 todo.description = description;
                 todo.priority = priority;
             }

@@ -29,13 +29,16 @@ use crate::{event::handle_input_field, style::FormStyle};
 
 pub(crate) use builder::field_builder_common;
 
+pub use field::FieldRef;
 pub use field::{Normalizer, Validator};
 pub use layout::FormLayout;
+pub use widget::{
+    check_box::CheckBoxRef, select::SelectRef, single_line::SingleLineRef, text_area::TextAreaRef,
+};
 pub use widget::{
     check_box::CheckboxBuilder, select::SelectBuilder, single_line::SingleLineBuilder,
     text_area::TextAreaBuilder,
 };
-
 /// The form's current state, returned by [`FormState::result`].
 #[derive(Debug, Default, Clone, Copy)]
 pub enum FormResult {
@@ -305,6 +308,42 @@ impl<T: PartialEq> FormState<T> {
             f.options.visible = visible;
             f.validate();
         }
+    }
+
+    /// Returns a read-only view into the field identified by `id`, or `None`
+    /// if no field with that id exists.
+    ///
+    /// See [`FieldRef`] for what's available beyond `value()`/`value_as()`.
+    pub fn field(&self, id: &T) -> Option<FieldRef<'_>> {
+        self.fields.iter().find(|f| f.id == *id).map(|f| f.field())
+    }
+
+    /// Returns a [`SingleLineRef`] for the field identified by `id`.
+    ///
+    /// `None` if no field with that id exists, or if it isn't a single-line field.
+    pub fn single_line(&self, id: &T) -> Option<SingleLineRef<'_>> {
+        self.field(id).and_then(|f| f.to_singleline())
+    }
+
+    /// Returns a [`SelectRef`] for the field identified by `id`.
+    ///
+    /// `None` if no field with that id exists, or if it isn't a select field.
+    pub fn select(&self, id: &T) -> Option<SelectRef<'_>> {
+        self.field(id).and_then(|f| f.to_select())
+    }
+
+    /// Returns a [`CheckBoxRef`] for the field identified by `id`.
+    ///
+    /// `None` if no field with that id exists, or if it isn't a checkbox field.
+    pub fn checkbox(&self, id: &T) -> Option<CheckBoxRef<'_>> {
+        self.field(id).and_then(|f| f.to_checkbox())
+    }
+
+    /// Returns a [`TextAreaRef`] for the field identified by `id`.
+    ///
+    /// `None` if no field with that id exists, or if it isn't a text area field.
+    pub fn text_area(&self, id: &T) -> Option<TextAreaRef<'_>> {
+        self.field(id).and_then(|f| f.to_textarea())
     }
 }
 

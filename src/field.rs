@@ -6,8 +6,10 @@ use crate::{
     style::FieldState,
     validators,
     widget::{
-        check_box::CheckBoxStatus, select::SelectStatus, single_line::SingleLineStatus,
-        text_area::TextAreaStatus,
+        check_box::{CheckBoxRef, CheckBoxStatus},
+        select::{SelectRef, SelectStatus},
+        single_line::{SingleLineRef, SingleLineStatus},
+        text_area::{TextAreaRef, TextAreaStatus},
     },
 };
 
@@ -167,6 +169,18 @@ impl<T> Field<T> {
             self.kind.special_key_handled()
         }
     }
+
+    /// Returns a read-only, widget-specific view into this field's state.
+    ///
+    /// Unlike [`FormState::value`], which always returns a `String`, this
+    /// exposes the underlying widget state as-is — e.g. the selected index
+    /// of a [`Select`](crate::widget::select::Select), or the cursor
+    /// position of a [`SingleLine`](crate::widget::single_line::SingleLine).
+    /// Use it when you need information the uniform `String`-based API
+    /// can't express.
+    pub fn field(&self) -> FieldRef<'_> {
+        self.kind.field()
+    }
 }
 
 /// The per-kind state behind a [`Field`] — add a variant here (and to
@@ -225,6 +239,69 @@ impl FieldKind {
         match self {
             FieldKind::TextArea(_) => vec![KeyCode::Enter],
             _ => Vec::new(),
+        }
+    }
+
+    /// Returns a [`FieldRef`] borrowing this field's underlying widget state.
+    pub fn field(&self) -> FieldRef<'_> {
+        match self {
+            FieldKind::SingleLine(inner) => FieldRef::SingleLine(SingleLineRef { inner }),
+            FieldKind::CheckBox(inner) => FieldRef::CheckBox(CheckBoxRef { inner }),
+            FieldKind::Select(inner) => FieldRef::Select(SelectRef { inner }),
+            FieldKind::TextArea(inner) => FieldRef::TextArea(TextAreaRef { inner }),
+        }
+    }
+}
+
+/// A read-only view into a single field's widget-specific state.
+///
+/// `FieldRef` wraps a reference to whichever widget state backs a given
+/// field. Since the field's kind isn't known at compile time from a bare
+/// [`crate::FormState::field`] call, downcast it to the concrete `*Ref` type with
+/// [`to_singleline`](crate::FieldRef::to_singleline), [`to_select`](crate::FieldRef::to_select),
+/// [`to_checkbox`](crate::FieldRef::to_checkbox), or [`to_textarea`](crate::FieldRef::to_textarea) —
+/// each returns `None` if the field is of a different kind.
+///
+/// In most cases, [`crate::FormState::single_line`], [`crate::FormState::select`],
+/// [`crate::FormState::checkbox`], and [`crate::FormState::text_area`] are more direct:
+/// they combine the lookup and the downcast in one call.
+#[derive(Debug, Copy, Clone)]
+pub enum FieldRef<'a> {
+    SingleLine(SingleLineRef<'a>),
+    CheckBox(CheckBoxRef<'a>),
+    Select(SelectRef<'a>),
+    TextArea(TextAreaRef<'a>),
+}
+impl<'a> FieldRef<'a> {
+    /// Downcasts to a [`SingleLineRef`], or `None` if this field is a different kind.
+    pub fn to_singleline(self) -> Option<SingleLineRef<'a>> {
+        match self {
+            FieldRef::SingleLine(inner) => Some(inner),
+            _ => None,
+        }
+    }
+
+    /// Downcasts to a [`CheckBoxRef`], or `None` if this field is a different kind.
+    pub fn to_checkbox(self) -> Option<CheckBoxRef<'a>> {
+        match self {
+            FieldRef::CheckBox(inner) => Some(inner),
+            _ => None,
+        }
+    }
+
+    /// Downcasts to a [`SelectRef`], or `None` if this field is a different kind.
+    pub fn to_select(self) -> Option<SelectRef<'a>> {
+        match self {
+            FieldRef::Select(inner) => Some(inner),
+            _ => None,
+        }
+    }
+
+    /// Downcasts to a [`TextAreaRef`], or `None` if this field is a different kind.
+    pub fn to_textarea(self) -> Option<TextAreaRef<'a>> {
+        match self {
+            FieldRef::TextArea(inner) => Some(inner),
+            _ => None,
         }
     }
 }

@@ -148,6 +148,66 @@ impl<T: PartialEq> SelectBuilder<T> {
 }
 field_builder_common!(SelectBuilder<T>);
 
+/// A read-only view into a select field's state.
+#[derive(Debug, Copy, Clone)]
+pub struct SelectRef<'a> {
+    pub(crate) inner: &'a SelectStatus,
+}
+
+impl SelectRef<'_> {
+    /// The index of the currently selected option, or `None` if there is no
+    /// selection (e.g. the field has no options).
+    pub fn selected_index(&self) -> Option<usize> {
+        self.inner.list_state.selected()
+    }
+
+    /// The *value* of the currently selected option — the first element of
+    /// the `(value, label)` pair — or `None` if there is no selection.
+    ///
+    /// This is what [`FormState::value`] returns for a select field. Use
+    /// [`selected_label`](SelectRef::selected_label) instead for the text
+    /// shown on screen.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use ratiform::builder::FormBuilder;
+    /// # #[derive(Debug, PartialEq, Eq, Hash)]
+    /// # enum Field { Country }
+    /// let state = FormBuilder::new()
+    ///     .select(Field::Country, "Country")
+    ///     .values_ref(&[("IT", "Italy"), ("FR", "France")])
+    ///     .selected(1)
+    ///     .build()
+    ///     .unwrap();
+    ///
+    /// let sel = state.select(&Field::Country).unwrap();
+    /// assert_eq!(sel.selected_value(), Some("FR"));
+    /// assert_eq!(sel.selected_label(), Some("France"));
+    /// ```
+    pub fn selected_label(&self) -> Option<&str> {
+        self.inner
+            .list_state
+            .selected()
+            .and_then(|idx| self.inner.values.get(idx))
+            .map(|(_, s)| s.as_str())
+    }
+
+    /// The *label* of the currently selected option — the second element of
+    /// the `(value, label)` pair, i.e. the text shown on screen — or `None`
+    /// if there is no selection.
+    ///
+    /// See [`selected_value`](SelectRef::selected_value) for an example
+    /// contrasting the two.
+    pub fn selected_value(&self) -> Option<&str> {
+        self.inner
+            .list_state
+            .selected()
+            .and_then(|idx| self.inner.values.get(idx))
+            .map(|(s, _)| s.as_str())
+    }
+}
+
 // STATUS
 #[derive(Debug)]
 pub struct SelectStatus {
@@ -412,5 +472,49 @@ mod builder_select_tests {
                 duplicate: 1
             }
         );
+    }
+
+    #[test]
+    fn select_ref_distinguishes_value_from_label() {
+        #[derive(Debug, PartialEq, Eq, Hash)]
+        enum Field {
+            Country,
+            Notes,
+        }
+        let state = FormBuilder::new()
+            .select(Field::Country, "Country")
+            .values_ref(&[("IT", "Italy"), ("FR", "France")])
+            .selected(1)
+            .text_area(Field::Notes, "Notes")
+            .build()
+            .unwrap();
+
+        let sel = state.select(&Field::Country).unwrap();
+
+        assert_eq!(sel.selected_index(), Some(1));
+        assert_eq!(sel.selected_value(), Some("FR")); // primo elemento della coppia
+        assert_eq!(sel.selected_label(), Some("France")); // secondo elemento, quello mostrato a schermo
+    }
+
+    #[test]
+    fn select_ref_reports_none_when_no_options() {
+        #[derive(Debug, PartialEq, Eq, Hash)]
+        enum Field {
+            Country,
+            Notes,
+        }
+        let state = FormBuilder::new()
+            .select(Field::Country, "Country")
+            .values_ref(&[])
+            .no_selection()
+            .text_area(Field::Notes, "Notes")
+            .build()
+            .unwrap();
+
+        let sel = state.select(&Field::Country).unwrap();
+
+        assert_eq!(sel.selected_index(), None);
+        assert_eq!(sel.selected_value(), None);
+        assert_eq!(sel.selected_label(), None);
     }
 }

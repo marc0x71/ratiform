@@ -72,6 +72,51 @@ impl<T: PartialEq> TextAreaBuilder<T> {
 }
 field_builder_common!(TextAreaBuilder<T>);
 
+/// A read-only view into a text_area field's state.
+#[derive(Debug, Copy, Clone)]
+pub struct TextAreaRef<'a> {
+    pub(crate) inner: &'a TextAreaStatus,
+}
+
+impl TextAreaRef<'_> {
+    /// The field's current value, including newlines.
+    pub fn value(&self) -> &str {
+        &self.inner.value
+    }
+
+    /// The cursor's column position within its current line, in characters
+    /// from the start of the line.
+    pub fn cursor_position(&self) -> u16 {
+        self.inner.position
+    }
+
+    /// The field's content as a list of lines, in order, without their
+    /// trailing newlines.
+    pub fn lines(&self) -> Vec<&str> {
+        self.inner.lines.iter().map(|(_, l)| l.as_str()).collect()
+    }
+
+    /// The number of logical lines in the field's content — i.e. lines as
+    /// separated by newlines in the value, not visual lines after wrapping.
+    pub fn line_count(&self) -> usize {
+        self.inner.lines.len()
+    }
+
+    /// How many lines the view has scrolled down to keep the cursor visible.
+    ///
+    /// `0` while the cursor's line is already within the visible area;
+    /// otherwise, the number of lines above the visible area's top.
+    ///
+    /// Only meaningful after the field has been rendered at least once —
+    /// before that, the field doesn't yet know how much vertical space it
+    /// has available, and this returns `0` regardless of the cursor's
+    /// actual position.
+    pub fn scroll_offset(&self) -> u16 {
+        let (_, row) = calculate_coordinate(self.inner);
+        (row + 1).saturating_sub(self.inner.visible_height)
+    }
+}
+
 // STATUS
 #[derive(Debug)]
 pub struct TextAreaStatus {

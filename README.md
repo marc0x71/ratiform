@@ -452,6 +452,58 @@ A few methods work at any point while the form is active, not just after submiss
 * `focused_field(&self) -> Option<&T>` — the id of the field that currently has focus.
 * `is_dirty(&self) -> bool` / `is_field_dirty(&self, id: &T) -> Option<bool>` / `reset(&mut self)` — whether a value has changed since the form was built, and rolling it back.
 
+### Reading widget-specific state
+
+`value()`/`value_as()` always return a `String` (or something parsed from one) — enough for most cases, but a few things a widget knows about itself don't fit into a string at all: which index is selected in a `Select`, where the cursor sits in a `SingleLine`, how far a `TextArea` has scrolled. For those, `FormState` has one method per field kind, each returning a read-only `*Ref` borrowing straight from the widget's own state:
+
+```rust
+let sel = state.select(&Field::Country).unwrap();
+
+println!("{:?}", sel.selected_value()); // Some("IT") — same as value()
+println!("{:?}", sel.selected_label()); // Some("Italy") — the text shown on screen
+println!("{:?}", sel.selected_index()); // Some(0) — not available any other way
+```
+
+* `single_line(&self, id: &T) -> Option<SingleLineRef<'_>>` — `value()` and `cursor_position()`.
+* `select(&self, id: &T) -> Option<SelectRef<'_>>` — `selected_index()`, `selected_value()`, `selected_label()`.
+* `checkbox(&self, id: &T) -> Option<CheckBoxRef<'_>>` — `checked()`.
+* `text_area(&self, id: &T) -> Option<TextAreaRef<'_>>` — `value()`, `cursor_position()`, `lines()`, `line_count()`, `scroll_offset()`.
+
+Each returns `None` if the field doesn't exist, or exists but isn't of that kind — there's no compile-time link between a field's id and its widget kind, unlike `value()`, which works uniformly across all four. `field(&self, id: &T) -> Option<FieldRef<'_>>` returns the kind-erased version, if you need to inspect a field without already knowing what it is.
+
+`TextAreaRef::scroll_offset()` reflects the field as it was last rendered — before the first render, the field doesn't yet know how much vertical space it has, and it returns `0` regardless of the cursor's real position.
+
+### Choosing between `value()`, `value_as()`, and `FieldRef`
+
+[`examples/todo-list.rs`](https://github.com/marc0x71/ratiform/blob/main/examples/todo-list.rs) reads its `Priority` field three different, equivalent ways — worth seeing side by side, since none of them is strictly "the right one":
+
+```rust
+// `value()`: the field's raw String, whatever it is.
+let raw = form.value(&TaskField::Priority).unwrap_or_default();
+
+// `value_as::<V>()`: parses that String via `V: FromStr` — pairs naturally
+// with a `parsable::<V>` validator on the same field.
+let priority = form
+    .value_as::<Priority>(&TaskField::Priority)
+    .expect("priority field should have a value")
+    .expect("priority value should be valid");
+
+// `select(...).selected_index()`: skips the String round-trip entirely —
+// useful when `V` maps more naturally onto a position than onto text,
+// via a `TryFrom<usize>` impl of your own.
+let priority: Priority = form
+    .select(&TaskField::Priority)
+    .expect("priority field should have a value")
+    .selected_index()
+    .expect("priority value should be valid")
+    .try_into()
+    .unwrap();
+```
+
+In general, reach for `FieldRef` in two situations: when you need something `value()`/`value_as()` genuinely can't express — a cursor position, a selected index, a scroll offset — or when you need more than one piece of information about the same field at once, since `single_line()`/`select()`/etc. do a single lookup no matter how many of their methods you then call on the result.
+
+The same trade-off shows up on `TaskField::Title`, a `SingleLine`: `form.value(&TaskField::Title)` is the shortest path to just the text; `form.single_line(&TaskField::Title)` is worth it once you also need something `value()` can't give you, like `cursor_position()`, since both come from the same borrow instead of two separate lookups.
+
 Once the form is `Submitted`/`Cancelled`, `values(self) -> impl Iterator<Item = (T, String)>` consumes the form and collects every field:
 
 ```rust
