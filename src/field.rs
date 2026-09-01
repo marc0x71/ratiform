@@ -181,6 +181,12 @@ impl<T> Field<T> {
     pub fn field(&self) -> FieldRef<'_> {
         self.kind.field()
     }
+
+    pub(crate) fn commit(&mut self) {
+        self.normalize();
+        self.initial_value = self.get();
+        self.validate();
+    }
 }
 
 /// The per-kind state behind a [`Field`] — add a variant here (and to

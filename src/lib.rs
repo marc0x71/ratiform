@@ -367,6 +367,20 @@ impl<T: PartialEq> FormState<T> {
     pub fn text_area(&self, id: &T) -> Option<TextAreaRef<'_>> {
         self.field(id).and_then(|f| f.to_textarea())
     }
+
+    /// Moves every field's current value to become its new baseline: after
+    /// this call, `is_dirty()`/`is_field_dirty()` report `false` until the
+    /// value changes again. Revalidates each field in the process, so `error`
+    /// stays accurate even if the current value isn't valid — `commit()`
+    /// doesn't require the form to be valid first, it just doesn't hide it if
+    /// it isn't.
+    ///
+    /// Useful after loading an existing record into the form for editing
+    /// (`set_value()` doesn't move the baseline on its own), or after a
+    /// successful save, without rebuilding the form from scratch.
+    pub fn commit(&mut self) {
+        self.fields.iter_mut().for_each(|f| f.commit());
+    }
 }
 
 /// The widget that renders a [`FormState`]. Stateless and cheap to

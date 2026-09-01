@@ -15,6 +15,11 @@ for `0.x` releases (a breaking change bumps the minor version, not the patch).
 - `FormState::has_errors()` and `FormState::errors()` — whether any field
   is currently invalid, and an iterator over the ids and messages of the
   ones that are.
+- `FormState::commit()` — moves every field's current value to become its
+  new baseline, without rebuilding the form. Useful after loading an
+  existing record for editing (`set_value()` doesn't move the baseline on
+  its own) or after a successful save. Revalidates in the process, so
+  `error` stays accurate even if the committed value isn't valid.
 
 ## [0.5.3] - 2026-09-01
 

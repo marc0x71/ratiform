@@ -450,7 +450,7 @@ A few methods work at any point while the form is active, not just after submiss
 * `value(&self, id: &T) -> Option<String>` / `set_value(&mut self, id: &T, value: &str)` — read or overwrite a single field; `set_value` validates immediately, like a keystroke would.
 * `value_as::<V: FromStr>(&self, id: &T) -> Option<Result<V, V::Err>>` — parses the current value as any `FromStr` type; pairs naturally with a `parsable::<V>` validator on the same field, but doesn't check for one.
 * `focused_field(&self) -> Option<&T>` — the id of the field that currently has focus.
-* `is_dirty(&self) -> bool` / `is_field_dirty(&self, id: &T) -> Option<bool>` / `dirty_fields(&self) -> impl Iterator<Item = &T>` / `reset(&mut self)` / `reset_field(&mut self, id: &T)` — whether a value has changed since the form was built, which fields, and rolling back the whole form or just one.
+* `is_dirty(&self) -> bool` / `is_field_dirty(&self, id: &T) -> Option<bool>` / `dirty_fields(&self) -> impl Iterator<Item = &T>` / `reset(&mut self)` / `reset_field(&mut self, id: &T)` / `commit(&mut self)` — whether a value has changed since the form was built, which fields, rolling back the whole form or just one, and moving the baseline forward instead.
 * `has_errors(&self) -> bool` / `errors(&self) -> impl Iterator<Item = (&T, &str)>` — whether any field is currently invalid, and which ones, with their messages.
 
 ### Reading widget-specific state
