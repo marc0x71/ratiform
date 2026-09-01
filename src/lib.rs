@@ -153,8 +153,17 @@ impl<T: PartialEq> FormState<T> {
         self.result
     }
 
-    fn has_errors(&self) -> bool {
+    /// Whether any field currently has a validation error.
+    pub fn has_errors(&self) -> bool {
         self.fields.iter().any(|f| f.has_error())
+    }
+
+    /// The current validation errors, keyed by field id. Only fields that
+    /// actually have an error are included.
+    pub fn errors(&self) -> impl Iterator<Item = (&T, &str)> {
+        self.fields
+            .iter()
+            .filter_map(|f| f.error.as_ref().map(|e| (&f.id, e.as_str())))
     }
 
     fn prev_in_focus(&self) -> usize {
@@ -267,6 +276,14 @@ impl<T: PartialEq> FormState<T> {
         self.cursor_position = None;
     }
 
+    /// Restores the field with the given id to its initial value, revalidating
+    /// it in the process. Does nothing if no field has that id.
+    pub fn reset_field(&mut self, id: &T) {
+        if let Some(f) = self.fields.iter_mut().find(|f| f.id == *id) {
+            f.reset();
+        }
+    }
+
     /// Whether any field's value has changed since the form was built.
     pub fn is_dirty(&self) -> bool {
         self.fields.iter().any(|f| f.is_dirty())
@@ -279,6 +296,11 @@ impl<T: PartialEq> FormState<T> {
             .iter()
             .find(|f| f.id == *id)
             .map(|f| f.is_dirty())
+    }
+
+    /// The ids of fields whose value has changed since the form was built.
+    pub fn dirty_fields(&self) -> impl Iterator<Item = &T> {
+        self.fields.iter().filter(|f| f.is_dirty()).map(|f| &f.id)
     }
 
     fn focused_handle_key(&self, code: KeyCode) -> bool {
