@@ -59,18 +59,22 @@ impl HorizontalListState {
     }
 }
 
-pub struct HorizontalList<'a> {
-    items: Vec<&'a str>,
+pub struct HorizontalList {
+    items: Vec<String>,
     style: Style,
     highlight_style: Style,
     spacing: usize,
     preview: usize,
 }
 
-impl<'a> HorizontalList<'a> {
-    pub fn new(items: impl IntoIterator<Item = &'a str>) -> Self {
+impl HorizontalList {
+    pub fn new<I, S>(items: I) -> Self
+    where
+        I: IntoIterator<Item = S>,
+        S: Into<String>,
+    {
         Self {
-            items: items.into_iter().collect(),
+            items: items.into_iter().map(|s| s.into()).collect(),
             style: Style::default(),
             highlight_style: Style::default().reversed(),
             spacing: 2,
@@ -101,7 +105,7 @@ impl<'a> HorizontalList<'a> {
     }
 }
 
-impl StatefulWidget for HorizontalList<'_> {
+impl StatefulWidget for HorizontalList {
     type State = HorizontalListState;
 
     fn render(self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {
@@ -115,7 +119,7 @@ impl StatefulWidget for HorizontalList<'_> {
             .flat_map(|(i, item)| {
                 [
                     Span::styled(
-                        *item,
+                        item.as_str(),
                         if Some(i) == state.selected {
                             self.highlight_style
                         } else {

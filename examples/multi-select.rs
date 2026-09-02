@@ -26,6 +26,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .optional()
         .multi_select(ProjectField::Permissions, "Permissions")
         .values_ref(&[("read", "Read"), ("write", "Write"), ("admin", "Admin")])
+        .horizontal()
         .optional()
         .selected(&[10]) // "read" selezionato all'avvio
         .height(3)

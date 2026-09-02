@@ -36,6 +36,9 @@ for `0.x` releases (a breaking change bumps the minor version, not the patch).
 - Added horizontal layout support for `Select` fields via `.horizontal()`,
   `Select` fields remain vertical by default, preserving the existing behavior.
   Horizontal selects can be navigated with the left and right arrow keys.
+- Added horizontal layout support for `MultiSelect` fields via `.horizontal()`,
+  `MultiSelect` fields remain vertical by default, preserving the existing behavior.
+  Horizontal multi-selects can be navigated with the left and right arrow keys.
 
 ## [0.5.3] - 2026-09-01
 

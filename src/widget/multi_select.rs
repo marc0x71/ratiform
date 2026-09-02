@@ -14,10 +14,14 @@ use crate::{
     error::BuildError,
     field::{Field, FieldKind, FieldOptions},
     field_builder_common,
+    internal::list::{HorizontalList, HorizontalListState},
 };
 
+pub(crate) enum MultiSelectDirection {
+    Horizontal,
+    Vertical,
+}
 // BUILDER
-
 /// Builder for a multi-select field: any number of options can be checked
 /// with `Space`, navigated with the arrow keys. Started with
 /// [`FormBuilder::multi_select`](crate::builder::FormBuilder::multi_select).
@@ -36,6 +40,7 @@ pub struct MultiSelectBuilder<T> {
     pub(crate) options: FieldOptions,
     pub(crate) selected_symbol: String,
     pub(crate) unselected_symbol: String,
+    pub(crate) direction: MultiSelectDirection,
 }
 
 impl<T: PartialEq> MultiSelectBuilder<T> {
@@ -98,6 +103,16 @@ impl<T: PartialEq> MultiSelectBuilder<T> {
         self
     }
 
+    pub fn horizontal(mut self) -> Self {
+        self.direction = MultiSelectDirection::Horizontal;
+        self
+    }
+
+    pub fn vertical(mut self) -> Self {
+        self.direction = MultiSelectDirection::Vertical;
+        self
+    }
+
     fn validate_field(&mut self) {
         if self.form.pending_error.is_some() {
             return;
@@ -142,12 +157,21 @@ impl<T: PartialEq> MultiSelectBuilder<T> {
             .collect::<Vec<_>>()
             .join(",");
 
+        let list_state = match self.direction {
+            MultiSelectDirection::Horizontal => MultiSelectStateDirection::Horizontal(
+                HorizontalListState::default().with_selected(Some(0)),
+            ),
+            MultiSelectDirection::Vertical => {
+                MultiSelectStateDirection::Vertical(ListState::default().with_selected(Some(0)))
+            }
+        };
+
         self.form.push_field(Field {
             id: self.id,
             kind: FieldKind::MultiSelect(MultiSelectStatus {
                 label: self.label,
                 values: self.values,
-                list_state: ListState::default().with_selected(Some(0)),
+                list_state,
                 height: self.options.height,
                 selected_symbol: self.selected_symbol,
                 unselected_symbol: self.unselected_symbol,
@@ -222,11 +246,76 @@ impl MultiSelectRef<'_> {
 
 // STATUS
 #[derive(Debug)]
+pub(crate) enum MultiSelectStateDirection {
+    Horizontal(HorizontalListState),
+    Vertical(ListState),
+}
+
+impl MultiSelectStateDirection {
+    fn selected(&self) -> Option<usize> {
+        match self {
+            MultiSelectStateDirection::Horizontal(state) => state.selected(),
+            MultiSelectStateDirection::Vertical(state) => state.selected(),
+        }
+    }
+
+    #[allow(dead_code)]
+    fn select(&mut self, index: Option<usize>) {
+        match self {
+            MultiSelectStateDirection::Horizontal(state) => state.select(index),
+            MultiSelectStateDirection::Vertical(state) => state.select(index),
+        }
+    }
+
+    fn select_previous(&mut self) {
+        match self {
+            MultiSelectStateDirection::Horizontal(state) => state.select_previous(),
+            MultiSelectStateDirection::Vertical(state) => state.select_previous(),
+        }
+    }
+
+    fn select_next(&mut self) {
+        match self {
+            MultiSelectStateDirection::Horizontal(state) => state.select_next(),
+            MultiSelectStateDirection::Vertical(state) => state.select_next(),
+        }
+    }
+
+    fn select_first(&mut self) {
+        match self {
+            MultiSelectStateDirection::Horizontal(state) => state.select_first(),
+            MultiSelectStateDirection::Vertical(state) => state.select_first(),
+        }
+    }
+
+    fn select_last(&mut self) {
+        match self {
+            MultiSelectStateDirection::Horizontal(state) => state.select_last(),
+            MultiSelectStateDirection::Vertical(state) => state.select_last(),
+        }
+    }
+
+    fn scroll_up_by(&mut self, amount: u16) {
+        match self {
+            MultiSelectStateDirection::Horizontal(state) => state.scroll_up_by(amount),
+            MultiSelectStateDirection::Vertical(state) => state.scroll_up_by(amount),
+        }
+    }
+
+    fn scroll_down_by(&mut self, amount: u16) {
+        match self {
+            MultiSelectStateDirection::Horizontal(state) => state.scroll_down_by(amount),
+            MultiSelectStateDirection::Vertical(state) => state.scroll_down_by(amount),
+        }
+    }
+}
+
+#[derive(Debug)]
 pub struct MultiSelectStatus {
     pub(crate) label: String,
     pub(crate) values: Vec<(String, String)>,
     pub(crate) selected: Vec<bool>,
-    pub(crate) list_state: ListState,
+    pub(crate) list_state: MultiSelectStateDirection,
     pub(crate) height: u16,
     pub(crate) selected_symbol: String,
     pub(crate) unselected_symbol: String,
@@ -274,12 +363,28 @@ impl MultiSelectStatus {
         }
     }
 
+    fn right(&mut self) {
+        if matches!(self.list_state, MultiSelectStateDirection::Horizontal(_)) {
+            self.list_state.select_next();
+        }
+    }
+
+    fn left(&mut self) {
+        if matches!(self.list_state, MultiSelectStateDirection::Horizontal(_)) {
+            self.list_state.select_previous();
+        }
+    }
+
     fn up(&mut self) {
-        self.list_state.select_previous();
+        if matches!(self.list_state, MultiSelectStateDirection::Vertical(_)) {
+            self.list_state.select_previous();
+        }
     }
 
     fn down(&mut self) {
-        self.list_state.select_next();
+        if matches!(self.list_state, MultiSelectStateDirection::Vertical(_)) {
+            self.list_state.select_next();
+        }
     }
 
     fn home(&mut self) {
@@ -311,6 +416,8 @@ impl MultiSelectStatus {
 // EVENT
 pub(crate) fn handle_input_multiselect(key_event: KeyEvent, select: &mut MultiSelectStatus) {
     match key_event.code {
+        KeyCode::Left => select.left(),
+        KeyCode::Right => select.right(),
         KeyCode::Up => select.up(),
         KeyCode::Down => select.down(),
         KeyCode::Home => select.home(),
@@ -340,11 +447,21 @@ pub(crate) fn render_multiselect(
         items.push(format!("{prefix}{v}"));
     }
 
-    let list = List::new(items)
-        .style(value_style)
-        .highlight_style(highlight_style);
+    match select.list_state {
+        MultiSelectStateDirection::Horizontal(ref mut horizontal_list_state) => {
+            let list = HorizontalList::new(items)
+                .style(value_style)
+                .highlight_style(highlight_style);
 
-    StatefulWidget::render(list, area, buf, &mut select.list_state);
+            StatefulWidget::render(list, area, buf, horizontal_list_state);
+        }
+        MultiSelectStateDirection::Vertical(ref mut list_state) => {
+            let list = List::new(items)
+                .style(value_style)
+                .highlight_style(highlight_style);
+            StatefulWidget::render(list, area, buf, list_state);
+        }
+    }
 
     None
 }
@@ -361,8 +478,10 @@ mod multiselect_toggle_test {
                 .map(|(k, v)| ((*k).to_owned(), (*v).to_owned()))
                 .collect(),
             list_state: match selected {
-                Some(idx) => ListState::default().with_selected(Some(idx)),
-                None => ListState::default(),
+                Some(idx) => MultiSelectStateDirection::Vertical(
+                    ListState::default().with_selected(Some(idx)),
+                ),
+                None => MultiSelectStateDirection::Vertical(ListState::default()),
             },
             height: 5,
             selected_symbol: "> ".to_string(),
@@ -418,8 +537,10 @@ mod multiselect_test {
                 .map(|(k, v)| ((*k).to_owned(), (*v).to_owned()))
                 .collect(),
             list_state: match selected {
-                Some(idx) => ListState::default().with_selected(Some(idx)),
-                None => ListState::default(),
+                Some(idx) => MultiSelectStateDirection::Vertical(
+                    ListState::default().with_selected(Some(idx)),
+                ),
+                None => MultiSelectStateDirection::Vertical(ListState::default()),
             },
             height: 5,
             selected_symbol: "> ".to_string(),

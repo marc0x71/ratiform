@@ -4,7 +4,7 @@ use crate::{
     field::{Field, FieldOptions},
     widget::{
         check_box::CheckboxBuilder,
-        multi_select::MultiSelectBuilder,
+        multi_select::{MultiSelectBuilder, MultiSelectDirection},
         select::{SelectBuilder, SelectDirection},
         single_line::SingleLineBuilder,
         text_area::TextAreaBuilder,
@@ -93,7 +93,7 @@ impl<T: PartialEq> FormBuilder<T> {
             options: FieldOptions::default(),
             selected: Some(0),
             highlight_symbol: "> ".to_string(),
-            kind: SelectDirection::Vertical,
+            direction: SelectDirection::Vertical,
         }
     }
 
@@ -106,8 +106,9 @@ impl<T: PartialEq> FormBuilder<T> {
             values: Vec::new(),
             options: FieldOptions::default(),
             selected: Vec::new(),
-            selected_symbol: "✓ ".to_string(),
-            unselected_symbol: "  ".to_string(),
+            selected_symbol: "✓".to_string(),
+            unselected_symbol: " ".to_string(),
+            direction: MultiSelectDirection::Vertical,
         }
     }
 

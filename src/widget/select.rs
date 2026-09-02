@@ -37,7 +37,7 @@ pub struct SelectBuilder<T> {
     pub(crate) selected: Option<usize>,
     pub(crate) options: FieldOptions,
     pub(crate) highlight_symbol: String,
-    pub(crate) kind: SelectDirection,
+    pub(crate) direction: SelectDirection,
 }
 
 impl<T: PartialEq> SelectBuilder<T> {
@@ -131,12 +131,12 @@ impl<T: PartialEq> SelectBuilder<T> {
     }
 
     pub fn horizontal(mut self) -> Self {
-        self.kind = SelectDirection::Horizontal;
+        self.direction = SelectDirection::Horizontal;
         self
     }
 
     pub fn vertical(mut self) -> Self {
-        self.kind = SelectDirection::Vertical;
+        self.direction = SelectDirection::Vertical;
         self
     }
 
@@ -146,7 +146,7 @@ impl<T: PartialEq> SelectBuilder<T> {
             .selected
             .and_then(|sel| self.values.get(sel).map(|(k, _)| k.clone()))
             .unwrap_or_default();
-        let list_state = match self.kind {
+        let list_state = match self.direction {
             SelectDirection::Horizontal => SelectStateDirection::Horizontal(
                 HorizontalListState::default().with_selected(self.selected),
             ),
