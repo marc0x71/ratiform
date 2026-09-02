@@ -109,7 +109,7 @@ impl StatefulWidget for HorizontalList {
     type State = HorizontalListState;
 
     fn render(self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {
-        state.clamp(0, self.items.len() - 1);
+        state.clamp(0, self.items.len().saturating_sub(1));
 
         let spaces = " ".repeat(self.spacing);
         let items: Vec<_> = self
