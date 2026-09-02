@@ -184,7 +184,7 @@ A boolean, toggled with `Space`:
 
 ### Select
 
-A list of `(value, label)` pairs, navigated with `Up`/`Down`/`Home`/`End`/`PageUp`/`PageDown`. `value()` returns the first element of the pair, not the label shown on screen:
+A list of `(value, label)` pairs. `value()` returns the first element of the pair, not the label shown on screen:
 
 ```rust
 .select(Field::Country, "Country")
@@ -193,11 +193,13 @@ A list of `(value, label)` pairs, navigated with `Up`/`Down`/`Home`/`End`/`PageU
     .height(5)
 ```
 
+Vertical by default — a column navigated with `Up`/`Down`/`Home`/`End`/`PageUp`/`PageDown`. `.horizontal()` switches to a single scrolling row navigated with `Left`/`Right` instead; `.spacing(n)`/`.preview(n)` tune how many spaces separate options and how many past the selected one stay visible while scrolling (both default to `2`, both ignored while vertical).
+
 Two options sharing the same value make `build()` fail too — see [Duplicate ids and values](#duplicate-ids-and-values).
 
 ### MultiSelect
 
-A list of `(value, label)` pairs where any number can be checked with `Space`, navigated the same way as `Select`. Unlike `Select`, the keyboard cursor and the selection are independent — moving `Up`/`Down` never changes what's checked. `value()` returns every selected value, comma-separated:
+A list of `(value, label)` pairs where any number can be checked with `Space`. Unlike `Select`, the keyboard cursor and the selection are independent — moving the cursor never changes what's checked. `value()` returns every selected value, comma-separated:
 
 ```rust
 .multi_select(Field::Tags, "Tags")
@@ -205,6 +207,8 @@ A list of `(value, label)` pairs where any number can be checked with `Space`, n
     .selected(&[0, 2])
     .height(3)
 ```
+
+Vertical by default — the cursor moves with `Up`/`Down`/`Home`/`End`/`PageUp`/`PageDown`. `.horizontal()` switches to a single scrolling row where the cursor moves with `Left`/`Right` instead; same `.spacing(n)`/`.preview(n)` as `Select`.
 
 Same duplicate-value rule as `Select` applies — see [Duplicate ids and values](#duplicate-ids-and-values) — plus one more: no value may contain `,`, since it's the separator `value()` uses to join multiple selections.
 

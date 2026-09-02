@@ -94,6 +94,8 @@ impl<T: PartialEq> FormBuilder<T> {
             selected: Some(0),
             highlight_symbol: "> ".to_string(),
             direction: SelectDirection::Vertical,
+            spacing: 2,
+            preview: 2,
         }
     }
 
@@ -109,6 +111,8 @@ impl<T: PartialEq> FormBuilder<T> {
             selected_symbol: "✓".to_string(),
             unselected_symbol: " ".to_string(),
             direction: MultiSelectDirection::Vertical,
+            spacing: 2,
+            preview: 2,
         }
     }
 

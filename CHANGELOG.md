@@ -33,12 +33,19 @@ for `0.x` releases (a breaking change bumps the minor version, not the patch).
   and `selected()`/`selected_values()`/`selected_labels()` (the actual
   selection, in list order regardless of the order options were checked
   in).
-- Added horizontal layout support for `Select` fields via `.horizontal()`,
-  `Select` fields remain vertical by default, preserving the existing behavior.
-  Horizontal selects can be navigated with the left and right arrow keys.
-- Added horizontal layout support for `MultiSelect` fields via `.horizontal()`,
-  `MultiSelect` fields remain vertical by default, preserving the existing behavior.
-  Horizontal multi-selects can be navigated with the left and right arrow keys.
+- Added horizontal layout support for `Select` fields via `.horizontal()`.
+  `Select` fields remain vertical by default, preserving the existing
+  behavior. Horizontal selects are navigated with the left and right arrow
+  keys instead; `.spacing(n)`/`.preview(n)` tune the gap between options
+  and how many past the selected one stay visible while scrolling (both
+  default to `2`, both ignored while vertical). `.highlight_symbol()` is
+  also ignored while horizontal — the cursor there is shown only via
+  `highlight_style`.
+- Added horizontal layout support for `MultiSelect` fields via
+  `.horizontal()`. `MultiSelect` fields remain vertical by default,
+  preserving the existing behavior. Horizontal multi-selects are navigated
+  with the left and right arrow keys instead; same `.spacing(n)`/
+  `.preview(n)` as `Select`.
 
 ## [0.5.3] - 2026-09-01
 

@@ -23,14 +23,19 @@ pub(crate) enum MultiSelectDirection {
 }
 // BUILDER
 /// Builder for a multi-select field: any number of options can be checked
-/// with `Space`, navigated with the arrow keys. Started with
+/// with `Space`. Started with
 /// [`FormBuilder::multi_select`](crate::builder::FormBuilder::multi_select).
 /// Like the other field builders, it supports the common options
 /// `required`, `optional`, `disabled`, `readonly`, `height`, `validator`,
 /// and `normalizer`.
 ///
-/// Cursor and selection are independent here, unlike `Select` — moving
-/// the cursor never changes what's selected.
+/// Cursor and selection are independent, unlike `Select` — moving the
+/// cursor never changes what's selected.
+///
+/// Vertical by default — the cursor moves with `Up`/`Down`/`Home`/`End`/
+/// `PageUp`/`PageDown`. [`horizontal`](Self::horizontal) switches to a
+/// single scrolling row where the cursor moves with `Left`/`Right`
+/// instead.
 pub struct MultiSelectBuilder<T> {
     pub(crate) id: T,
     pub(crate) form: FormBuilder<T>,
@@ -41,6 +46,8 @@ pub struct MultiSelectBuilder<T> {
     pub(crate) selected_symbol: String,
     pub(crate) unselected_symbol: String,
     pub(crate) direction: MultiSelectDirection,
+    pub(crate) spacing: usize,
+    pub(crate) preview: usize,
 }
 
 impl<T: PartialEq> MultiSelectBuilder<T> {
@@ -103,11 +110,16 @@ impl<T: PartialEq> MultiSelectBuilder<T> {
         self
     }
 
+    /// Lays the options out on a single scrolling row instead of a column,
+    /// navigated with `Left`/`Right`. `Up`/`Down`/`Home`/`End`/`PageUp`/
+    /// `PageDown` become no-ops.
     pub fn horizontal(mut self) -> Self {
         self.direction = MultiSelectDirection::Horizontal;
         self
     }
 
+    /// Lays the options out in a column — the default. Reverses
+    /// [`horizontal`](Self::horizontal).
     pub fn vertical(mut self) -> Self {
         self.direction = MultiSelectDirection::Vertical;
         self
@@ -132,6 +144,25 @@ impl<T: PartialEq> MultiSelectBuilder<T> {
                 }
             }
         }
+    }
+
+    /// Number of options to keep visible past the selected one when
+    /// scrolling horizontally. Ignored when the field is
+    /// [`vertical`](Self::vertical).
+    ///
+    /// Defaults to `2`.
+    pub fn preview(mut self, preview: usize) -> Self {
+        self.preview = preview;
+        self
+    }
+
+    /// Number of spaces between options. Ignored when the field is
+    /// [`vertical`](Self::vertical).
+    ///
+    /// Defaults to `2`.
+    pub fn spacing(mut self, spacing: usize) -> Self {
+        self.spacing = spacing;
+        self
     }
 
     fn finish(mut self) -> FormBuilder<T> {
@@ -176,6 +207,8 @@ impl<T: PartialEq> MultiSelectBuilder<T> {
                 selected_symbol: self.selected_symbol,
                 unselected_symbol: self.unselected_symbol,
                 selected,
+                spacing: self.spacing,
+                preview: self.preview,
             }),
             options: self.options,
             error: None,
@@ -319,6 +352,8 @@ pub struct MultiSelectStatus {
     pub(crate) height: u16,
     pub(crate) selected_symbol: String,
     pub(crate) unselected_symbol: String,
+    pub(crate) spacing: usize,
+    pub(crate) preview: usize,
 }
 
 impl MultiSelectStatus {
@@ -449,7 +484,7 @@ pub(crate) fn render_multiselect(
 
     match select.list_state {
         MultiSelectStateDirection::Horizontal(ref mut horizontal_list_state) => {
-            let list = HorizontalList::new(items)
+            let list = HorizontalList::new(items, select.spacing, select.preview)
                 .style(value_style)
                 .highlight_style(highlight_style);
 
@@ -487,6 +522,8 @@ mod multiselect_toggle_test {
             selected_symbol: "> ".to_string(),
             unselected_symbol: "  ".to_string(),
             selected: vec![false; values.len()],
+            spacing: 2,
+            preview: 2,
         }
     }
 
@@ -546,6 +583,8 @@ mod multiselect_test {
             selected_symbol: "> ".to_string(),
             unselected_symbol: "  ".to_string(),
             selected: vec![false; values.len()],
+            spacing: 2,
+            preview: 2,
         }
     }
 

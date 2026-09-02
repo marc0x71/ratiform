@@ -68,7 +68,7 @@ pub struct HorizontalList {
 }
 
 impl HorizontalList {
-    pub fn new<I, S>(items: I) -> Self
+    pub fn new<I, S>(items: I, spacing: usize, preview: usize) -> Self
     where
         I: IntoIterator<Item = S>,
         S: Into<String>,
@@ -77,8 +77,8 @@ impl HorizontalList {
             items: items.into_iter().map(|s| s.into()).collect(),
             style: Style::default(),
             highlight_style: Style::default().reversed(),
-            spacing: 2,
-            preview: 2,
+            spacing,
+            preview,
         }
     }
 

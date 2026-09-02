@@ -23,12 +23,16 @@ pub(crate) enum SelectDirection {
 }
 
 // BUILDER
-/// Builder for a select field: a list of options the user picks from with
-/// the arrow keys. Started with
+/// Builder for a select field: a list of options the user picks from.
+/// Started with
 /// [`FormBuilder::select`](crate::builder::FormBuilder::select).
 /// Like the other field builders, it supports the common options
 /// `required`, `optional`, `disabled`, `readonly`, `height`,
 /// `validator`, and `normalizer`.
+///
+/// Vertical by default — navigated with `Up`/`Down`/`Home`/`End`/
+/// `PageUp`/`PageDown`. [`horizontal`](Self::horizontal) switches to a
+/// single scrolling row navigated with `Left`/`Right` instead.
 pub struct SelectBuilder<T> {
     pub(crate) id: T,
     pub(crate) form: FormBuilder<T>,
@@ -38,6 +42,8 @@ pub struct SelectBuilder<T> {
     pub(crate) options: FieldOptions,
     pub(crate) highlight_symbol: String,
     pub(crate) direction: SelectDirection,
+    pub(crate) spacing: usize,
+    pub(crate) preview: usize,
 }
 
 impl<T: PartialEq> SelectBuilder<T> {
@@ -100,7 +106,9 @@ impl<T: PartialEq> SelectBuilder<T> {
         self
     }
 
-    /// Sets the symbol shown before the currently selected row.
+    /// Sets the symbol shown before the option under the cursor. Ignored when
+    /// the field is [`horizontal`](Self::horizontal) — there, the cursor is
+    /// shown only via `highlight_style`.
     ///
     /// Applied only to the highlighted list item; it does not affect the
     /// symbols or spacing of unselected rows. Has no effect when the field
@@ -130,13 +138,37 @@ impl<T: PartialEq> SelectBuilder<T> {
         }
     }
 
+    /// Lays the options out on a single scrolling row instead of a column,
+    /// navigated with `Left`/`Right`. `Up`/`Down`/`Home`/`End`/`PageUp`/
+    /// `PageDown` become no-ops.
     pub fn horizontal(mut self) -> Self {
         self.direction = SelectDirection::Horizontal;
         self
     }
 
+    /// Lays the options out in a column — the default. Reverses
+    /// [`horizontal`](Self::horizontal).
     pub fn vertical(mut self) -> Self {
         self.direction = SelectDirection::Vertical;
+        self
+    }
+
+    /// Number of options to keep visible past the selected one when
+    /// scrolling horizontally. Ignored when the field is
+    /// [`vertical`](Self::vertical).
+    ///
+    /// Defaults to `2`.
+    pub fn preview(mut self, preview: usize) -> Self {
+        self.preview = preview;
+        self
+    }
+
+    /// Number of spaces between options. Ignored when the field is
+    /// [`vertical`](Self::vertical).
+    ///
+    /// Defaults to `2`.
+    pub fn spacing(mut self, spacing: usize) -> Self {
+        self.spacing = spacing;
         self
     }
 
@@ -162,6 +194,8 @@ impl<T: PartialEq> SelectBuilder<T> {
                 list_state,
                 height: self.options.height,
                 highlight_symbol: self.highlight_symbol,
+                spacing: self.spacing,
+                preview: self.preview,
             }),
             options: self.options,
             error: None,
@@ -304,6 +338,8 @@ pub struct SelectStatus {
     pub(crate) list_state: SelectStateDirection,
     pub(crate) height: u16,
     pub(crate) highlight_symbol: String,
+    pub(crate) spacing: usize,
+    pub(crate) preview: usize,
 }
 
 impl SelectStatus {
@@ -399,7 +435,7 @@ pub(crate) fn render_select(
 
     match select.list_state {
         SelectStateDirection::Horizontal(ref mut horizontal_list_state) => {
-            let list = HorizontalList::new(items)
+            let list = HorizontalList::new(items, select.spacing, select.preview)
                 .style(value_style)
                 .highlight_style(highlight_style);
 
@@ -436,6 +472,8 @@ mod select_tests {
             },
             height: 5,
             highlight_symbol: "> ".to_string(),
+            spacing: 2,
+            preview: 2,
         }
     }
 
