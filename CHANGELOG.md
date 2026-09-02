@@ -5,7 +5,7 @@ All notable changes to `ratiform` are documented here. Format loosely follows
 [Cargo's SemVer rules](https://doc.rust-lang.org/cargo/reference/semver.html)
 for `0.x` releases (a breaking change bumps the minor version, not the patch).
 
-## [Unreleased]
+## [0.5.4] - 2026-09-02
 
 ### Added
 - `FormState::reset_field(&id)` — resets a single field to its initial
