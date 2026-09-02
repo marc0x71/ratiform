@@ -3,8 +3,11 @@ use crate::{
     error::BuildError,
     field::{Field, FieldOptions},
     widget::{
-        check_box::CheckboxBuilder, multi_select::MultiSelectBuilder, select::SelectBuilder,
-        single_line::SingleLineBuilder, text_area::TextAreaBuilder,
+        check_box::CheckboxBuilder,
+        multi_select::MultiSelectBuilder,
+        select::{SelectBuilder, SelectDirection},
+        single_line::SingleLineBuilder,
+        text_area::TextAreaBuilder,
     },
 };
 
@@ -90,6 +93,7 @@ impl<T: PartialEq> FormBuilder<T> {
             options: FieldOptions::default(),
             selected: Some(0),
             highlight_symbol: "> ".to_string(),
+            kind: SelectDirection::Vertical,
         }
     }
 

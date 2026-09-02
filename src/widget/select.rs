@@ -14,7 +14,13 @@ use crate::{
     error::BuildError,
     field::{Field, FieldKind, FieldOptions},
     field_builder_common,
+    internal::list::{HorizontalList, HorizontalListState},
 };
+
+pub(crate) enum SelectDirection {
+    Horizontal,
+    Vertical,
+}
 
 // BUILDER
 /// Builder for a select field: a list of options the user picks from with
@@ -31,6 +37,7 @@ pub struct SelectBuilder<T> {
     pub(crate) selected: Option<usize>,
     pub(crate) options: FieldOptions,
     pub(crate) highlight_symbol: String,
+    pub(crate) kind: SelectDirection,
 }
 
 impl<T: PartialEq> SelectBuilder<T> {
@@ -123,18 +130,36 @@ impl<T: PartialEq> SelectBuilder<T> {
         }
     }
 
+    pub fn horizontal(mut self) -> Self {
+        self.kind = SelectDirection::Horizontal;
+        self
+    }
+
+    pub fn vertical(mut self) -> Self {
+        self.kind = SelectDirection::Vertical;
+        self
+    }
+
     fn finish(mut self) -> FormBuilder<T> {
         self.validate_field();
         let initial_value = self
             .selected
             .and_then(|sel| self.values.get(sel).map(|(k, _)| k.clone()))
             .unwrap_or_default();
+        let list_state = match self.kind {
+            SelectDirection::Horizontal => SelectStateDirection::Horizontal(
+                HorizontalListState::default().with_selected(self.selected),
+            ),
+            SelectDirection::Vertical => {
+                SelectStateDirection::Vertical(ListState::default().with_selected(self.selected))
+            }
+        };
         self.form.push_field(Field {
             id: self.id,
             kind: FieldKind::Select(SelectStatus {
                 label: self.label,
                 values: self.values,
-                list_state: ListState::default().with_selected(self.selected),
+                list_state,
                 height: self.options.height,
                 highlight_symbol: self.highlight_symbol,
             }),
@@ -210,10 +235,73 @@ impl SelectRef<'_> {
 
 // STATUS
 #[derive(Debug)]
+pub(crate) enum SelectStateDirection {
+    Horizontal(HorizontalListState),
+    Vertical(ListState),
+}
+impl SelectStateDirection {
+    fn selected(&self) -> Option<usize> {
+        match self {
+            SelectStateDirection::Horizontal(state) => state.selected(),
+            SelectStateDirection::Vertical(state) => state.selected(),
+        }
+    }
+
+    fn select(&mut self, index: Option<usize>) {
+        match self {
+            SelectStateDirection::Horizontal(state) => state.select(index),
+            SelectStateDirection::Vertical(state) => state.select(index),
+        }
+    }
+
+    fn select_previous(&mut self) {
+        match self {
+            SelectStateDirection::Horizontal(state) => state.select_previous(),
+            SelectStateDirection::Vertical(state) => state.select_previous(),
+        }
+    }
+
+    fn select_next(&mut self) {
+        match self {
+            SelectStateDirection::Horizontal(state) => state.select_next(),
+            SelectStateDirection::Vertical(state) => state.select_next(),
+        }
+    }
+
+    fn select_first(&mut self) {
+        match self {
+            SelectStateDirection::Horizontal(state) => state.select_first(),
+            SelectStateDirection::Vertical(state) => state.select_first(),
+        }
+    }
+
+    fn select_last(&mut self) {
+        match self {
+            SelectStateDirection::Horizontal(state) => state.select_last(),
+            SelectStateDirection::Vertical(state) => state.select_last(),
+        }
+    }
+
+    fn scroll_up_by(&mut self, amount: u16) {
+        match self {
+            SelectStateDirection::Horizontal(state) => state.scroll_up_by(amount),
+            SelectStateDirection::Vertical(state) => state.scroll_up_by(amount),
+        }
+    }
+
+    fn scroll_down_by(&mut self, amount: u16) {
+        match self {
+            SelectStateDirection::Horizontal(state) => state.scroll_down_by(amount),
+            SelectStateDirection::Vertical(state) => state.scroll_down_by(amount),
+        }
+    }
+}
+
+#[derive(Debug)]
 pub struct SelectStatus {
     pub(crate) label: String,
     pub(crate) values: Vec<(String, String)>,
-    pub(crate) list_state: ListState,
+    pub(crate) list_state: SelectStateDirection,
     pub(crate) height: u16,
     pub(crate) highlight_symbol: String,
 }
@@ -242,12 +330,28 @@ impl SelectStatus {
         self.list_state.select(index);
     }
 
+    fn right(&mut self) {
+        if matches!(self.list_state, SelectStateDirection::Horizontal(_)) {
+            self.list_state.select_next();
+        }
+    }
+
+    fn left(&mut self) {
+        if matches!(self.list_state, SelectStateDirection::Horizontal(_)) {
+            self.list_state.select_previous();
+        }
+    }
+
     fn up(&mut self) {
-        self.list_state.select_previous();
+        if matches!(self.list_state, SelectStateDirection::Vertical(_)) {
+            self.list_state.select_previous();
+        }
     }
 
     fn down(&mut self) {
-        self.list_state.select_next();
+        if matches!(self.list_state, SelectStateDirection::Vertical(_)) {
+            self.list_state.select_next();
+        }
     }
 
     fn home(&mut self) {
@@ -271,6 +375,8 @@ impl SelectStatus {
 // EVENT
 pub(crate) fn handle_input_select(key_event: KeyEvent, select: &mut SelectStatus) {
     match key_event.code {
+        KeyCode::Left => select.left(),
+        KeyCode::Right => select.right(),
         KeyCode::Up => select.up(),
         KeyCode::Down => select.down(),
         KeyCode::Home => select.home(),
@@ -291,12 +397,22 @@ pub(crate) fn render_select(
 ) -> Option<(u16, u16)> {
     let items: Vec<_> = select.values.iter().map(|(_, v)| v.as_str()).collect();
 
-    let list = List::new(items)
-        .style(value_style)
-        .highlight_style(highlight_style)
-        .highlight_symbol(select.highlight_symbol.as_str());
+    match select.list_state {
+        SelectStateDirection::Horizontal(ref mut horizontal_list_state) => {
+            let list = HorizontalList::new(items)
+                .style(value_style)
+                .highlight_style(highlight_style);
 
-    StatefulWidget::render(list, area, buf, &mut select.list_state);
+            StatefulWidget::render(list, area, buf, horizontal_list_state);
+        }
+        SelectStateDirection::Vertical(ref mut list_state) => {
+            let list = List::new(items)
+                .style(value_style)
+                .highlight_style(highlight_style)
+                .highlight_symbol(select.highlight_symbol.as_str());
+            StatefulWidget::render(list, area, buf, list_state);
+        }
+    }
 
     None
 }
@@ -313,8 +429,10 @@ mod select_tests {
                 .map(|(k, v)| ((*k).to_owned(), (*v).to_owned()))
                 .collect(),
             list_state: match selected {
-                Some(idx) => ListState::default().with_selected(Some(idx)),
-                None => ListState::default(),
+                Some(idx) => {
+                    SelectStateDirection::Vertical(ListState::default().with_selected(Some(idx)))
+                }
+                None => SelectStateDirection::Vertical(ListState::default()),
             },
             height: 5,
             highlight_symbol: "> ".to_string(),

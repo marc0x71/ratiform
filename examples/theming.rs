@@ -48,7 +48,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             "Last name is at most 10 characters".to_owned(),
         ))
         .select(FormField::Country, "Country")
-        .values_ref(&[("IT", "Italy"), ("FR", "France"), ("DE", "Germany")])
+        .values(countries())
+        .horizontal()
         .selected(1)
         .height(5)
         .checkbox(FormField::Terms, "I accept the terms")
@@ -141,4 +142,59 @@ fn my_style() -> FormStyle {
         .error(Style::default().bg(Color::Red).fg(Color::White).bold())
         .placeholder(Style::default().fg(Color::DarkGray).italic())
         .build()
+}
+
+fn countries() -> Vec<(String, String)> {
+    vec![
+        ("A".to_string(), "Austria".to_string()),
+        ("AL".to_string(), "Albania".to_string()),
+        ("AND".to_string(), "Andorra".to_string()),
+        ("AM".to_string(), "Armenia".to_string()),
+        ("AZ".to_string(), "Azerbaijan".to_string()),
+        ("B".to_string(), "Belgium".to_string()),
+        ("BG".to_string(), "Bulgaria".to_string()),
+        ("BIH".to_string(), "Bosnia and Herzegovina".to_string()),
+        ("BY".to_string(), "Belarus".to_string()),
+        ("CH".to_string(), "Switzerland".to_string()),
+        ("CY".to_string(), "Cyprus".to_string()),
+        ("CZ".to_string(), "Czech Republic".to_string()),
+        ("D".to_string(), "Germany".to_string()),
+        ("DK".to_string(), "Denmark".to_string()),
+        ("E".to_string(), "Spain".to_string()),
+        ("EST".to_string(), "Estonia".to_string()),
+        ("F".to_string(), "France".to_string()),
+        ("FIN".to_string(), "Finland".to_string()),
+        ("FL".to_string(), "Liechtenstein".to_string()),
+        ("FO".to_string(), "Faroe Islands".to_string()),
+        ("GE".to_string(), "Georgia".to_string()),
+        ("GR".to_string(), "Greece".to_string()),
+        ("H".to_string(), "Hungary".to_string()),
+        ("HR".to_string(), "Croatia".to_string()),
+        ("I".to_string(), "Italy".to_string()),
+        ("IRL".to_string(), "Ireland".to_string()),
+        ("IS".to_string(), "Iceland".to_string()),
+        ("KZ".to_string(), "Kazakhstan".to_string()),
+        ("L".to_string(), "Luxembourg".to_string()),
+        ("LT".to_string(), "Lithuania".to_string()),
+        ("LV".to_string(), "Latvia".to_string()),
+        ("M".to_string(), "Malta".to_string()),
+        ("MD".to_string(), "Moldova".to_string()),
+        ("MNE".to_string(), "Montenegro".to_string()),
+        ("N".to_string(), "Norway".to_string()),
+        ("NL".to_string(), "Netherlands".to_string()),
+        ("NMK".to_string(), "North Macedonia".to_string()),
+        ("P".to_string(), "Portugal".to_string()),
+        ("PL".to_string(), "Poland".to_string()),
+        ("RO".to_string(), "Romania".to_string()),
+        ("RSM".to_string(), "San Marino".to_string()),
+        ("RUS".to_string(), "Russia".to_string()),
+        ("S".to_string(), "Sweden".to_string()),
+        ("SK".to_string(), "Slovakia".to_string()),
+        ("SLO".to_string(), "Slovenia".to_string()),
+        ("SRB".to_string(), "Serbia".to_string()),
+        ("TR".to_string(), "Turkey".to_string()),
+        ("UA".to_string(), "Ukraine".to_string()),
+        ("UK".to_string(), "United Kingdom".to_string()),
+        ("V".to_string(), "Vatican City".to_string()),
+    ]
 }

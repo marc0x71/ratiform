@@ -33,6 +33,9 @@ for `0.x` releases (a breaking change bumps the minor version, not the patch).
   and `selected()`/`selected_values()`/`selected_labels()` (the actual
   selection, in list order regardless of the order options were checked
   in).
+- Added horizontal layout support for `Select` fields via `.horizontal()`,
+  `Select` fields remain vertical by default, preserving the existing behavior.
+  Horizontal selects can be navigated with the left and right arrow keys.
 
 ## [0.5.3] - 2026-09-01
 
