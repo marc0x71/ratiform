@@ -22,10 +22,10 @@ Sleep 1s
 Tab
 Sleep 500ms
 
-Type "Pa$$w"
-Sleep 1s
+Type "pa$$word"
+Sleep 2s
 
-Type "ords1cura"
+Type "S1cura"
 Sleep 1s
 
 Tab
