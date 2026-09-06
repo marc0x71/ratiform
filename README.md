@@ -428,18 +428,41 @@ By default, `Form::default()` renders with a built-in gray/bold/reversed scheme.
 
 ```rust
 use ratatui::style::{Color, Style};
-use ratiform::style::{FieldStyle, FormStyle};
+use ratiform::style::{FormStyle, Widgets, Parts, States};
 
 let normal = Style::default().fg(Color::LightGreen);
 let my_style = FormStyle::builder()
-    .value(FieldStyle::builder().normal(normal).focused(normal.bold()).build())
-    .error(Style::default().fg(Color::Red).bold())
+    .add(Widgets::ANY, Parts::TEXT | Parts::ITEM | Parts::MARKER, States::NORMAL, normal)
+    .add(Widgets::ANY, Parts::TEXT | Parts::ITEM | Parts::MARKER, States::FOCUSED, normal.bold())
+    .add(Widgets::ANY, Parts::ERROR, States::ANY, Style::default().fg(Color::Red).bold())
     .build();
 
 frame.render_stateful_widget(Form::with_style(my_style), area, &mut state);
 ```
 
-`FormStyle` groups five areas — `label`, `value`, `highlight` (the focused field / selected row), `error`, and `placeholder`. The first three are a [`FieldStyle`](src/style.rs) each (one `Style` per `normal`/`focused`/`disabled`/`readonly` state, resolved for you); `error`/`placeholder` are plain `Style`s. Full field-by-field docs are on `FormStyle`/`FieldStyle` themselves (`cargo doc --open`). A runnable example with a full custom theme is in [`examples/theming.rs`](examples/theming.rs).
+Rules are declared against three independent axes — `Widgets` (which field kinds), `Parts` (which visual piece), and `States` (`NORMAL`/`FOCUSED`/`DISABLED`/`READ_ONLY`) — combine constants with `|` to cover more than one at once. When more than one rule matches the same widget/part/state, the more specific one wins (fewer widgets beats fewer parts beats fewer states; ties go to whichever rule was declared last), so you rarely need to think about declaration order.
+
+| `Part` | What it styles | Used by |
+| --- | --- | --- |
+| `LABEL` | The field's caption | Every widget |
+| `ERROR` | The validation message shown under an invalid field | Every widget |
+| `AREA` | The surface behind the widget — its background box | `SingleLine`, `TextArea` |
+| `TEXT` | The field's own text content | `SingleLine`, `TextArea` |
+| `PLACEHOLDER` | Placeholder text shown while the field is empty | `SingleLine`, `TextArea` |
+| `MARKER` | A symbolic glyph — `CheckBox`'s flag, or a `MultiSelect` option's selection symbol | `CheckBox`, `MultiSelect` |
+| `ITEM` | One row/option | `Select`, `MultiSelect` |
+| `ACTIVE` | Whichever row currently has the cursor, regardless of selection | `Select`, `MultiSelect` |
+| `SELECTED` | An option that's checked, regardless of cursor position | `MultiSelect` |
+
+A rule for a widget/part combination nothing actually renders (e.g. `AREA` on a `Select`) is harmless — it's simply never looked up, so it has no visible effect. Full field-by-field docs are on `FormStyle`/`Widgets`/`Parts`/`States` themselves (`cargo doc --open`). A runnable example with a full custom theme is in [`examples/theming.rs`](examples/theming.rs).
+
+| Widget | Relevant `Parts` |
+| --- | --- |
+| `SingleLine` | `LABEL`, `ERROR`, `AREA`, `TEXT`, `PLACEHOLDER` |
+| `TextArea` | `LABEL`, `ERROR`, `AREA`, `TEXT`, `PLACEHOLDER` |
+| `CheckBox` | `LABEL`, `ERROR`, `MARKER` |
+| `Select` | `LABEL`, `ERROR`, `ITEM`, `ACTIVE` |
+| `MultiSelect` | `LABEL`, `ERROR`, `ITEM`, `ACTIVE`, `MARKER`, `SELECTED` |
 
 ## Keyboard navigation
 

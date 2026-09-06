@@ -5,6 +5,40 @@ All notable changes to `ratiform` are documented here. Format loosely follows
 [Cargo's SemVer rules](https://doc.rust-lang.org/cargo/reference/semver.html)
 for `0.x` releases (a breaking change bumps the minor version, not the patch).
 
+## [0.6.0] - 2026-09-06
+
+### Changed
+- **Breaking:** `FormStyle` is now a rule-based style resolver instead of
+  five fixed areas. Build one with
+  `FormStyle::builder().add(widgets, parts, states, style)...build()`,
+  combining `Widgets` (which field kinds), `Parts` (which visual piece —
+  `LABEL`, `AREA`, `TEXT`, `PLACEHOLDER`, `MARKER`, `ITEM`, `ACTIVE`,
+  `SELECTED`, `ERROR`) and `States` (`NORMAL`/`FOCUSED`/`DISABLED`/
+  `READ_ONLY`) with `|` to cover more than one at once. When several rules
+  match the same widget/part/state, the more specific one wins (fewer
+  widgets beats fewer parts beats fewer states; ties go to whichever rule
+  was declared last). `FieldStyle` is gone, along with `FormStyle`'s old
+  `.label()`/`.value()`/`.highlight()`/`.error()`/`.placeholder()` builder
+  methods. `FormStyle::default()` gives the same built-in look as before.
+  See the README's "Theming" section and `examples/theming.rs` for the new
+  API.
+- `Select` and `MultiSelect` now distinguish `ITEM` (a row's own content),
+  `ACTIVE` (whichever row currently has the cursor) and, for `MultiSelect`,
+  `SELECTED` (a checked option) as independent style targets, instead of
+  folding them all into the old `value`/`highlight` areas. `MultiSelect`
+  also gets its own `MARKER` (the selection glyph), styleable separately
+  from the option's text.
+- `examples/login-form.rs` now sizes its area with `required_height(...)`
+  instead of a fixed height, so the form grows or shrinks with its actual
+  content — including validation error messages, which previously could
+  get clipped or leave dead space depending on how many were showing.
+
+### Fixed
+- Horizontal `Select`/`MultiSelect`: a row that was both the active
+  (cursor) row and a selected option previously lost its selected styling
+  entirely, showing only the active-row style. It's now layered the same
+  way the vertical orientation already did.
+
 ## [0.5.4] - 2026-09-02
 
 ### Added

@@ -28,7 +28,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .values_ref(&[("read", "Read"), ("write", "Write"), ("admin", "Admin")])
         .horizontal()
         .optional()
-        .selected(&[10]) // "read" selezionato all'avvio
+        .selected(&[0]) // "read" selezionato all'avvio
         .height(3)
         .required("Select at least one permission".to_owned())
         .build()?;

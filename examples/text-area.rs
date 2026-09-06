@@ -8,7 +8,7 @@ use ratatui::{
 use ratiform::{
     Form,
     builder::FormBuilder,
-    style::{FieldStyle, FormStyle},
+    style::{FormStyle, Parts, States, Widgets},
 };
 
 #[derive(Debug, Hash, Eq, PartialEq)]
@@ -72,30 +72,72 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 fn my_style() -> FormStyle {
-    let normal = Style::default().fg(Color::LightGreen);
+    let label = Style::default().fg(Color::Cyan);
+    let value = Style::default().fg(Color::White);
+
     FormStyle::builder()
-        .label(
-            FieldStyle::builder()
-                .normal(normal)
-                .focused(normal.bold())
-                .disabled(normal.crossed_out())
-                .build(),
+        // LABEL — readonly non impostato, resta Style::default() come nell'originale
+        .add(Widgets::ANY, Parts::LABEL, States::NORMAL, label)
+        .add(Widgets::ANY, Parts::LABEL, States::FOCUSED, label.bold())
+        .add(
+            Widgets::ANY,
+            Parts::LABEL,
+            States::DISABLED,
+            label.crossed_out(),
         )
-        .value(
-            FieldStyle::builder()
-                .normal(normal)
-                .focused(normal.bold())
-                .disabled(normal.crossed_out())
-                .build(),
+        // VALUE — TEXT|ITEM|MARKER in un solo .add(), come per il tema di default
+        .add(
+            Widgets::ANY,
+            Parts::TEXT | Parts::ITEM | Parts::MARKER,
+            States::NORMAL,
+            value,
         )
-        .highlight(
-            FieldStyle::builder()
-                .normal(normal)
-                .focused(normal.reversed())
-                .disabled(normal.reversed().crossed_out())
-                .build(),
+        .add(
+            Widgets::ANY,
+            Parts::TEXT | Parts::ITEM | Parts::MARKER,
+            States::FOCUSED,
+            value.bold(),
         )
-        .error(Style::default().bg(Color::Red).fg(Color::White).bold())
-        .placeholder(normal.italic())
+        .add(
+            Widgets::ANY,
+            Parts::TEXT | Parts::ITEM | Parts::MARKER,
+            States::DISABLED,
+            Style::default().fg(Color::DarkGray).crossed_out(),
+        )
+        // HIGHLIGHT — AREA|ACTIVE in un solo .add(), stessa logica del tema di default
+        .add(
+            Widgets::ANY,
+            Parts::AREA | Parts::ACTIVE,
+            States::NORMAL,
+            value,
+        )
+        .add(
+            Widgets::ANY,
+            Parts::AREA | Parts::ACTIVE,
+            States::FOCUSED,
+            value.bg(Color::Blue),
+        )
+        .add(
+            Widgets::ANY,
+            Parts::AREA | Parts::ACTIVE,
+            States::DISABLED,
+            Style::default()
+                .fg(Color::DarkGray)
+                .bg(Color::Blue)
+                .crossed_out(),
+        )
+        // ERROR e PLACEHOLDER — invariati, nessuna variazione per stato
+        .add(
+            Widgets::ANY,
+            Parts::ERROR,
+            States::ANY,
+            Style::default().bg(Color::Red).fg(Color::White).bold(),
+        )
+        .add(
+            Widgets::SINGLE_LINE | Widgets::TEXT_AREA,
+            Parts::PLACEHOLDER,
+            States::ANY,
+            Style::default().fg(Color::DarkGray).italic(),
+        )
         .build()
 }

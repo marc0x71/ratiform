@@ -4,7 +4,6 @@ use ratatui::{
     buffer::Buffer,
     crossterm::event::{KeyCode, KeyEvent, KeyModifiers},
     layout::Rect,
-    style::Style,
     widgets::{Block, Paragraph, Widget},
 };
 
@@ -13,6 +12,7 @@ use crate::{
     builder::FormBuilder,
     field::{Field, FieldKind, FieldOptions},
     field_builder_common,
+    style::{FormStyle, Parts, States, Widgets},
 };
 
 // BUILDER
@@ -221,28 +221,27 @@ pub(crate) fn render_singleline(
     area: Rect,
     buf: &mut Buffer,
     singleline: &mut SingleLineStatus,
-    value_style: Style,
-    highlight_style: Style,
-    placeholder_style: Style,
+    style: &FormStyle,
+    state: States,
 ) -> Option<(u16, u16)> {
     // limiting height to 1 row for single_line
     let area = Rect { height: 1, ..area };
 
-    let mut style = value_style;
+    let mut text_style = style.get(Widgets::SINGLE_LINE, Parts::TEXT, state);
 
     let mut display = masked_display(singleline.value.as_str(), singleline.masked_with);
     if let Some(placeholder) = singleline.placeholder.as_ref()
         && display.is_empty()
     {
         display = Cow::Borrowed(placeholder);
-        style = placeholder_style;
+        text_style = style.get(Widgets::SINGLE_LINE, Parts::PLACEHOLDER, state);
     }
 
     let scroll_x = singleline.position.saturating_sub(area.width);
 
     let value = Paragraph::new(display)
-        .style(style)
-        .block(Block::default().style(highlight_style))
+        .style(text_style)
+        .block(Block::default().style(style.get(Widgets::SINGLE_LINE, Parts::AREA, state)))
         .scroll((0, scroll_x));
 
     value.render(area, buf);

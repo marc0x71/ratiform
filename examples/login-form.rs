@@ -5,7 +5,7 @@ use ratatui::{
     layout::Constraint,
     widgets::{Block, Borders, Padding},
 };
-use ratiform::{Form, builder::FormBuilder, validators};
+use ratiform::{Form, FormLayout, builder::FormBuilder, required_height, validators};
 
 #[derive(Debug, Hash, Eq, PartialEq)]
 enum LoginField {
@@ -56,9 +56,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let result = ratatui::run(|terminal| -> std::io::Result<_> {
         loop {
             terminal.draw(|frame| {
-                let area = frame
-                    .area()
-                    .centered(Constraint::Length(50), Constraint::Length(10));
+                let area = frame.area().centered(
+                    Constraint::Length(50),
+                    Constraint::Length(
+                        required_height(&FormLayout::Horizontal, &state, 50 - 4) + 4,
+                    ),
+                );
                 let block = Block::default()
                     .title(" Login ")
                     .borders(Borders::ALL)

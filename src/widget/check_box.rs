@@ -4,7 +4,6 @@ use ratatui::{
     buffer::Buffer,
     crossterm::event::{KeyCode, KeyEvent, KeyModifiers},
     layout::Rect,
-    style::Style,
     text::Span,
     widgets::Widget,
 };
@@ -14,6 +13,7 @@ use crate::{
     builder::FormBuilder,
     field::{Field, FieldKind, FieldOptions},
     field_builder_common,
+    style::{FormStyle, Parts, States, Widgets},
 };
 
 // BUILDER
@@ -139,8 +139,8 @@ pub(crate) fn render_checkbox(
     area: Rect,
     buf: &mut Buffer,
     checkbox: &mut CheckBoxStatus,
-    value_style: Style,
-    _highlight_style: Style,
+    style: &FormStyle,
+    state: States,
 ) -> Option<(u16, u16)> {
     let flag = if checkbox.checked {
         checkbox.checked_symbol.as_str()
@@ -148,7 +148,7 @@ pub(crate) fn render_checkbox(
         checkbox.unchecked_symbol.as_str()
     };
 
-    let value = Span::raw(flag).style(value_style);
+    let value = Span::raw(flag).style(style.get(Widgets::CHECK_BOX, Parts::MARKER, state));
 
     value.render(area, buf);
 

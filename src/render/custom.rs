@@ -10,7 +10,7 @@ use crate::{
     field::Field,
     layout::custom::{CustomLayout, Object, ObjectKind},
     render::{count_lines, render_field, scroll_offset},
-    style::FormStyle,
+    style::{FormStyle, Parts, States, Widgets},
 };
 
 pub(crate) fn render_custom<T: PartialEq>(
@@ -95,32 +95,29 @@ fn render_object<T: PartialEq>(
     if !field.options.visible {
         return;
     }
-    let field_state = field.options.to_field_state(has_focus);
+    let field_state: States = field.options.to_field_state(has_focus).into();
+    let widget: Widgets = (&field.kind).into();
     match object.kind {
         ObjectKind::Label => {
             let label = Paragraph::new(field.label())
-                .style(style.label.style_for(&field_state))
+                .style(style.get(widget, Parts::LABEL, field_state))
                 .wrap(Wrap { trim: true });
             label.render(area, buf);
         }
         ObjectKind::Value => {
-            let position = render_field(
-                area,
-                buf,
-                field,
-                style.value.style_for(&field_state),
-                style.highlight.style_for(&field_state),
-                style.placeholder,
-            );
+            let position = render_field(area, buf, field, style, field_state);
             if position.is_some() && has_focus {
                 state.cursor_position = position;
             }
         }
         ObjectKind::Error => {
             if let Some(message) = field.error.as_ref() {
-                let error_message = Paragraph::new(Line::styled(message.as_str(), style.error))
-                    .alignment(Alignment::Right)
-                    .wrap(Wrap { trim: true });
+                let error_message = Paragraph::new(Line::styled(
+                    message.as_str(),
+                    style.get(widget, Parts::ERROR, field_state),
+                ))
+                .alignment(Alignment::Right)
+                .wrap(Wrap { trim: true });
                 error_message.render(area, buf);
             }
         }

@@ -4,7 +4,6 @@ use ratatui::{
     buffer::Buffer,
     crossterm::event::{KeyCode, KeyEvent, KeyModifiers},
     layout::Rect,
-    style::Style,
     text::Line,
     widgets::{Block, Paragraph, Widget},
 };
@@ -14,6 +13,7 @@ use crate::{
     builder::FormBuilder,
     field::{Field, FieldKind, FieldOptions},
     field_builder_common,
+    style::{FormStyle, Parts, States, Widgets},
 };
 
 // BUILDER
@@ -261,11 +261,10 @@ pub(crate) fn render_textarea(
     area: Rect,
     buf: &mut Buffer,
     text_area: &mut TextAreaStatus,
-    value_style: Style,
-    highlight_style: Style,
-    placeholder_style: Style,
+    style: &FormStyle,
+    state: States,
 ) -> Option<(u16, u16)> {
-    let mut style = value_style;
+    let mut text_style = style.get(Widgets::SINGLE_LINE, Parts::TEXT, state);
 
     text_area.lines = wrap_text(&text_area.value, area.width as usize);
 
@@ -281,7 +280,7 @@ pub(crate) fn render_textarea(
         && display.is_empty()
     {
         display = vec![Line::from(placeholder.clone())];
-        style = placeholder_style;
+        text_style = style.get(Widgets::SINGLE_LINE, Parts::PLACEHOLDER, state);
     }
 
     let (col, row) = calculate_coordinate(text_area);
@@ -289,8 +288,8 @@ pub(crate) fn render_textarea(
     let scroll_y = (row + 1).saturating_sub(area.height);
 
     let value = Paragraph::new(display)
-        .style(style)
-        .block(Block::default().style(highlight_style))
+        .style(text_style)
+        .block(Block::default().style(style.get(Widgets::SINGLE_LINE, Parts::AREA, state)))
         .scroll((scroll_y, 0));
 
     value.render(area, buf);

@@ -59,19 +59,19 @@ impl HorizontalListState {
     }
 }
 
-pub struct HorizontalList {
-    items: Vec<String>,
+pub struct HorizontalList<'a> {
+    items: Vec<Line<'a>>,
     style: Style,
     highlight_style: Style,
     spacing: usize,
     preview: usize,
 }
 
-impl HorizontalList {
+impl<'a> HorizontalList<'a> {
     pub fn new<I, S>(items: I, spacing: usize, preview: usize) -> Self
     where
         I: IntoIterator<Item = S>,
-        S: Into<String>,
+        S: Into<Line<'a>>,
     {
         Self {
             items: items.into_iter().map(|s| s.into()).collect(),
@@ -105,40 +105,46 @@ impl HorizontalList {
     }
 }
 
-impl StatefulWidget for HorizontalList {
+impl StatefulWidget for HorizontalList<'_> {
     type State = HorizontalListState;
 
     fn render(self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {
         state.clamp(0, self.items.len().saturating_sub(1));
 
-        let spaces = " ".repeat(self.spacing);
-        let items: Vec<_> = self
-            .items
-            .iter()
-            .enumerate()
-            .flat_map(|(i, item)| {
-                [
-                    Span::styled(
-                        item.as_str(),
-                        if Some(i) == state.selected {
-                            self.highlight_style
-                        } else {
-                            self.style
-                        },
-                    ),
-                    Span::raw(spaces.as_str()),
-                ]
-            })
-            .collect();
-
         let required: usize = self
             .items
             .iter()
             .take(state.selected.unwrap_or_default() + self.preview + 1)
-            .map(|i| i.chars().count() + self.spacing)
+            .map(|i| i.width() + self.spacing)
             .sum();
 
         let scroll_x = required.saturating_sub(area.width as usize) as u16;
+
+        let spaces = " ".repeat(self.spacing);
+        let mut items = Vec::new();
+        for (i, line) in self.items.into_iter().enumerate() {
+            if Some(i) == state.selected {
+                for span in line.spans {
+                    items.push(span.patch_style(self.highlight_style));
+                }
+            } else {
+                items.extend(line.spans);
+            };
+            items.push(Span::raw(spaces.as_str()));
+        }
+
+        // buf.set_string(
+        //     1,
+        //     10,
+        //     format!(
+        //         "style={:?} highlight={:?} len={} sel={:?}",
+        //         self.style,
+        //         self.highlight_style,
+        //         items.len(),
+        //         state.selected
+        //     ),
+        //     Style::default(),
+        // );
 
         Paragraph::new(Line::from(items))
             .scroll((0, scroll_x))

@@ -4,7 +4,7 @@ use ratatui::{
     buffer::Buffer,
     crossterm::event::{KeyCode, KeyEvent},
     layout::Rect,
-    style::Style,
+    text::{Line, Span},
     widgets::{List, ListState, StatefulWidget},
 };
 
@@ -15,6 +15,7 @@ use crate::{
     field::{Field, FieldKind, FieldOptions},
     field_builder_common,
     internal::list::{HorizontalList, HorizontalListState},
+    style::{FormStyle, Parts, States, Widgets},
 };
 
 pub(crate) enum MultiSelectDirection {
@@ -469,31 +470,45 @@ pub(crate) fn render_multiselect(
     area: Rect,
     buf: &mut Buffer,
     select: &mut MultiSelectStatus,
-    value_style: Style,
-    highlight_style: Style,
+    style: &FormStyle,
+    field_state: States,
 ) -> Option<(u16, u16)> {
-    let mut items = Vec::new();
+    let mut items: Vec<Line<'_>> = Vec::new();
     for (idx, (_, v)) in select.values.iter().enumerate() {
         let prefix = if select.selected[idx] {
             select.selected_symbol.as_str()
         } else {
             select.unselected_symbol.as_str()
         };
-        items.push(format!("{prefix}{v}"));
+
+        let mut item_style = style.get(Widgets::MULTI_SELECT, Parts::ITEM, field_state);
+        if select.selected[idx] {
+            item_style =
+                item_style.patch(style.get(Widgets::MULTI_SELECT, Parts::SELECTED, field_state));
+        }
+
+        let item = Line::from(vec![
+            Span::styled(
+                prefix,
+                style.get(Widgets::MULTI_SELECT, Parts::MARKER, field_state),
+            ),
+            Span::styled(v.as_str(), item_style),
+        ]);
+        items.push(item);
     }
 
     match select.list_state {
-        MultiSelectStateDirection::Horizontal(ref mut horizontal_list_state) => {
+        MultiSelectStateDirection::Horizontal(ref mut list_state) => {
             let list = HorizontalList::new(items, select.spacing, select.preview)
-                .style(value_style)
-                .highlight_style(highlight_style);
+                .style(style.get(Widgets::MULTI_SELECT, Parts::ITEM, field_state))
+                .highlight_style(style.get(Widgets::MULTI_SELECT, Parts::ACTIVE, field_state));
 
-            StatefulWidget::render(list, area, buf, horizontal_list_state);
+            StatefulWidget::render(list, area, buf, list_state);
         }
         MultiSelectStateDirection::Vertical(ref mut list_state) => {
             let list = List::new(items)
-                .style(value_style)
-                .highlight_style(highlight_style);
+                .style(style.get(Widgets::MULTI_SELECT, Parts::ITEM, field_state))
+                .highlight_style(style.get(Widgets::MULTI_SELECT, Parts::ACTIVE, field_state));
             StatefulWidget::render(list, area, buf, list_state);
         }
     }

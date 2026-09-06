@@ -9,7 +9,7 @@ use crate::{
     FormState,
     field::Field,
     render::{count_lines, render_field, scroll_offset},
-    style::FormStyle,
+    style::{FormStyle, Parts, States, Widgets},
 };
 
 pub(crate) fn render_horizontal<T: PartialEq>(
@@ -41,7 +41,8 @@ pub(crate) fn render_horizontal<T: PartialEq>(
             continue;
         }
         let has_focus = (idx + from_field) == state.focus;
-        let field_state = field.options.to_field_state(has_focus);
+        let field_state: States = field.options.to_field_state(has_focus).into();
+        let widget: Widgets = (&field.kind).into();
 
         let error_height = field
             .error
@@ -69,18 +70,12 @@ pub(crate) fn render_horizontal<T: PartialEq>(
             Layout::horizontal([Constraint::Length(label_width), Constraint::Fill(1)]).areas(row);
 
         let label = Paragraph::new(field.label())
-            .style(style.label.style_for(&field_state))
+            .style(style.get(widget, Parts::LABEL, field_state))
             .wrap(Wrap { trim: true });
         label.render(left, buf);
 
-        if let Some(position) = render_field(
-            right,
-            buf,
-            field,
-            style.value.style_for(&field_state),
-            style.highlight.style_for(&field_state),
-            style.placeholder,
-        ) && has_focus
+        if let Some(position) = render_field(right, buf, field, style, field_state)
+            && has_focus
         {
             state.cursor_position = Some(position);
         }
@@ -88,9 +83,12 @@ pub(crate) fn render_horizontal<T: PartialEq>(
         if let Some(message) = field.error.as_ref()
             && let Some(err_area) = error
         {
-            let error_message = Paragraph::new(Line::styled(message.as_str(), style.error))
-                .alignment(Alignment::Right)
-                .wrap(Wrap { trim: true });
+            let error_message = Paragraph::new(Line::styled(
+                message.as_str(),
+                style.get(widget, Parts::ERROR, field_state),
+            ))
+            .alignment(Alignment::Right)
+            .wrap(Wrap { trim: true });
             error_message.render(err_area, buf);
         }
     }

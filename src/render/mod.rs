@@ -1,4 +1,4 @@
-use ratatui::{buffer::Buffer, layout::Rect, style::Style, widgets::StatefulWidget};
+use ratatui::{buffer::Buffer, layout::Rect, widgets::StatefulWidget};
 
 use crate::{
     Form, FormLayout, FormState,
@@ -8,7 +8,7 @@ use crate::{
         horizontal::{render_horizontal, required_height_horizontal},
         stacked::{render_stacked, required_height_stacked},
     },
-    style::FormStyle,
+    style::{FormStyle, States},
     widget::{
         check_box::render_checkbox, multi_select::render_multiselect, select::render_select,
         single_line::render_singleline, text_area::render_textarea,
@@ -124,35 +124,22 @@ pub(crate) fn render_field<T>(
     area: Rect,
     buf: &mut Buffer,
     field: &mut Field<T>,
-    value_style: Style,
-    highlight_style: Style,
-    placeholder_style: Style,
+    style: &FormStyle,
+    field_state: States,
 ) -> Option<(u16, u16)> {
     match field.kind {
-        FieldKind::SingleLine(ref mut single_line) => render_singleline(
-            area,
-            buf,
-            single_line,
-            value_style,
-            highlight_style,
-            placeholder_style,
-        ),
+        FieldKind::SingleLine(ref mut single_line) => {
+            render_singleline(area, buf, single_line, style, field_state)
+        }
         FieldKind::CheckBox(ref mut checkbox) => {
-            render_checkbox(area, buf, checkbox, value_style, highlight_style)
+            render_checkbox(area, buf, checkbox, style, field_state)
         }
-        FieldKind::Select(ref mut select) => {
-            render_select(area, buf, select, value_style, highlight_style)
+        FieldKind::Select(ref mut select) => render_select(area, buf, select, style, field_state),
+        FieldKind::TextArea(ref mut text_area) => {
+            render_textarea(area, buf, text_area, style, field_state)
         }
-        FieldKind::TextArea(ref mut text_area) => render_textarea(
-            area,
-            buf,
-            text_area,
-            value_style,
-            highlight_style,
-            placeholder_style,
-        ),
         FieldKind::MultiSelect(ref mut multi_select) => {
-            render_multiselect(area, buf, multi_select, value_style, highlight_style)
+            render_multiselect(area, buf, multi_select, style, field_state)
         }
     }
 }

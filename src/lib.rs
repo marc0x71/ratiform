@@ -26,7 +26,8 @@ use std::{marker::PhantomData, str::FromStr};
 use field::Field;
 use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 
-use crate::{event::handle_input_field, style::FormStyle};
+use crate::event::handle_input_field;
+use crate::style::FormStyle;
 
 pub(crate) use builder::field_builder_common;
 
@@ -421,7 +422,7 @@ impl<T> Form<T> {
 impl<T> Default for Form<T> {
     /// Renders with the built-in theme and the `Horizontal` layout.
     /// Equivalent to
-    /// `Form::default().with_style(FormStyle::default()).with_layout(FormLayout::default())`.
+    /// `Form::default().with_style(StyleTree::default()).with_layout(FormLayout::default())`.
     fn default() -> Self {
         Self {
             style: FormStyle::default(),

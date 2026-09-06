@@ -9,7 +9,7 @@ use crate::{
     FormState,
     field::Field,
     render::{count_lines, render_field, scroll_offset},
-    style::FormStyle,
+    style::{FormStyle, Parts, States, Widgets},
 };
 
 pub(crate) fn render_stacked<T: PartialEq>(
@@ -39,7 +39,9 @@ pub(crate) fn render_stacked<T: PartialEq>(
         }
 
         let has_focus = field_index == state.focus;
-        let field_state = field.options.to_field_state(has_focus);
+
+        let field_state: States = field.options.to_field_state(has_focus).into();
+        let widget: Widgets = (&field.kind).into();
 
         let area = *row;
 
@@ -47,20 +49,13 @@ pub(crate) fn render_stacked<T: PartialEq>(
         // label
         if element == 0 {
             let label = Paragraph::new(field.label())
-                .style(style.label.style_for(&field_state))
+                .style(style.get(widget, Parts::LABEL, field_state))
                 .wrap(Wrap { trim: true });
             label.render(area, buf);
         }
         // value
         if element == 1
-            && let Some(position) = render_field(
-                area,
-                buf,
-                field,
-                style.value.style_for(&field_state),
-                style.highlight.style_for(&field_state),
-                style.placeholder,
-            )
+            && let Some(position) = render_field(area, buf, field, style, field_state)
             && has_focus
         {
             state.cursor_position = Some(position);
@@ -69,9 +64,12 @@ pub(crate) fn render_stacked<T: PartialEq>(
         if let Some(message) = field.error.as_ref()
             && element == 2
         {
-            let error_message = Paragraph::new(Line::styled(message.as_str(), style.error))
-                .alignment(Alignment::Right)
-                .wrap(Wrap { trim: true });
+            let error_message = Paragraph::new(Line::styled(
+                message.as_str(),
+                style.get(widget, Parts::ERROR, field_state),
+            ))
+            .alignment(Alignment::Right)
+            .wrap(Wrap { trim: true });
             error_message.render(area, buf);
         }
     }

@@ -4,7 +4,7 @@ use ratatui::{
     buffer::Buffer,
     crossterm::event::{KeyCode, KeyEvent},
     layout::Rect,
-    style::Style,
+    text::{Line, Span},
     widgets::{List, ListState, StatefulWidget},
 };
 
@@ -15,6 +15,7 @@ use crate::{
     field::{Field, FieldKind, FieldOptions},
     field_builder_common,
     internal::list::{HorizontalList, HorizontalListState},
+    style::{FormStyle, Parts, States, Widgets},
 };
 
 pub(crate) enum SelectDirection {
@@ -428,23 +429,30 @@ pub(crate) fn render_select(
     area: Rect,
     buf: &mut Buffer,
     select: &mut SelectStatus,
-    value_style: Style,
-    highlight_style: Style,
+    style: &FormStyle,
+    field_state: States,
 ) -> Option<(u16, u16)> {
-    let items: Vec<_> = select.values.iter().map(|(_, v)| v.as_str()).collect();
+    let items: Vec<Line<'_>> = select
+        .values
+        .iter()
+        .map(|(_, v)| {
+            Line::from(vec![Span::styled(
+                v.as_str(),
+                style.get(Widgets::SELECT, Parts::ITEM, field_state),
+            )])
+        })
+        .collect();
 
     match select.list_state {
-        SelectStateDirection::Horizontal(ref mut horizontal_list_state) => {
+        SelectStateDirection::Horizontal(ref mut list_state) => {
             let list = HorizontalList::new(items, select.spacing, select.preview)
-                .style(value_style)
-                .highlight_style(highlight_style);
+                .highlight_style(style.get(Widgets::SELECT, Parts::ACTIVE, field_state));
 
-            StatefulWidget::render(list, area, buf, horizontal_list_state);
+            StatefulWidget::render(list, area, buf, list_state);
         }
         SelectStateDirection::Vertical(ref mut list_state) => {
             let list = List::new(items)
-                .style(value_style)
-                .highlight_style(highlight_style)
+                .highlight_style(style.get(Widgets::SELECT, Parts::ACTIVE, field_state))
                 .highlight_symbol(select.highlight_symbol.as_str());
             StatefulWidget::render(list, area, buf, list_state);
         }
