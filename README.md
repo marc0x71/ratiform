@@ -24,10 +24,6 @@ let mut state = FormBuilder::new()
 
 The field identity is a real Rust type — `state.value(&Field::Email)`, not `state.value("email")`. No string keys, no JSON round-trip, no form-specific data model.
 
-> **⚠️ Work in progress**
->
-> `ratiform` is currently under active development. Breaking changes are still possible before a stable release, so pin a specific commit if you depend on it.
-
 The project is dual-licensed under the **MIT License** and the **Apache License 2.0** (see [License](#license) below).
 
 <img width="1000" height="600" alt="ratiform" src="https://github.com/user-attachments/assets/8015202a-1613-4621-b599-f46d2f60fa12" />
@@ -556,7 +552,7 @@ Full signatures and edge cases for all of these are in the generated docs.
 
 ## Current status
 
-This project is still in an early stage. The core design — typed field identifiers, the builder/state/widget split, validation — is becoming stable, but breaking changes are still possible before a first tagged release.
+This project is still pre-1.0. As with any 0.x crate, minor version bumps may include breaking changes — check the [changelog](CHANGELOG.md) before upgrading. The core design — typed field identifiers, the builder/state/widget split, validation — is stable; newer field kinds are more likely to see API adjustments.
 
 Contributions, ideas and bug reports are welcome. If you're thinking about adding a new field kind, see [`docs/adding-a-widget.md`](docs/adding-a-widget.md) for the wiring points and conventions the existing five already follow.
 
