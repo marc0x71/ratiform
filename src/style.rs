@@ -215,7 +215,6 @@ fn explode(value: u16) -> Vec<u16> {
 
     let mut bits = value;
     while bits != 0 {
-        // dbg!(bits, bits.trailing_zeros());
         let bit = bits & bits.wrapping_neg();
         result.push(bit);
         bits &= bits - 1;
@@ -251,11 +250,7 @@ impl PartialOrd for Rule {
         Some(self.cmp(other))
     }
 }
-// impl Ord for Rule {
-//     fn cmp(&self, other: &Self) -> Ordering {
-//         (self.widgets, self.parts, self.states).cmp(&(other.widgets, other.parts, other.states))
-//     }
-// }
+
 impl Ord for Rule {
     fn cmp(&self, other: &Self) -> Ordering {
         (

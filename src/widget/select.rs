@@ -246,10 +246,11 @@ impl SelectRef<'_> {
     /// assert_eq!(sel.selected_label(), Some("France"));
     /// ```
     pub fn selected_label(&self) -> Option<&str> {
+        let last = self.inner.values.len().saturating_sub(1);
         self.inner
             .list_state
             .selected()
-            .and_then(|idx| self.inner.values.get(idx))
+            .and_then(|idx| self.inner.values.get(idx.min(last)))
             .map(|(_, s)| s.as_str())
     }
 
@@ -260,10 +261,11 @@ impl SelectRef<'_> {
     /// See [`selected_value`](SelectRef::selected_value) for an example
     /// contrasting the two.
     pub fn selected_value(&self) -> Option<&str> {
+        let last = self.inner.values.len().saturating_sub(1);
         self.inner
             .list_state
             .selected()
-            .and_then(|idx| self.inner.values.get(idx))
+            .and_then(|idx| self.inner.values.get(idx.min(last)))
             .map(|(s, _)| s.as_str())
     }
 }
@@ -463,6 +465,8 @@ pub(crate) fn render_select(
 
 #[cfg(test)]
 mod select_tests {
+    use ratatui::crossterm::event::KeyModifiers;
+
     use super::*;
 
     fn make_select(values: &[(&str, &str)], selected: Option<usize>) -> SelectStatus {
@@ -513,6 +517,20 @@ mod select_tests {
         // all for a Select field.
         let select = make_select(&[("I", "Italia")], None);
         assert_eq!(select.get(), "");
+    }
+
+    #[test]
+    fn selected_label_clamps_after_select_last_before_any_render() {
+        let mut select = make_select(
+            &[("IT", "Italia"), ("FR", "Francia"), ("DE", "Germania")],
+            None,
+        );
+
+        handle_input_select(KeyEvent::new(KeyCode::End, KeyModifiers::NONE), &mut select);
+
+        let select_ref = SelectRef { inner: &select };
+        assert_eq!(select_ref.selected_label(), Some("Germania"));
+        assert_eq!(select_ref.selected_value(), Some("DE"));
     }
 }
 

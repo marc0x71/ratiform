@@ -5,6 +5,16 @@ All notable changes to `ratiform` are documented here. Format loosely follows
 [Cargo's SemVer rules](https://doc.rust-lang.org/cargo/reference/semver.html)
 for `0.x` releases (a breaking change bumps the minor version, not the patch).
 
+## [0.6.1] - 2026-09-11
+
+- `Select`/`MultiSelect`: the `End` key's internal placeholder index
+  (`usize::MAX`, only resolved to the real last index during rendering)
+  could leak through the newer `SelectRef`/`MultiSelectRef` read-only
+  accessors — `selected_value()`/`selected_label()` returned `None`, and
+  `MultiSelectRef::selected_index()` returned the raw placeholder itself —
+  if read before the next render. `SelectStatus::get()`/`get_ref()` already
+  handled this correctly; the three accessors now do too.
+
 ## [0.6.0] - 2026-09-06
 
 ### Changed

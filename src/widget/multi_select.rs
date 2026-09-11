@@ -231,7 +231,8 @@ impl MultiSelectRef<'_> {
     /// The index the keyboard cursor is on, or `None` if there are no
     /// options. Not the selection — see [`selected`](Self::selected).
     pub fn selected_index(&self) -> Option<usize> {
-        self.inner.list_state.selected()
+        let last = self.inner.values.len().saturating_sub(1);
+        self.inner.list_state.selected().map(|idx| idx.min(last))
     }
 
     /// Indices of every selected option, in list order — not selection
