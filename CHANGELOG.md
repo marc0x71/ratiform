@@ -7,6 +7,7 @@ for `0.x` releases (a breaking change bumps the minor version, not the patch).
 
 ## [0.6.1] - 2026-09-11
 
+### Fixed
 - `Select`/`MultiSelect`: the `End` key's internal placeholder index
   (`usize::MAX`, only resolved to the real last index during rendering)
   could leak through the newer `SelectRef`/`MultiSelectRef` read-only
