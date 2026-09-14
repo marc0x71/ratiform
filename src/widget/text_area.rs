@@ -540,6 +540,7 @@ mod coordinate_tests {
                 .collect(),
             placeholder: None,
             visible_height: 5,
+            scrollbar: None,
         }
     }
 
@@ -606,6 +607,7 @@ mod editing_tests {
             lines: Vec::new(),
             placeholder: None,
             visible_height: 0,
+            scrollbar: None,
         }
     }
 
