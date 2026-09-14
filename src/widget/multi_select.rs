@@ -5,7 +5,7 @@ use ratatui::{
     crossterm::event::{KeyCode, KeyEvent},
     layout::Rect,
     text::{Line, Span},
-    widgets::{List, ListState, StatefulWidget},
+    widgets::{List, ListState, Scrollbar, ScrollbarOrientation, ScrollbarState, StatefulWidget},
 };
 
 use crate::{
@@ -49,6 +49,7 @@ pub struct MultiSelectBuilder<T> {
     pub(crate) direction: MultiSelectDirection,
     pub(crate) spacing: usize,
     pub(crate) preview: usize,
+    pub(crate) scrollbar: bool,
 }
 
 impl<T: PartialEq> MultiSelectBuilder<T> {
@@ -126,6 +127,12 @@ impl<T: PartialEq> MultiSelectBuilder<T> {
         self
     }
 
+    /// Enables or disables scrollbar for this select.
+    pub fn scrollbar(mut self, show_scrollbar: bool) -> Self {
+        self.scrollbar = show_scrollbar;
+        self
+    }
+
     fn validate_field(&mut self) {
         if self.form.pending_error.is_some() {
             return;
@@ -198,6 +205,11 @@ impl<T: PartialEq> MultiSelectBuilder<T> {
             }
         };
 
+        if self.scrollbar && matches!(self.direction, MultiSelectDirection::Horizontal) {
+            self.options.height = self.options.height.max(2)
+        }
+        let len = self.values.len();
+
         self.form.push_field(Field {
             id: self.id,
             kind: FieldKind::MultiSelect(MultiSelectStatus {
@@ -210,6 +222,11 @@ impl<T: PartialEq> MultiSelectBuilder<T> {
                 selected,
                 spacing: self.spacing,
                 preview: self.preview,
+                scrollbar: if self.scrollbar {
+                    Some(ScrollbarState::new(len))
+                } else {
+                    None
+                },
             }),
             options: self.options,
             error: None,
@@ -356,6 +373,7 @@ pub struct MultiSelectStatus {
     pub(crate) unselected_symbol: String,
     pub(crate) spacing: usize,
     pub(crate) preview: usize,
+    pub(crate) scrollbar: Option<ScrollbarState>,
 }
 
 impl MultiSelectStatus {
@@ -474,6 +492,17 @@ pub(crate) fn render_multiselect(
     style: &FormStyle,
     field_state: States,
 ) -> Option<(u16, u16)> {
+    let list_area = if select.scrollbar.is_some()
+        && matches!(select.list_state, MultiSelectStateDirection::Vertical(_))
+    {
+        Rect {
+            width: area.width.saturating_sub(1),
+            ..area
+        }
+    } else {
+        area
+    };
+
     let mut items: Vec<Line<'_>> = Vec::new();
     for (idx, (_, v)) in select.values.iter().enumerate() {
         let prefix = if select.selected[idx] {
@@ -504,14 +533,37 @@ pub(crate) fn render_multiselect(
                 .style(style.get(Widgets::MULTI_SELECT, Parts::ITEM, field_state))
                 .highlight_style(style.get(Widgets::MULTI_SELECT, Parts::ACTIVE, field_state));
 
-            StatefulWidget::render(list, area, buf, list_state);
+            StatefulWidget::render(list, list_area, buf, list_state);
         }
         MultiSelectStateDirection::Vertical(ref mut list_state) => {
             let list = List::new(items)
                 .style(style.get(Widgets::MULTI_SELECT, Parts::ITEM, field_state))
                 .highlight_style(style.get(Widgets::MULTI_SELECT, Parts::ACTIVE, field_state));
-            StatefulWidget::render(list, area, buf, list_state);
+            StatefulWidget::render(list, list_area, buf, list_state);
         }
+    }
+
+    if let Some(ref mut scroll_state) = select.scrollbar {
+        let (orientation, selected, [begin_sym, end_sym]) = match &select.list_state {
+            MultiSelectStateDirection::Horizontal(list_state) => (
+                ScrollbarOrientation::HorizontalBottom,
+                list_state.selected().unwrap_or_default(),
+                ["←", "→"],
+            ),
+            MultiSelectStateDirection::Vertical(list_state) => (
+                ScrollbarOrientation::VerticalRight,
+                list_state.selected().unwrap_or_default(),
+                ["↑", "↓"],
+            ),
+        };
+        *scroll_state = ScrollbarState::new(select.values.len()).position(selected);
+
+        let scrollbar = Scrollbar::new(orientation)
+            .style(style.get(Widgets::MULTI_SELECT, Parts::ITEM, field_state))
+            .begin_symbol(Some(begin_sym))
+            .end_symbol(Some(end_sym));
+
+        scrollbar.render(area, buf, scroll_state);
     }
 
     None
@@ -540,6 +592,7 @@ mod multiselect_toggle_test {
             selected: vec![false; values.len()],
             spacing: 2,
             preview: 2,
+            scrollbar: None,
         }
     }
 
@@ -601,6 +654,7 @@ mod multiselect_test {
             selected: vec![false; values.len()],
             spacing: 2,
             preview: 2,
+            scrollbar: None,
         }
     }
 

@@ -5,7 +5,7 @@ use ratatui::{
     crossterm::event::{KeyCode, KeyEvent},
     layout::Rect,
     text::{Line, Span},
-    widgets::{List, ListState, StatefulWidget},
+    widgets::{List, ListState, Scrollbar, ScrollbarOrientation, ScrollbarState, StatefulWidget},
 };
 
 use crate::{
@@ -45,6 +45,7 @@ pub struct SelectBuilder<T> {
     pub(crate) direction: SelectDirection,
     pub(crate) spacing: usize,
     pub(crate) preview: usize,
+    pub(crate) scrollbar: bool,
 }
 
 impl<T: PartialEq> SelectBuilder<T> {
@@ -154,6 +155,12 @@ impl<T: PartialEq> SelectBuilder<T> {
         self
     }
 
+    /// Enables or disables scrollbar for this select.
+    pub fn scrollbar(mut self, show_scrollbar: bool) -> Self {
+        self.scrollbar = show_scrollbar;
+        self
+    }
+
     /// Number of options to keep visible past the selected one when
     /// scrolling horizontally. Ignored when the field is
     /// [`vertical`](Self::vertical).
@@ -187,6 +194,10 @@ impl<T: PartialEq> SelectBuilder<T> {
                 SelectStateDirection::Vertical(ListState::default().with_selected(self.selected))
             }
         };
+        if self.scrollbar && matches!(self.direction, SelectDirection::Horizontal) {
+            self.options.height = self.options.height.max(2)
+        }
+        let len = self.values.len();
         self.form.push_field(Field {
             id: self.id,
             kind: FieldKind::Select(SelectStatus {
@@ -197,6 +208,11 @@ impl<T: PartialEq> SelectBuilder<T> {
                 highlight_symbol: self.highlight_symbol,
                 spacing: self.spacing,
                 preview: self.preview,
+                scrollbar: if self.scrollbar {
+                    Some(ScrollbarState::new(len))
+                } else {
+                    None
+                },
             }),
             options: self.options,
             error: None,
@@ -343,6 +359,7 @@ pub struct SelectStatus {
     pub(crate) highlight_symbol: String,
     pub(crate) spacing: usize,
     pub(crate) preview: usize,
+    pub(crate) scrollbar: Option<ScrollbarState>,
 }
 
 impl SelectStatus {
@@ -434,6 +451,17 @@ pub(crate) fn render_select(
     style: &FormStyle,
     field_state: States,
 ) -> Option<(u16, u16)> {
+    let list_area = if select.scrollbar.is_some()
+        && matches!(select.list_state, SelectStateDirection::Vertical(_))
+    {
+        Rect {
+            width: area.width.saturating_sub(1),
+            ..area
+        }
+    } else {
+        area
+    };
+
     let items: Vec<Line<'_>> = select
         .values
         .iter()
@@ -450,14 +478,37 @@ pub(crate) fn render_select(
             let list = HorizontalList::new(items, select.spacing, select.preview)
                 .highlight_style(style.get(Widgets::SELECT, Parts::ACTIVE, field_state));
 
-            StatefulWidget::render(list, area, buf, list_state);
+            StatefulWidget::render(list, list_area, buf, list_state);
         }
         SelectStateDirection::Vertical(ref mut list_state) => {
             let list = List::new(items)
                 .highlight_style(style.get(Widgets::SELECT, Parts::ACTIVE, field_state))
                 .highlight_symbol(select.highlight_symbol.as_str());
-            StatefulWidget::render(list, area, buf, list_state);
+            StatefulWidget::render(list, list_area, buf, list_state);
         }
+    }
+
+    if let Some(ref mut scroll_state) = select.scrollbar {
+        let (orientation, selected, [begin_sym, end_sym]) = match &select.list_state {
+            SelectStateDirection::Horizontal(list_state) => (
+                ScrollbarOrientation::HorizontalBottom,
+                list_state.selected().unwrap_or_default(),
+                ["←", "→"],
+            ),
+            SelectStateDirection::Vertical(list_state) => (
+                ScrollbarOrientation::VerticalRight,
+                list_state.selected().unwrap_or_default(),
+                ["↑", "↓"],
+            ),
+        };
+        *scroll_state = ScrollbarState::new(select.values.len()).position(selected);
+
+        let scrollbar = Scrollbar::new(orientation)
+            .style(style.get(Widgets::SELECT, Parts::ITEM, field_state))
+            .begin_symbol(Some(begin_sym))
+            .end_symbol(Some(end_sym));
+
+        scrollbar.render(area, buf, scroll_state);
     }
 
     None
@@ -486,6 +537,7 @@ mod select_tests {
             highlight_symbol: "> ".to_string(),
             spacing: 2,
             preview: 2,
+            scrollbar: None,
         }
     }
 

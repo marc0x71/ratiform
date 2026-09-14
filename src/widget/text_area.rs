@@ -5,7 +5,9 @@ use ratatui::{
     crossterm::event::{KeyCode, KeyEvent, KeyModifiers},
     layout::Rect,
     text::Line,
-    widgets::{Block, Paragraph, Widget},
+    widgets::{
+        Block, Paragraph, Scrollbar, ScrollbarOrientation, ScrollbarState, StatefulWidget, Widget,
+    },
 };
 
 use crate::{
@@ -29,6 +31,7 @@ pub struct TextAreaBuilder<T> {
     pub(crate) value: String,
     pub(crate) options: FieldOptions,
     pub(crate) placeholder: Option<String>,
+    pub(crate) scrollbar: bool,
 }
 
 impl<T: PartialEq> TextAreaBuilder<T> {
@@ -43,6 +46,12 @@ impl<T: PartialEq> TextAreaBuilder<T> {
     /// anything, and has no effect on validation
     pub fn placeholder(mut self, placeholder: impl Into<String>) -> Self {
         self.placeholder = Some(placeholder.into());
+        self
+    }
+
+    /// Enables or disables the vertical scrollbar for this text area.
+    pub fn scrollbar(mut self, show_scrollbar: bool) -> Self {
+        self.scrollbar = show_scrollbar;
         self
     }
 
@@ -61,6 +70,11 @@ impl<T: PartialEq> TextAreaBuilder<T> {
                 lines: Vec::new(),
                 placeholder: self.placeholder,
                 visible_height: 0,
+                scrollbar: if self.scrollbar {
+                    Some(ScrollbarState::new(0))
+                } else {
+                    None
+                },
             }),
             options: self.options,
             error: None,
@@ -126,6 +140,7 @@ pub struct TextAreaStatus {
     pub(crate) lines: Vec<(usize, String)>,
     pub(crate) placeholder: Option<String>,
     pub(crate) visible_height: u16,
+    pub(crate) scrollbar: Option<ScrollbarState>,
 }
 
 impl TextAreaStatus {
@@ -266,9 +281,11 @@ pub(crate) fn render_textarea(
 ) -> Option<(u16, u16)> {
     let mut text_style = style.get(Widgets::SINGLE_LINE, Parts::TEXT, state);
 
-    text_area.lines = wrap_text(&text_area.value, area.width as usize);
-
-    text_area.visible_height = area.height;
+    let scrollbar_gap = if text_area.scrollbar.is_some() { 1 } else { 0 };
+    text_area.lines = wrap_text(
+        &text_area.value,
+        area.width.saturating_sub(scrollbar_gap) as usize,
+    );
 
     let mut display = text_area
         .lines
@@ -293,6 +310,18 @@ pub(crate) fn render_textarea(
         .scroll((scroll_y, 0));
 
     value.render(area, buf);
+
+    if let Some(ref mut scroll_state) = text_area.scrollbar {
+        *scroll_state = ScrollbarState::new(text_area.lines.len())
+            .viewport_content_length(area.height as usize)
+            .position(row as usize);
+
+        let scrollbar = Scrollbar::new(ScrollbarOrientation::VerticalRight)
+            .begin_symbol(Some("↑"))
+            .end_symbol(Some("↓"));
+
+        scrollbar.render(area, buf, scroll_state);
+    }
 
     Some((area.x + col, area.y + row.saturating_sub(scroll_y)))
 }

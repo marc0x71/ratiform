@@ -191,6 +191,8 @@ A list of `(value, label)` pairs. `value()` returns the first element of the pai
 
 Vertical by default — a column navigated with `Up`/`Down`/`Home`/`End`/`PageUp`/`PageDown`. `.horizontal()` switches to a single scrolling row navigated with `Left`/`Right` instead; `.spacing(n)`/`.preview(n)` tune how many spaces separate options and how many past the selected one stay visible while scrolling (both default to `2`, both ignored while vertical).
 
+`.scrollbar(true)` adds a scrollbar reflecting the current position: vertical on the right edge when the field is vertical (the list loses one column of width to make room for it), horizontal along the bottom edge when it's `.horizontal()` (the field needs one extra row).
+
 Two options sharing the same value make `build()` fail too — see [Duplicate ids and values](#duplicate-ids-and-values).
 
 ### MultiSelect
@@ -206,11 +208,15 @@ A list of `(value, label)` pairs where any number can be checked with `Space`. U
 
 Vertical by default — the cursor moves with `Up`/`Down`/`Home`/`End`/`PageUp`/`PageDown`. `.horizontal()` switches to a single scrolling row where the cursor moves with `Left`/`Right` instead; same `.spacing(n)`/`.preview(n)` as `Select`.
 
+`.scrollbar(true)` behaves the same as on `Select`.
+
 Same duplicate-value rule as `Select` applies — see [Duplicate ids and values](#duplicate-ids-and-values) — plus one more: no value may contain `,`, since it's the separator `value()` uses to join multiple selections.
 
 ### Text area
 
 Multi-line text, with the same insertion/deletion/placeholder support as single-line input, plus `Up`/`Down`, scrolling, and `PageUp`/`PageDown`. `Home`/`End` jump to the start/end of the current visual line; `Ctrl+Home`/`Ctrl+End` jump to the start/end of the whole text. Long lines wrap at the character level, not at word boundaries (the same default `vim` uses).
+
+`.scrollbar(true)` adds a vertical scrollbar on the right edge, at the cost of one column of width for the wrapped text.
 
 ```rust
 .text_area(Field::Notes, "Notes")

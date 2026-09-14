@@ -96,6 +96,7 @@ impl<T: PartialEq> FormBuilder<T> {
             direction: SelectDirection::Vertical,
             spacing: 2,
             preview: 2,
+            scrollbar: false,
         }
     }
 
@@ -113,6 +114,7 @@ impl<T: PartialEq> FormBuilder<T> {
             direction: MultiSelectDirection::Vertical,
             spacing: 2,
             preview: 2,
+            scrollbar: false,
         }
     }
 
@@ -125,6 +127,7 @@ impl<T: PartialEq> FormBuilder<T> {
             value: String::new(),
             options: FieldOptions::default(),
             placeholder: None,
+            scrollbar: false,
         }
     }
 

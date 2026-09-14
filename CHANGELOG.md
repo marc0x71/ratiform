@@ -5,6 +5,16 @@ All notable changes to `ratiform` are documented here. Format loosely follows
 [Cargo's SemVer rules](https://doc.rust-lang.org/cargo/reference/semver.html)
 for `0.x` releases (a breaking change bumps the minor version, not the patch).
 
+## [Unreleased]
+
+### Added
+- `Select`/`MultiSelect`/`TextArea`: `.scrollbar(true)` renders a scrollbar
+  reflecting the field's current position. On `TextArea` and vertical
+  `Select`/`MultiSelect` it's a vertical scrollbar on the right edge, at the
+  cost of one column of width for the content; on `.horizontal()`
+  `Select`/`MultiSelect` it's a horizontal scrollbar along the bottom edge,
+  which needs one extra row.
+
 ## [0.6.1] - 2026-09-11
 
 ### Fixed
