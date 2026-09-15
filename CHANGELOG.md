@@ -14,6 +14,14 @@ for `0.x` releases (a breaking change bumps the minor version, not the patch).
   cost of one column of width for the content; on `.horizontal()`
   `Select`/`MultiSelect` it's a horizontal scrollbar along the bottom edge,
   which needs one extra row.
+- `Select`: `.searchable()` turns the list into a filter-as-you-type
+  combobox — typed characters narrow the options down to those whose label
+  matches as a fuzzy subsequence (case-insensitive), highlighting the
+  matched characters with the new `Parts::MATCH` style part. The first
+  `Esc` clears the query instead of cancelling the form; a second `Esc`,
+  with an empty query, cancels as usual. If the field's current value no
+  longer matches an active query when set via `set_value()` or restored by
+  `reset()`, the selection is cleared rather than kept hidden.
 
 ## [0.6.1] - 2026-09-11
 

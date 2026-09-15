@@ -49,9 +49,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         ))
         .select(FormField::Country, "Country")
         .values(countries())
-        .horizontal()
+        // .horizontal()
         .selected(1)
-        .height(5)
+        .searchable()
+        .height(15)
         .checkbox(FormField::Terms, "I accept the terms")
         .checked(false)
         .optional()
@@ -175,6 +176,12 @@ fn my_style() -> FormStyle {
             Parts::PLACEHOLDER,
             States::ANY,
             Style::default().fg(Color::DarkGray).italic(),
+        )
+        .add(
+            Widgets::SELECT | Widgets::MULTI_SELECT,
+            Parts::MATCH,
+            States::ANY,
+            Style::default().underlined(),
         )
         .build()
 }

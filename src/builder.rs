@@ -97,6 +97,7 @@ impl<T: PartialEq> FormBuilder<T> {
             spacing: 2,
             preview: 2,
             scrollbar: false,
+            searchable: false,
         }
     }
 

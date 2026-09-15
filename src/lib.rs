@@ -112,7 +112,8 @@ impl<T: PartialEq> FormState<T> {
     /// | `Tab` / `BackTab` | Move focus to the next / previous field, wrapping around |
     /// | `Ctrl+Enter` | Submit the form, unless some field is currently invalid |
     /// | `Enter` | Same as `Ctrl+Enter`, unless the focused field claims `Enter` for itself (a `TextArea` uses it to insert a newline instead) |
-    /// | `Esc` | Cancel the form |
+    /// | `Esc` | Cancel the form, unless the focused field claims `Esc` for itself (a searchable `Select` uses it to clear its search query
+    ///           first — a second `Esc`, with an empty query, cancels as usual) |
     ///
     /// Every other key is routed to the focused field — unless it's
     /// `disabled()`/`readonly()`, in which case the key is dropped and
@@ -131,7 +132,9 @@ impl<T: PartialEq> FormState<T> {
             {
                 self.result = FormResult::Submitted
             }
-            (_, KeyCode::Esc) => self.result = FormResult::Cancelled,
+            (_, KeyCode::Esc) if !self.focused_handle_key(KeyCode::Esc) => {
+                self.result = FormResult::Cancelled
+            }
             (_, KeyCode::Tab) if !self.fields.is_empty() => {
                 self.focus = self.next_in_focus();
             }

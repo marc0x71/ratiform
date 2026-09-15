@@ -91,6 +91,7 @@ impl Parts {
     pub const ACTIVE: Self = Self(1 << 7);
     /// An item that is currently selected, regardless of cursor position.
     pub const SELECTED: Self = Self(1 << 8);
+    pub const MATCH: Self = Self(1 << 9);
 
     /// Every part — use this when a rule applies no matter which part of
     /// the widget it's drawing.
@@ -103,7 +104,8 @@ impl Parts {
             | Self::MARKER.0
             | Self::ITEM.0
             | Self::ACTIVE.0
-            | Self::SELECTED.0,
+            | Self::SELECTED.0
+            | Self::MATCH.0,
     );
 
     const fn index(self) -> usize {
@@ -391,6 +393,12 @@ impl Default for FormStyle {
                 Parts::ANY,
                 States::DISABLED,
                 normal.crossed_out(),
+            )
+            .add(
+                Widgets::SELECT | Widgets::MULTI_SELECT,
+                Parts::MATCH,
+                States::ANY,
+                Style::default().underlined(),
             )
             .add(Widgets::ANY, Parts::ANY, States::ANY, normal)
             .build()

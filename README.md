@@ -195,6 +195,17 @@ Vertical by default — a column navigated with `Up`/`Down`/`Home`/`End`/`PageUp
 
 Two options sharing the same value make `build()` fail too — see [Duplicate ids and values](#duplicate-ids-and-values).
 
+`.searchable()` turns the list into a filter-as-you-type combobox: typed characters narrow the options down to those whose label matches as a fuzzy subsequence (case-insensitive), and the matched characters are highlighted with the `MATCH` style part. `Backspace` removes the last character of the query; the first `Esc` clears the query instead of cancelling the form (a second `Esc`, with an empty query, cancels as usual). With no query, every option is shown in its original order.
+
+```rust
+.select(Field::Country, "Country")
+    .values_ref(&[("IT", "Italy"), ("FR", "France"), ("DE", "Germany")])
+    .searchable()
+    .height(5)
+```
+
+If the field's current value no longer matches an active search query — set programmatically via `set_value()`, or restored by `reset()` — the selection is cleared rather than kept hidden.
+
 ### MultiSelect
 
 A list of `(value, label)` pairs where any number can be checked with `Space`. Unlike `Select`, the keyboard cursor and the selection are independent — moving the cursor never changes what's checked. `value()` returns every selected value, comma-separated:
@@ -455,6 +466,7 @@ Rules are declared against three independent axes — `Widgets` (which field kin
 | `ITEM` | One row/option | `Select`, `MultiSelect` |
 | `ACTIVE` | Whichever row currently has the cursor, regardless of selection | `Select`, `MultiSelect` |
 | `SELECTED` | An option that's checked, regardless of cursor position | `MultiSelect` |
+| `MATCH` | The characters of an option's label matched by a `.searchable()` query | `Select` |
 
 A rule for a widget/part combination nothing actually renders (e.g. `AREA` on a `Select`) is harmless — it's simply never looked up, so it has no visible effect. Full field-by-field docs are on `FormStyle`/`Widgets`/`Parts`/`States` themselves (`cargo doc --open`). A runnable example with a full custom theme is in [`examples/theming.rs`](examples/theming.rs).
 
@@ -463,7 +475,7 @@ A rule for a widget/part combination nothing actually renders (e.g. `AREA` on a 
 | `SingleLine` | `LABEL`, `ERROR`, `AREA`, `TEXT`, `PLACEHOLDER` |
 | `TextArea` | `LABEL`, `ERROR`, `AREA`, `TEXT`, `PLACEHOLDER` |
 | `CheckBox` | `LABEL`, `ERROR`, `MARKER` |
-| `Select` | `LABEL`, `ERROR`, `ITEM`, `ACTIVE` |
+| `Select` | `LABEL`, `ERROR`, `ITEM`, `ACTIVE`, `MATCH` |
 | `MultiSelect` | `LABEL`, `ERROR`, `ITEM`, `ACTIVE`, `MARKER`, `SELECTED` |
 
 ## Keyboard navigation

@@ -161,8 +161,10 @@ impl<T> Field<T> {
 
     /// Key codes this field wants to handle itself even when they'd
     /// otherwise be reserved globally by [`crate::FormState::handle_input`]
-    /// — today, only `TextArea` claims `Enter`, to insert a newline
-    /// instead of submitting the form.
+    /// — `TextArea` claims `Enter`, to insert a newline instead of
+    /// submitting the form; a searchable `Select` claims `Esc`, but only
+    /// while its search query is non-empty, to clear the query instead of
+    /// cancelling the form.
     pub fn special_key_handled(&self) -> Vec<KeyCode> {
         if self.options.disabled || self.options.readonly {
             Vec::new()
@@ -250,6 +252,7 @@ impl FieldKind {
     pub fn special_key_handled(&self) -> Vec<KeyCode> {
         match self {
             FieldKind::TextArea(_) => vec![KeyCode::Enter],
+            FieldKind::Select(k) => k.special_key_handled(),
             _ => Vec::new(),
         }
     }

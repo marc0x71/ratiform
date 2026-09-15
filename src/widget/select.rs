@@ -4,6 +4,7 @@ use ratatui::{
     buffer::Buffer,
     crossterm::event::{KeyCode, KeyEvent},
     layout::Rect,
+    style::Style,
     text::{Line, Span},
     widgets::{List, ListState, Scrollbar, ScrollbarOrientation, ScrollbarState, StatefulWidget},
 };
@@ -14,7 +15,10 @@ use crate::{
     error::BuildError,
     field::{Field, FieldKind, FieldOptions},
     field_builder_common,
-    internal::list::{HorizontalList, HorizontalListState},
+    internal::{
+        fuzzy::fuzzy_search,
+        list::{HorizontalList, HorizontalListState},
+    },
     style::{FormStyle, Parts, States, Widgets},
 };
 
@@ -46,6 +50,7 @@ pub struct SelectBuilder<T> {
     pub(crate) spacing: usize,
     pub(crate) preview: usize,
     pub(crate) scrollbar: bool,
+    pub(crate) searchable: bool,
 }
 
 impl<T: PartialEq> SelectBuilder<T> {
@@ -161,6 +166,12 @@ impl<T: PartialEq> SelectBuilder<T> {
         self
     }
 
+    /// Enables searchable feature for this select.
+    pub fn searchable(mut self) -> Self {
+        self.searchable = true;
+        self
+    }
+
     /// Number of options to keep visible past the selected one when
     /// scrolling horizontally. Ignored when the field is
     /// [`vertical`](Self::vertical).
@@ -213,6 +224,12 @@ impl<T: PartialEq> SelectBuilder<T> {
                 } else {
                     None
                 },
+                searchable: if self.searchable {
+                    Some("".to_string())
+                } else {
+                    None
+                },
+                filtered: (0..len).map(|i| (i, vec![])).collect(),
             }),
             options: self.options,
             error: None,
@@ -234,7 +251,7 @@ impl SelectRef<'_> {
     /// The index of the currently selected option, or `None` if there is no
     /// selection (e.g. the field has no options).
     pub fn selected_index(&self) -> Option<usize> {
-        self.inner.list_state.selected()
+        self.inner.selected()
     }
 
     /// The *value* of the currently selected option — the first element of
@@ -262,11 +279,9 @@ impl SelectRef<'_> {
     /// assert_eq!(sel.selected_label(), Some("France"));
     /// ```
     pub fn selected_label(&self) -> Option<&str> {
-        let last = self.inner.values.len().saturating_sub(1);
         self.inner
-            .list_state
             .selected()
-            .and_then(|idx| self.inner.values.get(idx.min(last)))
+            .and_then(|idx| self.inner.values.get(idx))
             .map(|(_, s)| s.as_str())
     }
 
@@ -277,11 +292,9 @@ impl SelectRef<'_> {
     /// See [`selected_value`](SelectRef::selected_value) for an example
     /// contrasting the two.
     pub fn selected_value(&self) -> Option<&str> {
-        let last = self.inner.values.len().saturating_sub(1);
         self.inner
-            .list_state
             .selected()
-            .and_then(|idx| self.inner.values.get(idx.min(last)))
+            .and_then(|idx| self.inner.values.get(idx))
             .map(|(s, _)| s.as_str())
     }
 }
@@ -360,30 +373,43 @@ pub struct SelectStatus {
     pub(crate) spacing: usize,
     pub(crate) preview: usize,
     pub(crate) scrollbar: Option<ScrollbarState>,
+    pub(crate) searchable: Option<String>,
+    pub(crate) filtered: Vec<(usize, Vec<usize>)>,
 }
 
 impl SelectStatus {
+    fn selected(&self) -> Option<usize> {
+        let last_values = self.values.len().saturating_sub(1);
+        let last_filtered = self.filtered.len().saturating_sub(1);
+        self.list_state.selected().and_then(|filtered_idx| {
+            self.filtered
+                .get(filtered_idx.min(last_filtered))
+                .map(|value_idx| value_idx.0.min(last_values))
+        })
+    }
+
     pub(crate) fn get(&self) -> String {
-        let last = self.values.len().saturating_sub(1);
-        self.list_state
-            .selected()
-            .and_then(|idx| self.values.get(idx.min(last)))
+        self.selected()
+            .and_then(|idx| self.values.get(idx))
             .map(|(k, _)| k.clone())
             .unwrap_or_default()
     }
 
     pub(crate) fn get_ref(&self) -> Cow<'_, str> {
-        let last = self.values.len().saturating_sub(1);
-        self.list_state
-            .selected()
-            .and_then(|idx| self.values.get(idx.min(last)))
+        self.selected()
+            .and_then(|idx| self.values.get(idx))
             .map(|(k, _)| Cow::Borrowed(k.as_ref()))
             .unwrap_or(Cow::Borrowed(""))
     }
 
     pub(crate) fn set(&mut self, value: &str) {
-        let index = self.values.iter().position(|(k, _)| k == value);
-        self.list_state.select(index);
+        let original = self.values.iter().position(|(k, _)| k == value);
+        let filtered_pos = original.and_then(|orig_idx| {
+            self.filtered
+                .iter()
+                .position(|(filter_idx, _)| *filter_idx == orig_idx)
+        });
+        self.list_state.select(filtered_pos);
     }
 
     fn right(&mut self) {
@@ -426,10 +452,32 @@ impl SelectStatus {
         self.list_state
             .scroll_down_by(self.height.saturating_sub(1));
     }
+
+    fn refilter(&mut self) {
+        let values = self
+            .values
+            .iter()
+            .map(|(_, v)| v.as_str())
+            .collect::<Vec<_>>();
+        let filtered = fuzzy_search(&values, self.searchable.as_ref().map_or("", |v| v));
+        self.filtered = filtered
+            .into_iter()
+            .map(|f| (f.index, f.positions))
+            .collect();
+    }
+
+    pub(crate) fn special_key_handled(&self) -> Vec<KeyCode> {
+        if self.searchable.as_ref().is_some_and(|q| !q.is_empty()) {
+            vec![KeyCode::Esc]
+        } else {
+            Vec::new()
+        }
+    }
 }
 
 // EVENT
 pub(crate) fn handle_input_select(key_event: KeyEvent, select: &mut SelectStatus) {
+    let mut need_refilter = false;
     match key_event.code {
         KeyCode::Left => select.left(),
         KeyCode::Right => select.right(),
@@ -439,8 +487,50 @@ pub(crate) fn handle_input_select(key_event: KeyEvent, select: &mut SelectStatus
         KeyCode::End => select.end(),
         KeyCode::PageUp => select.page_up(),
         KeyCode::PageDown => select.page_down(),
+        KeyCode::Char(c) => {
+            if let Some(ref mut query) = select.searchable {
+                query.push(c);
+                need_refilter = true;
+            }
+        }
+        KeyCode::Backspace => {
+            if let Some(ref mut query) = select.searchable {
+                need_refilter = true;
+                let _ = query.pop();
+            }
+        }
+        KeyCode::Esc => {
+            if let Some(ref mut query) = select.searchable {
+                need_refilter = true;
+                query.clear();
+            }
+        }
         _ => {}
     }
+    if need_refilter {
+        select.refilter();
+    }
+}
+
+fn make_spans<'a>(
+    text: &'a str,
+    positions: &[usize],
+    normal: Style,
+    highlight: Style,
+) -> Vec<Span<'a>> {
+    text.char_indices()
+        .enumerate()
+        .map(|(char_pos, (byte_pos, ch))| {
+            let end = byte_pos + ch.len_utf8();
+            let slice = &text[byte_pos..end];
+
+            if positions.contains(&char_pos) {
+                Span::styled(slice, highlight)
+            } else {
+                Span::styled(slice, normal)
+            }
+        })
+        .collect()
 }
 
 // RENDER
@@ -462,15 +552,17 @@ pub(crate) fn render_select(
         area
     };
 
-    let items: Vec<Line<'_>> = select
-        .values
+    let filtered = select
+        .filtered
         .iter()
-        .map(|(_, v)| {
-            Line::from(vec![Span::styled(
-                v.as_str(),
-                style.get(Widgets::SELECT, Parts::ITEM, field_state),
-            )])
-        })
+        .filter_map(|(idx, pos)| select.values.get(*idx).map(|(_, v)| (v, pos)))
+        .collect::<Vec<_>>();
+
+    let normal = style.get(Widgets::SELECT, Parts::ITEM, field_state);
+    let highlight = style.get(Widgets::SELECT, Parts::MATCH, field_state);
+    let items: Vec<Line<'_>> = filtered
+        .iter()
+        .map(|item| Line::from(make_spans(item.0, item.1, normal, highlight)))
         .collect();
 
     match select.list_state {
@@ -538,6 +630,8 @@ mod select_tests {
             spacing: 2,
             preview: 2,
             scrollbar: None,
+            searchable: None,
+            filtered: (0..values.len()).map(|i| (i, vec![])).collect(),
         }
     }
 
@@ -583,6 +677,105 @@ mod select_tests {
         let select_ref = SelectRef { inner: &select };
         assert_eq!(select_ref.selected_label(), Some("Germania"));
         assert_eq!(select_ref.selected_value(), Some("DE"));
+    }
+
+    #[test]
+    fn selected_never_exceeds_last_valid_index_even_with_bogus_list_state() {
+        let mut select = make_select(
+            &[("IT", "Italia"), ("FR", "Francia"), ("DE", "Germania")],
+            None,
+        );
+        select.list_state.select(Some(usize::MAX));
+        assert_eq!(select.selected(), Some(2)); // ultimo indice valido, 3 opzioni
+    }
+
+    #[test]
+    fn selected_is_none_without_a_list_state_selection() {
+        let select = make_select(&[("IT", "Italia"), ("FR", "Francia")], None);
+        assert_eq!(select.selected(), None);
+    }
+
+    #[test]
+    fn selected_resolves_filtered_position_to_original_index() {
+        let mut select = make_select(
+            &[("IT", "Italia"), ("FR", "Francia"), ("DE", "Germania")],
+            None,
+        );
+        // simulo un filtro che ha riordinato: posizione 0 della vista
+        // filtrata punta all'originale 2, posizione 1 punta all'originale 0
+        select.filtered = vec![(2, vec![]), (0, vec![])];
+        select.list_state.select(Some(1));
+
+        assert_eq!(select.selected(), Some(0)); // indice ORIGINALE, non 1
+    }
+
+    #[test]
+    fn selected_is_none_when_filtered_is_empty() {
+        let mut select = make_select(&[("IT", "Italia"), ("FR", "Francia")], None);
+        select.filtered = vec![]; // zero match
+        select.list_state.select(Some(0));
+
+        assert_eq!(select.selected(), None);
+    }
+
+    #[test]
+    fn selected_clamps_out_of_range_list_state_to_last_filtered_entry() {
+        let mut select = make_select(
+            &[("IT", "Italia"), ("FR", "Francia"), ("DE", "Germania")],
+            None,
+        );
+        select.list_state.select(Some(usize::MAX));
+        assert_eq!(select.selected(), Some(2));
+    }
+
+    #[test]
+    fn refilter_with_empty_query_restores_full_list_in_original_order() {
+        let mut select = make_select(
+            &[("IT", "Italia"), ("FR", "Francia"), ("DE", "Germania")],
+            None,
+        );
+        select.searchable = Some(String::new());
+
+        select.refilter();
+
+        assert_eq!(select.filtered, vec![(0, vec![]), (1, vec![]), (2, vec![])]);
+    }
+
+    #[test]
+    fn refilter_with_matching_query_narrows_and_scores() {
+        let mut select = make_select(
+            &[("IT", "Italia"), ("FR", "Francia"), ("DE", "Germania")],
+            None,
+        );
+        select.searchable = Some("ger".to_owned());
+
+        select.refilter();
+
+        assert_eq!(select.filtered, vec![(2, vec![0, 1, 2])]);
+    }
+
+    #[test]
+    fn refilter_with_no_matches_empties_filtered() {
+        let mut select = make_select(&[("IT", "Italia"), ("FR", "Francia")], None);
+        select.searchable = Some("xyz".to_owned());
+
+        select.refilter();
+
+        assert_eq!(select.filtered, vec![]);
+    }
+
+    #[test]
+    fn refilter_resets_cursor_to_first_match_not_to_stale_position() {
+        let mut select = make_select(
+            &[("IT", "Italia"), ("FR", "Francia"), ("DE", "Germania")],
+            None,
+        );
+        select.list_state.select(Some(2)); // cursore su "Germania"
+
+        select.searchable = Some("fra".to_owned()); // ora l'utente digita
+        select.refilter();
+
+        assert_eq!(select.selected(), Some(1)); // indice originale di Francia
     }
 }
 
