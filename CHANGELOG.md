@@ -7,6 +7,8 @@ for `0.x` releases (a breaking change bumps the minor version, not the patch).
 
 ## [Unreleased]
 
+## [0.6.2] - 2026-09-17
+
 ### Added
 - `Select`/`MultiSelect`/`TextArea`: `.scrollbar(true)` renders a scrollbar
   reflecting the field's current position. On `TextArea` and vertical
@@ -34,6 +36,16 @@ for `0.x` releases (a breaking change bumps the minor version, not the patch).
   everything else that doesn't match. Combined with `.pinnable()`, a
   checked option stays visible even while it doesn't match the current
   query. `MultiSelectRef::search_query()` reads the query back.
+
+### Fixed
+- A broken intra-doc link from `MultiSelectBuilder::searchable` to
+  `SelectBuilder::searchable`, unresolved because the latter lives in a
+  different, private module with no `use` bringing it into scope.
+
+### Documentation
+- Split the extended usage walkthrough out of the README into
+  [`docs/tutorial.md`](docs/tutorial.md), so the README stays a quick
+  overview instead of growing with every new field kind and option.
 
 ## [0.6.1] - 2026-09-11
 
