@@ -1,9 +1,10 @@
-use std::borrow::Cow;
+use std::{borrow::Cow, collections::HashMap};
 
 use ratatui::{
     buffer::Buffer,
     crossterm::event::{KeyCode, KeyEvent},
     layout::Rect,
+    style::Style,
     text::{Line, Span},
     widgets::{List, ListState, Scrollbar, ScrollbarOrientation, ScrollbarState, StatefulWidget},
 };
@@ -14,7 +15,10 @@ use crate::{
     error::BuildError,
     field::{Field, FieldKind, FieldOptions},
     field_builder_common,
-    internal::list::{HorizontalList, HorizontalListState},
+    internal::{
+        fuzzy::fuzzy_search,
+        list::{HorizontalList, HorizontalListState},
+    },
     style::{FormStyle, Parts, States, Widgets},
 };
 
@@ -50,6 +54,8 @@ pub struct MultiSelectBuilder<T> {
     pub(crate) spacing: usize,
     pub(crate) preview: usize,
     pub(crate) scrollbar: bool,
+    pub(crate) pinnable: bool,
+    pub(crate) searchable: bool,
 }
 
 impl<T: PartialEq> MultiSelectBuilder<T> {
@@ -127,9 +133,24 @@ impl<T: PartialEq> MultiSelectBuilder<T> {
         self
     }
 
-    /// Enables or disables scrollbar for this select.
+    /// Enables or disables scrollbar for this multi-select.
     pub fn scrollbar(mut self, show_scrollbar: bool) -> Self {
         self.scrollbar = show_scrollbar;
+        self
+    }
+
+    /// Keeps every checked option pinned at the top of the list, in front
+    /// of the unchecked ones, so a long list never hides what's already
+    /// selected.
+    pub fn pinnable(mut self) -> Self {
+        self.pinnable = true;
+        self
+    }
+
+    /// Same as [`SelectBuilder::searchable`], but checked options stay
+    /// visible while typing only if `.pinnable()` is also set.
+    pub fn searchable(mut self) -> Self {
+        self.searchable = true;
         self
     }
 
@@ -227,6 +248,15 @@ impl<T: PartialEq> MultiSelectBuilder<T> {
                 } else {
                     None
                 },
+                pinnable: self.pinnable,
+                order: (0..len).collect(),
+                searchable: if self.searchable {
+                    Some("".to_string())
+                } else {
+                    None
+                },
+                filtered: (0..len).map(|i| (i, vec![])).collect(),
+                view: (0..len).collect(),
             }),
             options: self.options,
             error: None,
@@ -293,6 +323,13 @@ impl MultiSelectRef<'_> {
                     None
                 }
             })
+    }
+
+    /// The user's current search query, if `.searchable()` is enabled —
+    /// `Some("")` before any character is typed, `None` if the field
+    /// isn't searchable at all.
+    pub fn search_query(&self) -> Option<&str> {
+        self.inner.searchable.as_deref()
     }
 }
 
@@ -374,6 +411,11 @@ pub struct MultiSelectStatus {
     pub(crate) spacing: usize,
     pub(crate) preview: usize,
     pub(crate) scrollbar: Option<ScrollbarState>,
+    pub(crate) pinnable: bool,
+    pub(crate) order: Vec<usize>,
+    pub(crate) searchable: Option<String>,
+    pub(crate) filtered: HashMap<usize, Vec<usize>>,
+    pub(crate) view: Vec<usize>,
 }
 
 impl MultiSelectStatus {
@@ -415,6 +457,13 @@ impl MultiSelectStatus {
             if let Some(index) = self.values.iter().position(|(k, _)| k == s) {
                 self.selected[index] = true;
             }
+        }
+        self.reorder();
+        if self.searchable.is_some() {
+            self.searchable = Some(String::new());
+            self.refilter();
+        } else {
+            self.rebuild_view();
         }
     }
 
@@ -460,16 +509,73 @@ impl MultiSelectStatus {
     }
 
     fn toggle(&mut self) {
-        if let Some(pos) = self.list_state.selected()
+        if let Some(order_pos) = self.list_state.selected()
+            && let Some(&pos) = self.view.get(order_pos)
             && let Some(sel) = self.selected.get_mut(pos)
         {
             *sel = !*sel;
+            self.reorder();
         }
+    }
+
+    fn reorder(&mut self) {
+        if !self.pinnable {
+            return;
+        }
+        let mut selected = vec![];
+        let mut unselected = vec![];
+        for (idx, sel) in self.selected.iter().enumerate() {
+            if *sel {
+                selected.push(idx);
+            } else {
+                unselected.push(idx);
+            }
+        }
+        self.order = selected;
+        self.order.extend(unselected);
+    }
+
+    pub(crate) fn special_key_handled(&self) -> Vec<KeyCode> {
+        if self.searchable.as_ref().is_some_and(|q| !q.is_empty()) {
+            vec![KeyCode::Esc]
+        } else {
+            Vec::new()
+        }
+    }
+
+    fn refilter(&mut self) {
+        let values = self
+            .values
+            .iter()
+            .map(|(_, v)| v.as_str())
+            .collect::<Vec<_>>();
+        let filtered = fuzzy_search(&values, self.searchable.as_ref().map_or("", |v| v));
+        self.filtered = filtered
+            .into_iter()
+            .map(|f| (f.index, f.positions))
+            .collect();
+
+        self.rebuild_view();
+    }
+
+    fn rebuild_view(&mut self) {
+        self.view = self
+            .order
+            .iter()
+            .filter_map(|idx| {
+                if self.selected[*idx] && self.pinnable {
+                    Some(*idx)
+                } else {
+                    self.filtered.get(idx).map(|_| *idx)
+                }
+            })
+            .collect::<Vec<_>>();
     }
 }
 
 // EVENT
 pub(crate) fn handle_input_multiselect(key_event: KeyEvent, select: &mut MultiSelectStatus) {
+    let mut need_refilter = false;
     match key_event.code {
         KeyCode::Left => select.left(),
         KeyCode::Right => select.right(),
@@ -479,8 +585,34 @@ pub(crate) fn handle_input_multiselect(key_event: KeyEvent, select: &mut MultiSe
         KeyCode::End => select.end(),
         KeyCode::PageUp => select.page_up(),
         KeyCode::PageDown => select.page_down(),
-        KeyCode::Char(' ') => select.toggle(),
+        KeyCode::Char(' ') => {
+            select.toggle();
+            if select.pinnable {
+                select.rebuild_view();
+            }
+        }
+        KeyCode::Char(c) => {
+            if let Some(ref mut query) = select.searchable {
+                query.push(c);
+                need_refilter = true;
+            }
+        }
+        KeyCode::Backspace => {
+            if let Some(ref mut query) = select.searchable {
+                let _ = query.pop();
+                need_refilter = true;
+            }
+        }
+        KeyCode::Esc => {
+            if let Some(ref mut query) = select.searchable {
+                query.clear();
+                need_refilter = true;
+            }
+        }
         _ => {}
+    }
+    if need_refilter {
+        select.refilter();
     }
 }
 
@@ -504,7 +636,17 @@ pub(crate) fn render_multiselect(
     };
 
     let mut items: Vec<Line<'_>> = Vec::new();
-    for (idx, (_, v)) in select.values.iter().enumerate() {
+
+    let normal = style.get(Widgets::MULTI_SELECT, Parts::ITEM, field_state);
+    let selected_style =
+        normal.patch(style.get(Widgets::MULTI_SELECT, Parts::SELECTED, field_state));
+    let highlight = style.get(Widgets::MULTI_SELECT, Parts::MATCH, field_state);
+
+    let empty = vec![];
+
+    for idx in select.view.iter().copied() {
+        let v = select.values[idx].1.as_str();
+        let positions = select.filtered.get(&idx).unwrap_or(&empty);
         let prefix = if select.selected[idx] {
             select.selected_symbol.as_str()
         } else {
@@ -517,13 +659,18 @@ pub(crate) fn render_multiselect(
                 item_style.patch(style.get(Widgets::MULTI_SELECT, Parts::SELECTED, field_state));
         }
 
-        let item = Line::from(vec![
-            Span::styled(
-                prefix,
-                style.get(Widgets::MULTI_SELECT, Parts::MARKER, field_state),
-            ),
-            Span::styled(v.as_str(), item_style),
-        ]);
+        let mut item = Line::from(vec![Span::styled(
+            prefix,
+            style.get(Widgets::MULTI_SELECT, Parts::MARKER, field_state),
+        )]);
+        let base = if select.selected[idx] {
+            selected_style
+        } else {
+            normal
+        };
+        let label = make_spans(v, positions, base, highlight);
+        item.extend(label);
+
         items.push(item);
     }
 
@@ -569,6 +716,27 @@ pub(crate) fn render_multiselect(
     None
 }
 
+fn make_spans<'a>(
+    text: &'a str,
+    positions: &[usize],
+    normal: Style,
+    highlight: Style,
+) -> Vec<Span<'a>> {
+    text.char_indices()
+        .enumerate()
+        .map(|(char_pos, (byte_pos, ch))| {
+            let end = byte_pos + ch.len_utf8();
+            let slice = &text[byte_pos..end];
+
+            if positions.contains(&char_pos) {
+                Span::styled(slice, highlight)
+            } else {
+                Span::styled(slice, normal)
+            }
+        })
+        .collect()
+}
+
 #[cfg(test)]
 mod multiselect_toggle_test {
     use super::*;
@@ -593,6 +761,11 @@ mod multiselect_toggle_test {
             spacing: 2,
             preview: 2,
             scrollbar: None,
+            pinnable: false,
+            order: (0..values.len()).collect(),
+            searchable: None,
+            filtered: (0..values.len()).map(|i| (i, vec![])).collect(),
+            view: (0..values.len()).collect(),
         }
     }
 
@@ -632,10 +805,14 @@ mod multiselect_toggle_test {
 }
 
 #[cfg(test)]
-mod multiselect_test {
+mod test_helpers {
     use super::*;
 
-    fn make_select(values: &[(&str, &str)], selected: Option<usize>) -> MultiSelectStatus {
+    pub(crate) fn make_select(
+        values: &[(&str, &str)],
+        selected: Option<usize>,
+        pinnable: bool,
+    ) -> MultiSelectStatus {
         MultiSelectStatus {
             label: "Test".to_owned(),
             values: values
@@ -655,8 +832,19 @@ mod multiselect_test {
             spacing: 2,
             preview: 2,
             scrollbar: None,
+            pinnable,
+            order: (0..values.len()).collect(),
+            searchable: None,
+            filtered: (0..values.len()).map(|i| (i, vec![])).collect(),
+            view: (0..values.len()).collect(),
         }
     }
+}
+
+#[cfg(test)]
+mod multiselect_test {
+    use super::test_helpers::make_select;
+    use super::*;
 
     #[test]
     fn set_then_get_round_trips_in_values_order_not_input_order() {
@@ -665,6 +853,7 @@ mod multiselect_test {
         let mut select = make_select(
             &[("I", "Italia"), ("F", "Francia"), ("D", "Germania")],
             None,
+            false,
         );
         select.set("F,I");
         assert_eq!(select.get(), "I,F");
@@ -677,6 +866,7 @@ mod multiselect_test {
         let mut select = make_select(
             &[("I", "Italia"), ("F", "Francia"), ("D", "Germania")],
             None,
+            false,
         );
         select.set("I,nonexistent,D");
         assert_eq!(select.get(), "I,D");
@@ -684,7 +874,7 @@ mod multiselect_test {
 
     #[test]
     fn set_with_only_unknown_values_deselects_everything() {
-        let mut select = make_select(&[("I", "Italia"), ("F", "Francia")], None);
+        let mut select = make_select(&[("I", "Italia"), ("F", "Francia")], None, false);
         select.set("I"); // seleziona qualcosa prima
         select.set("nonexistent,also_missing");
         assert_eq!(select.get(), "");
@@ -692,7 +882,7 @@ mod multiselect_test {
 
     #[test]
     fn get_returns_empty_string_when_nothing_is_selected() {
-        let select = make_select(&[("I", "Italia")], None);
+        let select = make_select(&[("I", "Italia")], None, false);
         assert_eq!(select.get(), "");
     }
 
@@ -701,6 +891,7 @@ mod multiselect_test {
         let mut select = make_select(
             &[("I", "Italia"), ("F", "Francia"), ("D", "Germania")],
             None,
+            false,
         );
         select.set("D,I"); // "D" passato prima di "I"
 
@@ -828,5 +1019,135 @@ mod builder_multiselect_tests {
             .unwrap();
 
         assert_eq!(state.value(&1), Some(String::new()));
+    }
+}
+
+#[cfg(test)]
+mod pinnable_tests {
+    use ratatui::crossterm::event::KeyModifiers;
+
+    use super::test_helpers::make_select;
+    use super::*;
+
+    #[test]
+    fn reorder_is_a_no_op_when_not_pinnable() {
+        let mut select = make_select(&[("A", "A"), ("B", "B"), ("C", "C")], None, false);
+        select.selected = vec![false, true, false];
+        select.reorder();
+        assert_eq!(select.order, vec![0, 1, 2]);
+    }
+
+    #[test]
+    fn reorder_pins_selected_items_first_in_original_relative_order() {
+        let mut select = make_select(
+            &[("A", "A"), ("B", "B"), ("C", "C"), ("D", "D"), ("E", "E")],
+            None,
+            true,
+        );
+        select.selected = vec![false, true, false, true, false];
+        select.reorder();
+        assert_eq!(select.order, vec![1, 3, 0, 2, 4]);
+    }
+
+    #[test]
+    fn reorder_with_nothing_selected_is_the_identity() {
+        let mut select = make_select(&[("A", "A"), ("B", "B")], None, true);
+        select.reorder();
+        assert_eq!(select.order, vec![0, 1]);
+    }
+
+    #[test]
+    fn reorder_with_everything_selected_is_also_the_identity() {
+        let mut select = make_select(&[("A", "A"), ("B", "B")], None, true);
+        select.selected = vec![true, true];
+        select.reorder();
+        assert_eq!(select.order, vec![0, 1]);
+    }
+
+    #[test]
+    fn reorder_called_twice_without_changes_is_idempotent() {
+        let mut select = make_select(&[("A", "A"), ("B", "B"), ("C", "C")], None, true);
+        select.selected = vec![false, true, false];
+        select.reorder();
+        let first = select.order.clone();
+        select.reorder();
+        assert_eq!(select.order, first);
+    }
+
+    #[test]
+    fn toggle_flips_the_original_index_not_the_display_position() {
+        let space = KeyEvent::new(KeyCode::Char(' '), KeyModifiers::NONE);
+        let mut select = make_select(&[("A", "A"), ("B", "B"), ("C", "C")], None, true);
+        select.view = vec![2, 0, 1];
+        select.list_state.select(Some(1));
+
+        handle_input_multiselect(space, &mut select);
+
+        assert_eq!(select.selected, vec![true, false, false]);
+    }
+
+    #[test]
+    fn toggling_the_same_item_twice_returns_to_full_identity_order() {
+        let mut select = make_select(&[("A", "A"), ("B", "B"), ("C", "C")], None, true);
+        let space = KeyEvent::new(KeyCode::Char(' '), KeyModifiers::NONE);
+
+        select.list_state.select(Some(1)); // B
+        handle_input_multiselect(space, &mut select); // seleziona B, B va in cima
+        assert_eq!(select.order, vec![1, 0, 2]);
+        assert_eq!(select.view, vec![1, 0, 2]); // nessuna query attiva: view coincide con order
+
+        select.list_state.select(Some(0)); // cursore ora sulla riga che mostra B
+        handle_input_multiselect(space, &mut select); // deseleziona B
+
+        assert_eq!(select.selected, vec![false, false, false]);
+        assert_eq!(select.order, vec![0, 1, 2]);
+    }
+
+    #[test]
+    fn get_is_unaffected_by_a_reordered_view() {
+        let mut select = make_select(&[("a", "A"), ("b", "B"), ("c", "C")], None, true);
+        select.selected = vec![true, false, true];
+        select.reorder();
+
+        assert_eq!(select.get(), "a,c");
+    }
+}
+
+#[cfg(test)]
+mod rebuild_view_tests {
+    use super::test_helpers::make_select;
+
+    #[test]
+    fn item_matching_the_query_is_visible_regardless_of_pinnable() {
+        let mut select = make_select(&[("A", "Italia"), ("B", "Francia")], None, false);
+        select.searchable = Some("ita".to_owned());
+        select.refilter();
+        assert_eq!(select.view, vec![0]); // solo Italia matcha
+    }
+
+    #[test]
+    fn selected_item_not_matching_query_is_hidden_when_not_pinnable() {
+        let mut select = make_select(&[("A", "Italia"), ("B", "Francia")], None, false);
+        select.selected = vec![true, false]; // Italia già selezionata
+        select.searchable = Some("fra".to_owned());
+        select.refilter();
+        assert_eq!(select.view, vec![1]); // Italia sparisce, coerente con pinnable=false
+    }
+
+    #[test]
+    fn selected_item_not_matching_query_stays_visible_when_pinnable() {
+        let mut select = make_select(&[("A", "Italia"), ("B", "Francia")], None, true);
+        select.selected = vec![true, false];
+        select.searchable = Some("fra".to_owned());
+        select.refilter();
+        assert_eq!(select.view, vec![0, 1]);
+    }
+
+    #[test]
+    fn unselected_item_not_matching_query_is_hidden_even_when_pinnable() {
+        let mut select = make_select(&[("A", "Italia"), ("B", "Francia")], None, true);
+        select.searchable = Some("fra".to_owned());
+        select.refilter();
+        assert_eq!(select.view, vec![1]); // solo Francia
     }
 }

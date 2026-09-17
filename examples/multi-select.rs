@@ -22,8 +22,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             ("backend", "Backend"),
             ("frontend", "Frontend"),
         ])
-        .height(5)
+        .height(10)
         .optional()
+        .pinnable()
+        .searchable()
         .multi_select(ProjectField::Permissions, "Permissions")
         .values_ref(&[("read", "Read"), ("write", "Write"), ("admin", "Admin")])
         .horizontal()

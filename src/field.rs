@@ -253,6 +253,7 @@ impl FieldKind {
         match self {
             FieldKind::TextArea(_) => vec![KeyCode::Enter],
             FieldKind::Select(k) => k.special_key_handled(),
+            FieldKind::MultiSelect(k) => k.special_key_handled(),
             _ => Vec::new(),
         }
     }

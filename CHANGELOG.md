@@ -19,9 +19,21 @@ for `0.x` releases (a breaking change bumps the minor version, not the patch).
   matches as a fuzzy subsequence (case-insensitive), highlighting the
   matched characters with the new `Parts::MATCH` style part. The first
   `Esc` clears the query instead of cancelling the form; a second `Esc`,
-  with an empty query, cancels as usual. If the field's current value no
-  longer matches an active query when set via `set_value()` or restored by
-  `reset()`, the selection is cleared rather than kept hidden.
+  with an empty query, cancels as usual. `set_value()`/`reset()` clear the
+  search query first, so a value set programmatically is never masked by a
+  query left over from a previous interaction. `SelectRef::search_query()`
+  reads the query back.
+- `MultiSelect`: `.pinnable()` keeps every checked option pinned at the top
+  of the list, in front of the unchecked ones, so a long list never hides
+  what's already selected. The list re-pins itself after every `Space`;
+  the cursor moves to the next row so checking several options in a row
+  doesn't keep jumping back to the top.
+- `MultiSelect`: `.searchable()`, same as `Select`'s above — with one
+  difference: checking/unchecking never depends on the query, so a checked
+  option that no longer matches would normally disappear along with
+  everything else that doesn't match. Combined with `.pinnable()`, a
+  checked option stays visible even while it doesn't match the current
+  query. `MultiSelectRef::search_query()` reads the query back.
 
 ## [0.6.1] - 2026-09-11
 

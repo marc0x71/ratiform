@@ -91,6 +91,8 @@ impl Parts {
     pub const ACTIVE: Self = Self(1 << 7);
     /// An item that is currently selected, regardless of cursor position.
     pub const SELECTED: Self = Self(1 << 8);
+    /// The characters of an option's label matched by a `Select`'s
+    /// `.searchable()` query.
     pub const MATCH: Self = Self(1 << 9);
 
     /// Every part — use this when a rule applies no matter which part of

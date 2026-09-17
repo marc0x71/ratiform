@@ -166,7 +166,10 @@ impl<T: PartialEq> SelectBuilder<T> {
         self
     }
 
-    /// Enables searchable feature for this select.
+    /// Turns the option list into a filter-as-you-type combobox: typed
+    /// characters narrow the options down by a fuzzy, case-insensitive
+    /// match on the label, and `Esc` clears the query before it cancels
+    /// the form.
     pub fn searchable(mut self) -> Self {
         self.searchable = true;
         self
@@ -297,6 +300,13 @@ impl SelectRef<'_> {
             .and_then(|idx| self.inner.values.get(idx))
             .map(|(s, _)| s.as_str())
     }
+
+    /// The user's current search query, if `.searchable()` is enabled —
+    /// `Some("")` before any character is typed, `None` if the field
+    /// isn't searchable at all.
+    pub fn search_query(&self) -> Option<&str> {
+        self.inner.searchable.as_deref()
+    }
 }
 
 // STATUS
@@ -403,6 +413,10 @@ impl SelectStatus {
     }
 
     pub(crate) fn set(&mut self, value: &str) {
+        if self.searchable.is_some() {
+            self.searchable = Some(String::new());
+            self.refilter();
+        }
         let original = self.values.iter().position(|(k, _)| k == value);
         let filtered_pos = original.and_then(|orig_idx| {
             self.filtered

@@ -223,6 +223,16 @@ Vertical by default — the cursor moves with `Up`/`Down`/`Home`/`End`/`PageUp`/
 
 Same duplicate-value rule as `Select` applies — see [Duplicate ids and values](#duplicate-ids-and-values) — plus one more: no value may contain `,`, since it's the separator `value()` uses to join multiple selections.
 
+`.searchable()` behaves the same as on `Select` — see above — with one difference: checking/unchecking never depends on the query, so an already-checked option that no longer matches the query would normally vanish from the list along with everything else that doesn't match. `.pinnable()` keeps every checked option pinned at the top of the list, in front of the unchecked ones, so a long list never hides what's already selected; combined with `.searchable()`, a checked option stays visible even while it doesn't match the current query. The cursor moves to the next row after `Space`, so checking several options in a row doesn't keep jumping back to the top.
+
+```rust
+.multi_select(Field::Country, "Countries")
+    .values_ref(&[("IT", "Italy"), ("FR", "France"), ("DE", "Germany")])
+    .pinnable()
+    .searchable()
+    .height(5)
+```
+
 ### Text area
 
 Multi-line text, with the same insertion/deletion/placeholder support as single-line input, plus `Up`/`Down`, scrolling, and `PageUp`/`PageDown`. `Home`/`End` jump to the start/end of the current visual line; `Ctrl+Home`/`Ctrl+End` jump to the start/end of the whole text. Long lines wrap at the character level, not at word boundaries (the same default `vim` uses).
@@ -466,7 +476,7 @@ Rules are declared against three independent axes — `Widgets` (which field kin
 | `ITEM` | One row/option | `Select`, `MultiSelect` |
 | `ACTIVE` | Whichever row currently has the cursor, regardless of selection | `Select`, `MultiSelect` |
 | `SELECTED` | An option that's checked, regardless of cursor position | `MultiSelect` |
-| `MATCH` | The characters of an option's label matched by a `.searchable()` query | `Select` |
+| `MATCH` | The characters of an option's label matched by a `.searchable()` query | `Select`, `MultiSelect` |
 
 A rule for a widget/part combination nothing actually renders (e.g. `AREA` on a `Select`) is harmless — it's simply never looked up, so it has no visible effect. Full field-by-field docs are on `FormStyle`/`Widgets`/`Parts`/`States` themselves (`cargo doc --open`). A runnable example with a full custom theme is in [`examples/theming.rs`](examples/theming.rs).
 
@@ -476,7 +486,7 @@ A rule for a widget/part combination nothing actually renders (e.g. `AREA` on a 
 | `TextArea` | `LABEL`, `ERROR`, `AREA`, `TEXT`, `PLACEHOLDER` |
 | `CheckBox` | `LABEL`, `ERROR`, `MARKER` |
 | `Select` | `LABEL`, `ERROR`, `ITEM`, `ACTIVE`, `MATCH` |
-| `MultiSelect` | `LABEL`, `ERROR`, `ITEM`, `ACTIVE`, `MARKER`, `SELECTED` |
+| `MultiSelect` | `LABEL`, `ERROR`, `ITEM`, `ACTIVE`, `MARKER`, `SELECTED`, `MATCH` |
 
 ## Keyboard navigation
 
@@ -520,8 +530,8 @@ println!("{:?}", sel.selected_index()); // Some(0) — not available any other w
 ```
 
 * `single_line(&self, id: &T) -> Option<SingleLineRef<'_>>` — `value()` and `cursor_position()`.
-* `select(&self, id: &T) -> Option<SelectRef<'_>>` — `selected_index()`, `selected_value()`, `selected_label()`.
-* `multi_select(&self, id: &T) -> Option<MultiSelectRef<'_>>` — `selected_index()`, `selected()`, `selected_values()`, `selected_labels()`.
+* `select(&self, id: &T) -> Option<SelectRef<'_>>` — `selected_index()`, `selected_value()`, `selected_label()`, `search_query()`.
+* `multi_select(&self, id: &T) -> Option<MultiSelectRef<'_>>` — `selected_index()`, `selected()`, `selected_values()`, `selected_labels()`, `search_query()`.
 * `checkbox(&self, id: &T) -> Option<CheckBoxRef<'_>>` — `checked()`.
 * `text_area(&self, id: &T) -> Option<TextAreaRef<'_>>` — `value()`, `cursor_position()`, `lines()`, `line_count()`, `scroll_offset()`.
 

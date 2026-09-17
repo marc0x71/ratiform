@@ -259,6 +259,9 @@ impl<T: PartialEq> FormState<T> {
     ///   with no match **clears the selection** rather than leaving the
     ///   current one in place — [`FormState::value`] afterwards returns an
     ///   empty string, not the value it had before this call.
+    /// - `Select`/`MultiSelect` with `.searchable()` active: the search
+    ///   query is cleared first, so `value` is never silently masked by a
+    ///   query left over from a previous interaction.
     pub fn set_value(&mut self, id: &T, value: &str) {
         if let Some(f) = self.fields.iter_mut().find(|f| f.id == *id) {
             f.set(value);
