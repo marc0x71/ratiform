@@ -147,8 +147,9 @@ impl<T: PartialEq> MultiSelectBuilder<T> {
         self
     }
 
-    /// Same as [`SelectBuilder::searchable`], but checked options stay
-    /// visible while typing only if `.pinnable()` is also set.
+    /// Same as [`SelectBuilder::searchable`](crate::widget::select::SelectBuilder::searchable),
+    /// but checked options stay visible while typing only if `.pinnable()`
+    /// is also set.
     pub fn searchable(mut self) -> Self {
         self.searchable = true;
         self
