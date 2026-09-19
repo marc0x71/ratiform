@@ -70,19 +70,22 @@ pub(crate) fn count_lines(text: &str, max_width: u16) -> u16 {
         return 0;
     }
 
-    let mut lines = 1;
-    let mut current_width = 0;
+    let mut lines = 0;
 
-    for word in text.split_whitespace() {
-        let word_width = word.chars().count() as u16;
+    for line in text.lines() {
+        lines += 1;
+        let mut current_width = 0;
+        for word in line.split_whitespace() {
+            let word_width = word.chars().count() as u16;
 
-        if current_width == 0 {
-            current_width = word_width;
-        } else if current_width + 1 + word_width <= max_width {
-            current_width += 1 + word_width;
-        } else {
-            lines += 1;
-            current_width = word_width;
+            if current_width == 0 {
+                current_width = word_width;
+            } else if current_width + 1 + word_width <= max_width {
+                current_width += 1 + word_width;
+            } else {
+                lines += 1;
+                current_width = word_width;
+            }
         }
     }
 

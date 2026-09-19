@@ -192,6 +192,45 @@ mod label_width_tests {
         assert_eq!(count_lines("Città natale", 12), 1);
     }
 
+    #[test]
+    fn an_explicit_newline_starts_a_new_line() {
+        assert_eq!(count_lines("A\nB", 30), 2);
+    }
+
+    #[test]
+    fn a_blank_line_between_two_lines_counts_as_a_line() {
+        assert_eq!(count_lines("A\n\nB", 30), 3);
+    }
+
+    #[test]
+    fn a_leading_newline_counts_as_an_empty_first_line() {
+        assert_eq!(count_lines("\nA", 30), 2);
+    }
+
+    #[test]
+    fn a_single_trailing_newline_does_not_add_a_line() {
+        // GUARD: same rule as ratatui's `Text::from(&str)`, which draws the label.
+        assert_eq!(count_lines("A\n", 30), 1);
+    }
+
+    #[test]
+    fn every_line_wraps_on_its_own() {
+        // First line needs 2 rows at width 9, "dd" needs 1. If the newline were
+        // treated as a space, the whole text would fit in 2 rows.
+        assert_eq!(count_lines("aaaa bbbb cccc\ndd", 9), 3);
+    }
+
+    #[test]
+    fn each_line_starts_with_a_fresh_width() {
+        // Each line fits in 9 columns on its own: 2 rows.
+        assert_eq!(count_lines("abcdefgh\nabcdefgh", 9), 2);
+    }
+
+    #[test]
+    fn a_full_line_does_not_push_the_next_short_line_down() {
+        assert_eq!(count_lines("aaaa bbbb\ncc", 9), 2);
+    }
+
     // ---------- compute_heights ----------
 
     #[test]
@@ -206,6 +245,13 @@ mod label_width_tests {
         let field = make_field("Nome cognome indirizzo", 1);
         let heights = compute_heights(std::slice::from_ref(&field), 15, 100);
         assert_eq!(heights[0], 3);
+    }
+
+    #[test]
+    fn a_label_with_a_newline_reserves_a_row_per_line() {
+        let field = make_field("A\nB", 1);
+        let heights = compute_heights(std::slice::from_ref(&field), 20, 100);
+        assert_eq!(heights[0], 3); // 2 label rows + 1 error row
     }
 
     // ---------- resolve_label_width ----------
