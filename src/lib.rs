@@ -75,9 +75,13 @@ impl<T: PartialEq> FormState<T> {
             f.initial_value = f.get();
             f.validate();
         });
+        let focus = fields
+            .iter()
+            .position(|f| !f.options.disabled && f.options.visible)
+            .unwrap_or_default();
         Self {
             fields,
-            focus: 0,
+            focus,
             cursor_position: None,
             result: FormResult::Working,
             label_width,
@@ -281,7 +285,11 @@ impl<T: PartialEq> FormState<T> {
     pub fn reset(&mut self) {
         self.fields.iter_mut().for_each(|f| f.reset());
         self.result = FormResult::Working;
-        self.focus = 0;
+        self.focus = self
+            .fields
+            .iter()
+            .position(|f| !f.options.disabled && f.options.visible)
+            .unwrap_or_default();
         self.cursor_position = None;
     }
 
