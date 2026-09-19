@@ -6,7 +6,7 @@ use ratatui::{
     layout::Rect,
     style::Style,
     text::{Line, Span},
-    widgets::{List, ListState, Scrollbar, ScrollbarOrientation, ScrollbarState, StatefulWidget},
+    widgets::{List, Scrollbar, ScrollbarOrientation, ScrollbarState, StatefulWidget},
 };
 
 use crate::{
@@ -15,17 +15,10 @@ use crate::{
     error::BuildError,
     field::{Field, FieldKind, FieldOptions},
     field_builder_common,
-    internal::{
-        fuzzy::fuzzy_search,
-        list::{HorizontalList, HorizontalListState},
-    },
+    internal::{fuzzy::fuzzy_search, list::HorizontalList},
     style::{FormStyle, Parts, States, Widgets},
+    widget::common::direction::{Direction, StateDirection},
 };
-
-pub(crate) enum SelectDirection {
-    Horizontal,
-    Vertical,
-}
 
 // BUILDER
 /// Builder for a select field: a list of options the user picks from.
@@ -37,7 +30,8 @@ pub(crate) enum SelectDirection {
 ///
 /// Vertical by default — navigated with `Up`/`Down`/`Home`/`End`/
 /// `PageUp`/`PageDown`. [`horizontal`](Self::horizontal) switches to a
-/// single scrolling row navigated with `Left`/`Right` instead.
+/// single scrolling row navigated with `Left`/`Right` (plus `Home`/`End`)
+/// instead.
 pub struct SelectBuilder<T> {
     pub(crate) id: T,
     pub(crate) form: FormBuilder<T>,
@@ -46,7 +40,7 @@ pub struct SelectBuilder<T> {
     pub(crate) selected: Option<usize>,
     pub(crate) options: FieldOptions,
     pub(crate) highlight_symbol: String,
-    pub(crate) direction: SelectDirection,
+    pub(crate) direction: Direction,
     pub(crate) spacing: usize,
     pub(crate) preview: usize,
     pub(crate) scrollbar: bool,
@@ -146,17 +140,17 @@ impl<T: PartialEq> SelectBuilder<T> {
     }
 
     /// Lays the options out on a single scrolling row instead of a column,
-    /// navigated with `Left`/`Right`. `Up`/`Down`/`Home`/`End`/`PageUp`/
-    /// `PageDown` become no-ops.
+    /// navigated with `Left`/`Right`, and `Home`/`End` jump to the first and
+    /// last option. `Up`/`Down` and `PageUp`/`PageDown` have no effect.
     pub fn horizontal(mut self) -> Self {
-        self.direction = SelectDirection::Horizontal;
+        self.direction = Direction::Horizontal;
         self
     }
 
     /// Lays the options out in a column — the default. Reverses
     /// [`horizontal`](Self::horizontal).
     pub fn vertical(mut self) -> Self {
-        self.direction = SelectDirection::Vertical;
+        self.direction = Direction::Vertical;
         self
     }
 
@@ -200,15 +194,8 @@ impl<T: PartialEq> SelectBuilder<T> {
             .selected
             .and_then(|sel| self.values.get(sel).map(|(k, _)| k.clone()))
             .unwrap_or_default();
-        let list_state = match self.direction {
-            SelectDirection::Horizontal => SelectStateDirection::Horizontal(
-                HorizontalListState::default().with_selected(self.selected),
-            ),
-            SelectDirection::Vertical => {
-                SelectStateDirection::Vertical(ListState::default().with_selected(self.selected))
-            }
-        };
-        if self.scrollbar && matches!(self.direction, SelectDirection::Horizontal) {
+        let list_state = StateDirection::new(self.direction, self.selected);
+        if self.scrollbar && matches!(self.direction, Direction::Horizontal) {
             self.options.height = self.options.height.max(2)
         }
         let len = self.values.len();
@@ -309,75 +296,11 @@ impl SelectRef<'_> {
     }
 }
 
-// STATUS
-#[derive(Debug)]
-pub(crate) enum SelectStateDirection {
-    Horizontal(HorizontalListState),
-    Vertical(ListState),
-}
-impl SelectStateDirection {
-    fn selected(&self) -> Option<usize> {
-        match self {
-            SelectStateDirection::Horizontal(state) => state.selected(),
-            SelectStateDirection::Vertical(state) => state.selected(),
-        }
-    }
-
-    fn select(&mut self, index: Option<usize>) {
-        match self {
-            SelectStateDirection::Horizontal(state) => state.select(index),
-            SelectStateDirection::Vertical(state) => state.select(index),
-        }
-    }
-
-    fn select_previous(&mut self) {
-        match self {
-            SelectStateDirection::Horizontal(state) => state.select_previous(),
-            SelectStateDirection::Vertical(state) => state.select_previous(),
-        }
-    }
-
-    fn select_next(&mut self) {
-        match self {
-            SelectStateDirection::Horizontal(state) => state.select_next(),
-            SelectStateDirection::Vertical(state) => state.select_next(),
-        }
-    }
-
-    fn select_first(&mut self) {
-        match self {
-            SelectStateDirection::Horizontal(state) => state.select_first(),
-            SelectStateDirection::Vertical(state) => state.select_first(),
-        }
-    }
-
-    fn select_last(&mut self) {
-        match self {
-            SelectStateDirection::Horizontal(state) => state.select_last(),
-            SelectStateDirection::Vertical(state) => state.select_last(),
-        }
-    }
-
-    fn scroll_up_by(&mut self, amount: u16) {
-        match self {
-            SelectStateDirection::Horizontal(state) => state.scroll_up_by(amount),
-            SelectStateDirection::Vertical(state) => state.scroll_up_by(amount),
-        }
-    }
-
-    fn scroll_down_by(&mut self, amount: u16) {
-        match self {
-            SelectStateDirection::Horizontal(state) => state.scroll_down_by(amount),
-            SelectStateDirection::Vertical(state) => state.scroll_down_by(amount),
-        }
-    }
-}
-
 #[derive(Debug)]
 pub struct SelectStatus {
     pub(crate) label: String,
     pub(crate) values: Vec<(String, String)>,
-    pub(crate) list_state: SelectStateDirection,
+    pub(crate) list_state: StateDirection,
     pub(crate) height: u16,
     pub(crate) highlight_symbol: String,
     pub(crate) spacing: usize,
@@ -426,47 +349,6 @@ impl SelectStatus {
         self.list_state.select(filtered_pos);
     }
 
-    fn right(&mut self) {
-        if matches!(self.list_state, SelectStateDirection::Horizontal(_)) {
-            self.list_state.select_next();
-        }
-    }
-
-    fn left(&mut self) {
-        if matches!(self.list_state, SelectStateDirection::Horizontal(_)) {
-            self.list_state.select_previous();
-        }
-    }
-
-    fn up(&mut self) {
-        if matches!(self.list_state, SelectStateDirection::Vertical(_)) {
-            self.list_state.select_previous();
-        }
-    }
-
-    fn down(&mut self) {
-        if matches!(self.list_state, SelectStateDirection::Vertical(_)) {
-            self.list_state.select_next();
-        }
-    }
-
-    fn home(&mut self) {
-        self.list_state.select_first();
-    }
-
-    fn end(&mut self) {
-        self.list_state.select_last();
-    }
-
-    fn page_up(&mut self) {
-        self.list_state.scroll_up_by(self.height.saturating_sub(1));
-    }
-
-    fn page_down(&mut self) {
-        self.list_state
-            .scroll_down_by(self.height.saturating_sub(1));
-    }
-
     fn refilter(&mut self) {
         let values = self
             .values
@@ -493,14 +375,6 @@ impl SelectStatus {
 pub(crate) fn handle_input_select(key_event: KeyEvent, select: &mut SelectStatus) {
     let mut need_refilter = false;
     match key_event.code {
-        KeyCode::Left => select.left(),
-        KeyCode::Right => select.right(),
-        KeyCode::Up => select.up(),
-        KeyCode::Down => select.down(),
-        KeyCode::Home => select.home(),
-        KeyCode::End => select.end(),
-        KeyCode::PageUp => select.page_up(),
-        KeyCode::PageDown => select.page_down(),
         KeyCode::Char(c) => {
             if let Some(ref mut query) = select.searchable {
                 query.push(c);
@@ -519,7 +393,7 @@ pub(crate) fn handle_input_select(key_event: KeyEvent, select: &mut SelectStatus
                 query.clear();
             }
         }
-        _ => {}
+        _ => select.list_state.handle_input(key_event, select.height),
     }
     if need_refilter {
         select.refilter();
@@ -555,16 +429,15 @@ pub(crate) fn render_select(
     style: &FormStyle,
     field_state: States,
 ) -> Option<(u16, u16)> {
-    let list_area = if select.scrollbar.is_some()
-        && matches!(select.list_state, SelectStateDirection::Vertical(_))
-    {
-        Rect {
-            width: area.width.saturating_sub(1),
-            ..area
-        }
-    } else {
-        area
-    };
+    let list_area =
+        if select.scrollbar.is_some() && matches!(select.list_state, StateDirection::Vertical(_)) {
+            Rect {
+                width: area.width.saturating_sub(1),
+                ..area
+            }
+        } else {
+            area
+        };
 
     let filtered = select
         .filtered
@@ -580,13 +453,13 @@ pub(crate) fn render_select(
         .collect();
 
     match select.list_state {
-        SelectStateDirection::Horizontal(ref mut list_state) => {
+        StateDirection::Horizontal(ref mut list_state) => {
             let list = HorizontalList::new(items, select.spacing, select.preview)
                 .highlight_style(style.get(Widgets::SELECT, Parts::ACTIVE, field_state));
 
             StatefulWidget::render(list, list_area, buf, list_state);
         }
-        SelectStateDirection::Vertical(ref mut list_state) => {
+        StateDirection::Vertical(ref mut list_state) => {
             let list = List::new(items)
                 .highlight_style(style.get(Widgets::SELECT, Parts::ACTIVE, field_state))
                 .highlight_symbol(select.highlight_symbol.as_str());
@@ -596,12 +469,12 @@ pub(crate) fn render_select(
 
     if let Some(ref mut scroll_state) = select.scrollbar {
         let (orientation, selected, [begin_sym, end_sym]) = match &select.list_state {
-            SelectStateDirection::Horizontal(list_state) => (
+            StateDirection::Horizontal(list_state) => (
                 ScrollbarOrientation::HorizontalBottom,
                 list_state.selected().unwrap_or_default(),
                 ["←", "→"],
             ),
-            SelectStateDirection::Vertical(list_state) => (
+            StateDirection::Vertical(list_state) => (
                 ScrollbarOrientation::VerticalRight,
                 list_state.selected().unwrap_or_default(),
                 ["↑", "↓"],
@@ -633,12 +506,7 @@ mod select_tests {
                 .iter()
                 .map(|(k, v)| ((*k).to_owned(), (*v).to_owned()))
                 .collect(),
-            list_state: match selected {
-                Some(idx) => {
-                    SelectStateDirection::Vertical(ListState::default().with_selected(Some(idx)))
-                }
-                None => SelectStateDirection::Vertical(ListState::default()),
-            },
+            list_state: StateDirection::new(Direction::Vertical, selected),
             height: 5,
             highlight_symbol: "> ".to_string(),
             spacing: 2,
@@ -790,6 +658,16 @@ mod select_tests {
         select.refilter();
 
         assert_eq!(select.selected(), Some(1)); // indice originale di Francia
+    }
+
+    #[test]
+    fn page_down_moves_by_the_field_height_minus_one() {
+        let mut select = make_select(&[("a", "A"), ("b", "B")], Some(0)); // height: 5
+        handle_input_select(
+            KeyEvent::new(KeyCode::PageDown, KeyModifiers::NONE),
+            &mut select,
+        );
+        assert_eq!(select.list_state.selected(), Some(4));
     }
 }
 

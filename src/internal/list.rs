@@ -43,16 +43,6 @@ impl HorizontalListState {
         self.select(Some(usize::MAX));
     }
 
-    pub(crate) fn scroll_up_by(&mut self, amount: u16) {
-        let selected = self.selected.unwrap_or_default();
-        self.select(Some(selected.saturating_sub(amount as usize)));
-    }
-
-    pub(crate) fn scroll_down_by(&mut self, amount: u16) {
-        let selected = self.selected.unwrap_or_default();
-        self.select(Some(selected.saturating_add(amount as usize)));
-    }
-
     fn clamp(&mut self, min: usize, max: usize) {
         let selected = self.selected.unwrap_or_default().clamp(min, max);
         self.select(Some(selected));

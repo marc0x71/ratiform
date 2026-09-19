@@ -204,7 +204,7 @@ FormBuilder::new()
 | `.values(iter)` | Sets the options from any `IntoIterator` of owned-or-convertible pairs (a `Vec<(String, String)>`, a `HashMap`, ...) — for data built at runtime. |
 | `.selected(i)` | Selects option `i` initially. Not bounds-checked at call time; an index out of range once the field's final option list is known is silently clamped to the last option, never a panic. |
 | `.no_selection()` | Starts with nothing selected. Mutually exclusive with `.selected(i)` — whichever is called last wins. This is the only way `.required(...)` has any effect on a `Select`: with a selection always present otherwise, the required check could never fail. |
-| `.horizontal()` / `.vertical()` | Lays the options out on a single scrolling row navigated with `Left`/`Right`, instead of the default column navigated with `Up`/`Down`/`Home`/`End`/`PageUp`/`PageDown`. |
+| `.horizontal()` / `.vertical()` | Lays the options out on a single scrolling row navigated with `Left`/`Right` (and `Home`/`End`), instead of the default column navigated with `Up`/`Down`/`Home`/`End`/`PageUp`/`PageDown`. |
 | `.searchable()` | Turns the list into a filter-as-you-type combobox — see below. |
 | `.scrollbar(bool)` | Shows a scrollbar reflecting the current position: vertical on the right edge when the field is `.vertical()` (the list loses one column of width to make room), horizontal along the bottom edge when it's `.horizontal()` (the field needs one extra row). |
 | `.highlight_symbol(s)` | The marker drawn before the highlighted option (`"> "` by default). Ignored in `horizontal()` mode, where the cursor is shown via style alone. |

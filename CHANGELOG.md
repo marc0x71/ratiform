@@ -7,6 +7,28 @@ for `0.x` releases (a breaking change bumps the minor version, not the patch).
 
 ## [Unreleased]
 
+### Fixed
+- Horizontal `Select`/`MultiSelect`: `PageUp`/`PageDown` no longer move the
+  cursor. The docs already said they had no effect in this layout, but they
+  moved it by `height - 1` items, so what they did depended on the field's
+  height — nothing on a one-row field, one item once `.scrollbar(true)` had
+  forced it to two rows.
+- Vertical `Select`/`MultiSelect` on a one-row field: `PageUp`/`PageDown`
+  did nothing, because a page was computed as `height - 1`. A page is now
+  never smaller than one item.
+
+### Documentation
+- The `.horizontal()` docs of `Select`/`MultiSelect` claimed that `Home`/`End`
+  have no effect in horizontal layout. They jump to the first/last option in
+  both layouts, as they always did; the docs now say so.
+- `docs/adding-a-widget.md`: logic shared between widgets belongs in
+  `widget/common/`.
+
+### Chore
+- Cursor navigation shared by `Select` and `MultiSelect` now lives in
+  `widget::common::direction`, replacing the copy each widget carried. No
+  change to the public API.
+
 ## [0.6.2] - 2026-09-17
 
 ### Added

@@ -6,7 +6,7 @@ use ratatui::{
     layout::Rect,
     style::Style,
     text::{Line, Span},
-    widgets::{List, ListState, Scrollbar, ScrollbarOrientation, ScrollbarState, StatefulWidget},
+    widgets::{List, Scrollbar, ScrollbarOrientation, ScrollbarState, StatefulWidget},
 };
 
 use crate::{
@@ -15,17 +15,11 @@ use crate::{
     error::BuildError,
     field::{Field, FieldKind, FieldOptions},
     field_builder_common,
-    internal::{
-        fuzzy::fuzzy_search,
-        list::{HorizontalList, HorizontalListState},
-    },
+    internal::{fuzzy::fuzzy_search, list::HorizontalList},
     style::{FormStyle, Parts, States, Widgets},
+    widget::common::direction::{Direction, StateDirection},
 };
 
-pub(crate) enum MultiSelectDirection {
-    Horizontal,
-    Vertical,
-}
 // BUILDER
 /// Builder for a multi-select field: any number of options can be checked
 /// with `Space`. Started with
@@ -40,7 +34,7 @@ pub(crate) enum MultiSelectDirection {
 /// Vertical by default — the cursor moves with `Up`/`Down`/`Home`/`End`/
 /// `PageUp`/`PageDown`. [`horizontal`](Self::horizontal) switches to a
 /// single scrolling row where the cursor moves with `Left`/`Right`
-/// instead.
+/// (plus `Home`/`End`) instead.
 pub struct MultiSelectBuilder<T> {
     pub(crate) id: T,
     pub(crate) form: FormBuilder<T>,
@@ -50,7 +44,7 @@ pub struct MultiSelectBuilder<T> {
     pub(crate) options: FieldOptions,
     pub(crate) selected_symbol: String,
     pub(crate) unselected_symbol: String,
-    pub(crate) direction: MultiSelectDirection,
+    pub(crate) direction: Direction,
     pub(crate) spacing: usize,
     pub(crate) preview: usize,
     pub(crate) scrollbar: bool,
@@ -119,17 +113,17 @@ impl<T: PartialEq> MultiSelectBuilder<T> {
     }
 
     /// Lays the options out on a single scrolling row instead of a column,
-    /// navigated with `Left`/`Right`. `Up`/`Down`/`Home`/`End`/`PageUp`/
-    /// `PageDown` become no-ops.
+    /// navigated with `Left`/`Right`, and `Home`/`End` jump to the first and
+    /// last option. `Up`/`Down` and `PageUp`/`PageDown` have no effect.
     pub fn horizontal(mut self) -> Self {
-        self.direction = MultiSelectDirection::Horizontal;
+        self.direction = Direction::Horizontal;
         self
     }
 
     /// Lays the options out in a column — the default. Reverses
     /// [`horizontal`](Self::horizontal).
     pub fn vertical(mut self) -> Self {
-        self.direction = MultiSelectDirection::Vertical;
+        self.direction = Direction::Vertical;
         self
     }
 
@@ -218,16 +212,9 @@ impl<T: PartialEq> MultiSelectBuilder<T> {
             .collect::<Vec<_>>()
             .join(",");
 
-        let list_state = match self.direction {
-            MultiSelectDirection::Horizontal => MultiSelectStateDirection::Horizontal(
-                HorizontalListState::default().with_selected(Some(0)),
-            ),
-            MultiSelectDirection::Vertical => {
-                MultiSelectStateDirection::Vertical(ListState::default().with_selected(Some(0)))
-            }
-        };
+        let list_state = StateDirection::new(self.direction, Some(0));
 
-        if self.scrollbar && matches!(self.direction, MultiSelectDirection::Horizontal) {
+        if self.scrollbar && matches!(self.direction, Direction::Horizontal) {
             self.options.height = self.options.height.max(2)
         }
         let len = self.values.len();
@@ -334,78 +321,12 @@ impl MultiSelectRef<'_> {
     }
 }
 
-// STATUS
-#[derive(Debug)]
-pub(crate) enum MultiSelectStateDirection {
-    Horizontal(HorizontalListState),
-    Vertical(ListState),
-}
-
-impl MultiSelectStateDirection {
-    fn selected(&self) -> Option<usize> {
-        match self {
-            MultiSelectStateDirection::Horizontal(state) => state.selected(),
-            MultiSelectStateDirection::Vertical(state) => state.selected(),
-        }
-    }
-
-    #[allow(dead_code)]
-    fn select(&mut self, index: Option<usize>) {
-        match self {
-            MultiSelectStateDirection::Horizontal(state) => state.select(index),
-            MultiSelectStateDirection::Vertical(state) => state.select(index),
-        }
-    }
-
-    fn select_previous(&mut self) {
-        match self {
-            MultiSelectStateDirection::Horizontal(state) => state.select_previous(),
-            MultiSelectStateDirection::Vertical(state) => state.select_previous(),
-        }
-    }
-
-    fn select_next(&mut self) {
-        match self {
-            MultiSelectStateDirection::Horizontal(state) => state.select_next(),
-            MultiSelectStateDirection::Vertical(state) => state.select_next(),
-        }
-    }
-
-    fn select_first(&mut self) {
-        match self {
-            MultiSelectStateDirection::Horizontal(state) => state.select_first(),
-            MultiSelectStateDirection::Vertical(state) => state.select_first(),
-        }
-    }
-
-    fn select_last(&mut self) {
-        match self {
-            MultiSelectStateDirection::Horizontal(state) => state.select_last(),
-            MultiSelectStateDirection::Vertical(state) => state.select_last(),
-        }
-    }
-
-    fn scroll_up_by(&mut self, amount: u16) {
-        match self {
-            MultiSelectStateDirection::Horizontal(state) => state.scroll_up_by(amount),
-            MultiSelectStateDirection::Vertical(state) => state.scroll_up_by(amount),
-        }
-    }
-
-    fn scroll_down_by(&mut self, amount: u16) {
-        match self {
-            MultiSelectStateDirection::Horizontal(state) => state.scroll_down_by(amount),
-            MultiSelectStateDirection::Vertical(state) => state.scroll_down_by(amount),
-        }
-    }
-}
-
 #[derive(Debug)]
 pub struct MultiSelectStatus {
     pub(crate) label: String,
     pub(crate) values: Vec<(String, String)>,
     pub(crate) selected: Vec<bool>,
-    pub(crate) list_state: MultiSelectStateDirection,
+    pub(crate) list_state: StateDirection,
     pub(crate) height: u16,
     pub(crate) selected_symbol: String,
     pub(crate) unselected_symbol: String,
@@ -466,47 +387,6 @@ impl MultiSelectStatus {
         } else {
             self.rebuild_view();
         }
-    }
-
-    fn right(&mut self) {
-        if matches!(self.list_state, MultiSelectStateDirection::Horizontal(_)) {
-            self.list_state.select_next();
-        }
-    }
-
-    fn left(&mut self) {
-        if matches!(self.list_state, MultiSelectStateDirection::Horizontal(_)) {
-            self.list_state.select_previous();
-        }
-    }
-
-    fn up(&mut self) {
-        if matches!(self.list_state, MultiSelectStateDirection::Vertical(_)) {
-            self.list_state.select_previous();
-        }
-    }
-
-    fn down(&mut self) {
-        if matches!(self.list_state, MultiSelectStateDirection::Vertical(_)) {
-            self.list_state.select_next();
-        }
-    }
-
-    fn home(&mut self) {
-        self.list_state.select_first();
-    }
-
-    fn end(&mut self) {
-        self.list_state.select_last();
-    }
-
-    fn page_up(&mut self) {
-        self.list_state.scroll_up_by(self.height.saturating_sub(1));
-    }
-
-    fn page_down(&mut self) {
-        self.list_state
-            .scroll_down_by(self.height.saturating_sub(1));
     }
 
     fn toggle(&mut self) {
@@ -578,14 +458,6 @@ impl MultiSelectStatus {
 pub(crate) fn handle_input_multiselect(key_event: KeyEvent, select: &mut MultiSelectStatus) {
     let mut need_refilter = false;
     match key_event.code {
-        KeyCode::Left => select.left(),
-        KeyCode::Right => select.right(),
-        KeyCode::Up => select.up(),
-        KeyCode::Down => select.down(),
-        KeyCode::Home => select.home(),
-        KeyCode::End => select.end(),
-        KeyCode::PageUp => select.page_up(),
-        KeyCode::PageDown => select.page_down(),
         KeyCode::Char(' ') => {
             select.toggle();
             if select.pinnable {
@@ -610,7 +482,7 @@ pub(crate) fn handle_input_multiselect(key_event: KeyEvent, select: &mut MultiSe
                 need_refilter = true;
             }
         }
-        _ => {}
+        _ => select.list_state.handle_input(key_event, select.height),
     }
     if need_refilter {
         select.refilter();
@@ -625,16 +497,15 @@ pub(crate) fn render_multiselect(
     style: &FormStyle,
     field_state: States,
 ) -> Option<(u16, u16)> {
-    let list_area = if select.scrollbar.is_some()
-        && matches!(select.list_state, MultiSelectStateDirection::Vertical(_))
-    {
-        Rect {
-            width: area.width.saturating_sub(1),
-            ..area
-        }
-    } else {
-        area
-    };
+    let list_area =
+        if select.scrollbar.is_some() && matches!(select.list_state, StateDirection::Vertical(_)) {
+            Rect {
+                width: area.width.saturating_sub(1),
+                ..area
+            }
+        } else {
+            area
+        };
 
     let mut items: Vec<Line<'_>> = Vec::new();
 
@@ -676,14 +547,14 @@ pub(crate) fn render_multiselect(
     }
 
     match select.list_state {
-        MultiSelectStateDirection::Horizontal(ref mut list_state) => {
+        StateDirection::Horizontal(ref mut list_state) => {
             let list = HorizontalList::new(items, select.spacing, select.preview)
                 .style(style.get(Widgets::MULTI_SELECT, Parts::ITEM, field_state))
                 .highlight_style(style.get(Widgets::MULTI_SELECT, Parts::ACTIVE, field_state));
 
             StatefulWidget::render(list, list_area, buf, list_state);
         }
-        MultiSelectStateDirection::Vertical(ref mut list_state) => {
+        StateDirection::Vertical(ref mut list_state) => {
             let list = List::new(items)
                 .style(style.get(Widgets::MULTI_SELECT, Parts::ITEM, field_state))
                 .highlight_style(style.get(Widgets::MULTI_SELECT, Parts::ACTIVE, field_state));
@@ -693,12 +564,12 @@ pub(crate) fn render_multiselect(
 
     if let Some(ref mut scroll_state) = select.scrollbar {
         let (orientation, selected, [begin_sym, end_sym]) = match &select.list_state {
-            MultiSelectStateDirection::Horizontal(list_state) => (
+            StateDirection::Horizontal(list_state) => (
                 ScrollbarOrientation::HorizontalBottom,
                 list_state.selected().unwrap_or_default(),
                 ["←", "→"],
             ),
-            MultiSelectStateDirection::Vertical(list_state) => (
+            StateDirection::Vertical(list_state) => (
                 ScrollbarOrientation::VerticalRight,
                 list_state.selected().unwrap_or_default(),
                 ["↑", "↓"],
@@ -737,76 +608,9 @@ fn make_spans<'a>(
         })
         .collect()
 }
-
-#[cfg(test)]
-mod multiselect_toggle_test {
-    use super::*;
-
-    fn make_select(values: &[(&str, &str)], selected: Option<usize>) -> MultiSelectStatus {
-        MultiSelectStatus {
-            label: "Test".to_owned(),
-            values: values
-                .iter()
-                .map(|(k, v)| ((*k).to_owned(), (*v).to_owned()))
-                .collect(),
-            list_state: match selected {
-                Some(idx) => MultiSelectStateDirection::Vertical(
-                    ListState::default().with_selected(Some(idx)),
-                ),
-                None => MultiSelectStateDirection::Vertical(ListState::default()),
-            },
-            height: 5,
-            selected_symbol: "> ".to_string(),
-            unselected_symbol: "  ".to_string(),
-            selected: vec![false; values.len()],
-            spacing: 2,
-            preview: 2,
-            scrollbar: None,
-            pinnable: false,
-            order: (0..values.len()).collect(),
-            searchable: None,
-            filtered: (0..values.len()).map(|i| (i, vec![])).collect(),
-            view: (0..values.len()).collect(),
-        }
-    }
-
-    #[test]
-    fn down_poi_toggle_senza_mai_renderizzare() {
-        let mut select = make_select(&[("a", "A"), ("b", "B")], None);
-
-        select.list_state.select_next(); // simula il tasto Down
-        select.toggle(); // simula il tasto Space
-
-        // cosa ti aspetti qui?
-    }
-
-    #[test]
-    fn up_poi_toggle_senza_mai_renderizzare() {
-        let mut select = make_select(&[("a", "A"), ("b", "B")], None);
-
-        select.list_state.select_previous(); // Up, non Down
-        select.toggle();
-
-        // e ora?
-    }
-
-    #[test]
-    fn toggle_dopo_up_senza_mai_renderizzare_non_va_in_panic() {
-        // ListState::select_previous() partendo da None usa usize::MAX come
-        // sentinella finché il widget non è mai stato renderizzato (Ratatui
-        // non conosce ancora la lunghezza della lista) -- toggle() deve
-        // reggere un indice del genere senza panicare.
-        let mut select = make_select(&[("a", "A"), ("b", "B")], None);
-
-        select.list_state.select_previous();
-        select.toggle(); // non deve panicare
-
-        assert_eq!(select.get(), ""); // e non deve aver selezionato nulla
-    }
-}
-
 #[cfg(test)]
 mod test_helpers {
+
     use super::*;
 
     pub(crate) fn make_select(
@@ -820,12 +624,7 @@ mod test_helpers {
                 .iter()
                 .map(|(k, v)| ((*k).to_owned(), (*v).to_owned()))
                 .collect(),
-            list_state: match selected {
-                Some(idx) => MultiSelectStateDirection::Vertical(
-                    ListState::default().with_selected(Some(idx)),
-                ),
-                None => MultiSelectStateDirection::Vertical(ListState::default()),
-            },
+            list_state: StateDirection::new(Direction::Vertical, selected),
             height: 5,
             selected_symbol: "> ".to_string(),
             unselected_symbol: "  ".to_string(),
@@ -843,7 +642,25 @@ mod test_helpers {
 }
 
 #[cfg(test)]
+mod multiselect_toggle_test {
+
+    use crate::widget::multi_select::test_helpers::make_select;
+
+    #[test]
+    fn toggle_dopo_up_senza_mai_renderizzare_non_va_in_panic() {
+        let mut select = make_select(&[("a", "A"), ("b", "B")], None, false);
+
+        select.list_state.up();
+        select.toggle();
+
+        assert_eq!(select.get(), ""); // e non deve aver selezionato nulla
+    }
+}
+
+#[cfg(test)]
 mod multiselect_test {
+    use ratatui::crossterm::event::KeyModifiers;
+
     use super::test_helpers::make_select;
     use super::*;
 
@@ -898,6 +715,15 @@ mod multiselect_test {
 
         let sel = MultiSelectRef { inner: &select };
         assert_eq!(sel.selected_values().collect::<Vec<_>>(), vec!["I", "D"]);
+    }
+    #[test]
+    fn page_down_moves_by_the_field_height_minus_one() {
+        let mut select = make_select(&[("a", "A"), ("b", "B")], Some(0), false); // height: 5
+        handle_input_multiselect(
+            KeyEvent::new(KeyCode::PageDown, KeyModifiers::NONE),
+            &mut select,
+        );
+        assert_eq!(select.list_state.selected(), Some(4));
     }
 }
 

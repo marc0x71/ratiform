@@ -1,3 +1,5 @@
+pub(crate) mod common;
+
 pub(crate) mod check_box;
 pub(crate) mod multi_select;
 pub(crate) mod select;

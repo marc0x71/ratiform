@@ -31,7 +31,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .horizontal()
         .optional()
         .selected(&[0]) // "read" selezionato all'avvio
-        .height(3)
+        .height(1)
         .required("Select at least one permission".to_owned())
         .build()?;
 

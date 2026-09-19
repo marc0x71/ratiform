@@ -32,6 +32,8 @@ To check off before committing a new widget (`Xxx`), based on
       has a text cursor, otherwise always `None`.
 - [ ] `handle_input_xxx` **does not** call `field.validate()` —
       `event::handle_input_field` already does after it returns.
+- [ ] Logic shared with another widget goes in `widget/common/` (one
+      file per abstraction), not copied between widgets.
 
 ## Tests (only if they clear the filter)
 
@@ -41,7 +43,9 @@ To check off before committing a new widget (`Xxx`), based on
       "ignores").
 - [ ] **Not** tested: one-line passthroughs to `std`.
 - [ ] **Not** tested: anything delegating to Ratatui (e.g. navigation if
-      wrapping `ListState`).
+      wrapping `ListState`). For list widgets, navigation is tested once
+      in `direction.rs`; the widget only needs a test that it passes its
+      own height.
 - [ ] **Not** tested: rendering on a `Buffer` — no precedent in the
       crate.
 
