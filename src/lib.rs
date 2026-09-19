@@ -274,14 +274,19 @@ impl<T: PartialEq> FormState<T> {
 
     /// The id of the field that currently has focus, or `None` only if the
     /// form has no fields at all.
+    ///
+    /// Focus starts on the first field that can receive it (neither
+    /// `disabled()` nor hidden). If no field qualifies, it stays on the first
+    /// field, which then ignores all input.
     pub fn focused_field(&self) -> Option<&T> {
         self.fields.get(self.focus).map(|f| &f.id)
     }
 
     /// Restores every field to the value it had when the form was built,
     /// re-validates each one against the restored value, moves focus back to
-    /// the first field, and resets `result` to `Working` — a `Submitted` or
-    /// `Cancelled` form becomes usable again, not a dead end.
+    /// the first field that can receive it (see [`focused_field`](FormState::focused_field)),
+    /// and resets `result` to `Working` — a `Submitted` or `Cancelled` form
+    /// becomes usable again, not a dead end.
     pub fn reset(&mut self) {
         self.fields.iter_mut().for_each(|f| f.reset());
         self.result = FormResult::Working;
