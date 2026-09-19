@@ -237,7 +237,9 @@ pub(crate) fn render_singleline(
         text_style = style.get(Widgets::SINGLE_LINE, Parts::PLACEHOLDER, state);
     }
 
-    let scroll_x = singleline.position.saturating_sub(area.width);
+    let scroll_x = singleline
+        .position
+        .saturating_sub(area.width.saturating_sub(1));
 
     let value = Paragraph::new(display)
         .style(text_style)
