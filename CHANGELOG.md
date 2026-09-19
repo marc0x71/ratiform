@@ -16,6 +16,19 @@ for `0.x` releases (a breaking change bumps the minor version, not the patch).
 - Vertical `Select`/`MultiSelect` on a one-row field: `PageUp`/`PageDown`
   did nothing, because a page was computed as `height - 1`. A page is now
   never smaller than one item.
+- `FormState::new()`/`reset()` no longer focus a `disabled()` or hidden first
+  field: focus now starts on the first field that can actually receive it.
+  Before, the first keystrokes were silently dropped until the user pressed
+  `Tab`, contradicting what `disabled()` documents.
+- `SingleLine`: the cursor is no longer drawn one column past the end of the
+  field once the value fills its width. It now stays on the last column while
+  the text scrolls.
+- Labels containing an explicit newline (`\n`) now get one row per line.
+  Before, the height calculation ignored line breaks, so everything after the
+  first line was clipped.
+- Validation errors containing an explicit newline (`\n`) are now drawn on
+  separate rows in all three layouts (`Horizontal`, `Stacked`, `Custom`).
+  Before, the newline was swallowed and the lines ran together.
 
 ### Documentation
 - The `.horizontal()` docs of `Select`/`MultiSelect` claimed that `Home`/`End`
