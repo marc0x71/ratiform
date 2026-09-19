@@ -1,7 +1,7 @@
 use ratatui::{
     buffer::Buffer,
     layout::{Alignment, Constraint, Layout, Rect},
-    text::Line,
+    text::Text,
     widgets::{Paragraph, Widget, Wrap},
 };
 
@@ -64,7 +64,7 @@ pub(crate) fn render_stacked<T: PartialEq>(
         if let Some(message) = field.error.as_ref()
             && element == 2
         {
-            let error_message = Paragraph::new(Line::styled(
+            let error_message = Paragraph::new(Text::styled(
                 message.as_str(),
                 style.get(widget, Parts::ERROR, field_state),
             ))

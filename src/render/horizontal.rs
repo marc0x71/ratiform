@@ -1,7 +1,7 @@
 use ratatui::{
     buffer::Buffer,
     layout::{Alignment, Constraint, Layout, Rect},
-    text::Line,
+    text::Text,
     widgets::{Paragraph, Widget, Wrap},
 };
 
@@ -83,7 +83,7 @@ pub(crate) fn render_horizontal<T: PartialEq>(
         if let Some(message) = field.error.as_ref()
             && let Some(err_area) = error
         {
-            let error_message = Paragraph::new(Line::styled(
+            let error_message = Paragraph::new(Text::styled(
                 message.as_str(),
                 style.get(widget, Parts::ERROR, field_state),
             ))
