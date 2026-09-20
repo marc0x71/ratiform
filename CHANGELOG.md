@@ -7,6 +7,8 @@ for `0.x` releases (a breaking change bumps the minor version, not the patch).
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-09-20
+
 ### Added
 - `SingleLineRef::index_position()` and `TextAreaRef::index_position()`: the
   cursor's position within the value, in characters from the start.
