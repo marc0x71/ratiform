@@ -226,6 +226,7 @@ mod required_height_tests {
             kind: FieldKind::SingleLine(SingleLineStatus {
                 label: label.to_owned(),
                 value: String::new(),
+                index: 0,
                 position: 0,
                 masked_with: None,
                 placeholder: None,
@@ -453,6 +454,7 @@ mod focused_row_index_tests {
             kind: FieldKind::SingleLine(SingleLineStatus {
                 label: label.to_owned(),
                 value: String::new(),
+                index: 0,
                 position: 0,
                 masked_with: None,
                 placeholder: None,

@@ -12,6 +12,10 @@ pub fn key(code: KeyCode) -> KeyEvent {
     KeyEvent::new(code, KeyModifiers::NONE)
 }
 
+pub fn ctrl(code: KeyCode) -> KeyEvent {
+    KeyEvent::new(code, KeyModifiers::CONTROL)
+}
+
 /// Renders `state` into a fresh `w` x `h` buffer, the way a frame would.
 pub fn render(state: &mut FormState<i32>, layout: FormLayout<i32>, w: u16, h: u16) -> Buffer {
     let area = Rect::new(0, 0, w, h);

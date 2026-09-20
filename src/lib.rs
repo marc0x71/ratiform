@@ -24,6 +24,7 @@ mod widget;
 use std::{marker::PhantomData, str::FromStr};
 
 use field::Field;
+use ratatui::buffer::CellWidth;
 use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 
 use crate::event::handle_input_field;
@@ -91,9 +92,9 @@ impl<T: PartialEq> FormState<T> {
     pub(crate) fn max_label_length(&self) -> usize {
         self.fields
             .iter()
-            .max_by_key(|c| c.label().chars().count())
-            .map(|f| f.label().chars().count())
-            .unwrap_or_default()
+            .max_by_key(|c| c.label().cell_width())
+            .map(|f| f.label().cell_width())
+            .unwrap_or_default() as usize
     }
 
     /// The absolute screen position the text cursor should be drawn at,
@@ -491,7 +492,7 @@ mod form_state_tests {
             kind: FieldKind::TextArea(TextAreaStatus {
                 label: "T".to_owned(),
                 value: value.to_owned(),
-                position: value.chars().count() as u16,
+                index: value.chars().count(),
                 lines: Vec::new(),
                 placeholder: None,
                 visible_height: 0,
@@ -527,7 +528,8 @@ mod form_state_tests {
             kind: FieldKind::SingleLine(SingleLineStatus {
                 label: label.to_owned(),
                 value: value.to_owned(),
-                position: value.chars().count() as u16,
+                index: value.chars().count(),
+                position: value.cell_width(),
                 masked_with: None,
                 placeholder: None,
                 alphabet: None,

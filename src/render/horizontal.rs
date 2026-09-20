@@ -146,6 +146,7 @@ mod label_width_tests {
             kind: FieldKind::SingleLine(SingleLineStatus {
                 label: label.to_owned(),
                 value: String::new(),
+                index: 0,
                 position: 0,
                 masked_with: None,
                 placeholder: None,

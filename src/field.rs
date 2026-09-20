@@ -349,6 +349,7 @@ mod validate_tests {
             kind: FieldKind::SingleLine(SingleLineStatus {
                 label: "Test".to_owned(),
                 value: value.to_owned(),
+                index: 0,
                 position: 0,
                 masked_with: None,
                 placeholder: None,

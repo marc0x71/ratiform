@@ -1,9 +1,11 @@
 use std::borrow::Cow;
 
 use ratatui::{
-    buffer::Buffer,
+    buffer::{Buffer, CellWidth},
     crossterm::event::{KeyCode, KeyEvent, KeyModifiers},
     layout::Rect,
+    style::Style,
+    text::Line,
     widgets::{Block, Paragraph, Widget},
 };
 
@@ -77,13 +79,20 @@ impl<T: PartialEq> SingleLineBuilder<T> {
 
     fn finish(mut self) -> FormBuilder<T> {
         let value = filter_by(&self.value, self.alphabet.as_ref());
-        let position = value.chars().count() as u16;
+        let index = value.chars().count();
+        let position = if let Some(masked) = self.masked_with {
+            let s: String = value.chars().map(|_| masked).collect();
+            s.cell_width()
+        } else {
+            value.cell_width()
+        };
         let initial_value = value.clone();
         self.form.push_field(Field {
             id: self.id,
             kind: FieldKind::SingleLine(SingleLineStatus {
                 label: self.label,
                 value,
+                index,
                 position,
                 masked_with: self.masked_with,
                 placeholder: self.placeholder,
@@ -115,9 +124,17 @@ impl SingleLineRef<'_> {
         &self.inner.value
     }
 
-    /// The cursor's position within the value, in characters from the start.
+    /// The cursor's column in the text as drawn, in terminal cells (a wide
+    /// character counts as two). For the position in characters, see
+    /// [`index_position`](Self::index_position); for the position on the
+    /// screen, [`FormState::cursor_position`].
     pub fn cursor_position(&self) -> u16 {
         self.inner.position
+    }
+
+    /// The cursor's position within the value, in characters from the start.
+    pub fn index_position(&self) -> usize {
+        self.inner.index
     }
 }
 
@@ -126,6 +143,7 @@ impl SingleLineRef<'_> {
 pub struct SingleLineStatus {
     pub(crate) label: String,
     pub(crate) value: String,
+    pub(crate) index: usize,
     pub(crate) position: u16,
     pub(crate) masked_with: Option<char>,
     pub(crate) placeholder: Option<String>,
@@ -143,46 +161,64 @@ impl SingleLineStatus {
     }
 
     pub(crate) fn set(&mut self, value: &str) {
-        let old_position = self.position;
+        let old_position = self.index;
         self.value = filter_by(value, self.alphabet.as_ref());
-        self.position = old_position.min(self.value.chars().count() as u16);
+        self.index = old_position.min(self.value.chars().count());
+        self.rebuild_position();
     }
 
-    fn byte_position(&self, position: u16, default: usize) -> usize {
+    fn rebuild_position(&mut self) {
+        if let Some(masked) = self.masked_with {
+            let mut buf = [0; 4];
+            let s: &str = masked.encode_utf8(&mut buf);
+            self.position = s.cell_width() * self.index as u16;
+        } else {
+            self.position =
+                self.value[..self.byte_position(self.index, self.value.len())].cell_width();
+        }
+    }
+
+    fn byte_position(&self, position: usize, default: usize) -> usize {
         self.value
             .char_indices()
-            .nth(position as usize)
+            .nth(position)
             .map_or(default, |(i, _)| i)
     }
     fn delete(&mut self) {
         if self.value.is_empty() {
             return;
         }
-        let byte_idx = self.byte_position(self.position, self.value.len());
+        let byte_idx = self.byte_position(self.index, self.value.len());
         if byte_idx < self.value.len() {
             self.value.remove(byte_idx);
-            self.position = self.position.min(self.value.chars().count() as u16)
+            self.index = self.index.min(self.value.chars().count());
+            self.rebuild_position();
         }
     }
     fn backspace(&mut self) {
-        if self.position == 0 {
+        if self.index == 0 {
             return;
         }
-        let byte_idx = self.byte_position(self.position - 1, 0);
+        let byte_idx = self.byte_position(self.index - 1, 0);
         self.value.remove(byte_idx);
-        self.position = self.position.saturating_sub(1)
+        self.index = self.index.saturating_sub(1);
+        self.rebuild_position();
     }
     fn left(&mut self) {
-        self.position = self.position.saturating_sub(1)
+        self.index = self.index.saturating_sub(1);
+        self.rebuild_position();
     }
     fn right(&mut self) {
-        self.position = (self.position + 1).min(self.value.chars().count() as u16)
+        self.index = (self.index + 1).min(self.value.chars().count());
+        self.rebuild_position();
     }
     fn home(&mut self) {
-        self.position = 0
+        self.index = 0;
+        self.position = 0;
     }
     fn end(&mut self) {
-        self.position = self.value.chars().count() as u16
+        self.index = self.value.chars().count();
+        self.rebuild_position();
     }
     fn insert(&mut self, c: char) {
         if let Some(alphabet) = &self.alphabet
@@ -190,9 +226,10 @@ impl SingleLineStatus {
         {
             return;
         }
-        let byte_idx = self.byte_position(self.position, self.value.len());
+        let byte_idx = self.byte_position(self.index, self.value.len());
         self.value.insert(byte_idx, c);
-        self.position += 1;
+        self.index += 1;
+        self.rebuild_position();
     }
 }
 
@@ -237,9 +274,10 @@ pub(crate) fn render_singleline(
         text_style = style.get(Widgets::SINGLE_LINE, Parts::PLACEHOLDER, state);
     }
 
-    let scroll_x = singleline
+    let wanted = singleline
         .position
         .saturating_sub(area.width.saturating_sub(1));
+    let scroll_x = next_glyph_boundary(&display, wanted);
 
     let value = Paragraph::new(display)
         .style(text_style)
@@ -252,6 +290,23 @@ pub(crate) fn render_singleline(
         area.x + singleline.position.saturating_sub(scroll_x),
         area.y,
     ))
+}
+/// `Paragraph::scroll` never cuts a wide character in half: when the offset
+/// falls inside one, it keeps that character whole and starts drawing at its
+/// beginning, so the offset actually applied is smaller than the one asked.
+/// Returns the smallest offset >= `wanted` that falls on a character
+/// boundary, so that asked and applied offsets are the same.
+///
+/// This approach was suggested by an AI assistant to handle terminal cell-width boundaries.
+fn next_glyph_boundary(text: &str, wanted: u16) -> u16 {
+    let mut boundary = 0;
+    for grapheme in Line::from(text).styled_graphemes(Style::default()) {
+        if boundary >= wanted {
+            break;
+        }
+        boundary += grapheme.symbol.cell_width();
+    }
+    boundary
 }
 
 fn filter_by(input: &str, alphabet: Option<&String>) -> String {
@@ -348,11 +403,12 @@ mod editing_tests {
 
     use super::*;
 
-    fn make_status(value: &str, position: u16) -> SingleLineStatus {
+    fn make_status(value: &str, index: usize) -> SingleLineStatus {
         SingleLineStatus {
             label: "Test".to_owned(),
             value: value.to_owned(),
-            position,
+            index,
+            position: 0,
             masked_with: None,
             placeholder: None,
             alphabet: None,
@@ -369,7 +425,7 @@ mod editing_tests {
         );
 
         assert_eq!(status.value, "citXtà");
-        assert_eq!(status.position, 4);
+        assert_eq!(status.index, 4);
     }
 
     #[test]
@@ -383,7 +439,7 @@ mod editing_tests {
         );
 
         assert_eq!(status.value, "citt");
-        assert_eq!(status.position, 4);
+        assert_eq!(status.index, 4);
     }
 
     #[test]
@@ -395,7 +451,7 @@ mod editing_tests {
         );
 
         assert_eq!(status.value, "città");
-        assert_eq!(status.position, 0);
+        assert_eq!(status.index, 0);
     }
 
     #[test]
@@ -408,7 +464,7 @@ mod editing_tests {
         );
 
         assert_eq!(status.value, "citt");
-        assert_eq!(status.position, 4);
+        assert_eq!(status.index, 4);
     }
 
     #[test]
@@ -431,7 +487,7 @@ mod editing_tests {
         );
 
         assert_eq!(status.value, "");
-        assert_eq!(status.position, 0);
+        assert_eq!(status.index, 0);
     }
 
     #[test]
@@ -441,7 +497,7 @@ mod editing_tests {
         let mut status = make_status("città", 0);
         handle_input_singleline(KeyEvent::new(KeyCode::End, KeyModifiers::NONE), &mut status);
 
-        assert_eq!(status.position, 5);
+        assert_eq!(status.index, 5);
     }
 
     #[test]
@@ -452,7 +508,7 @@ mod editing_tests {
             &mut status,
         );
 
-        assert_eq!(status.position, 0);
+        assert_eq!(status.index, 0);
     }
 
     #[test]
@@ -463,7 +519,7 @@ mod editing_tests {
             &mut status,
         );
 
-        assert_eq!(status.position, 4);
+        assert_eq!(status.index, 4);
     }
 
     #[test]
@@ -519,6 +575,7 @@ mod alphabet_tests {
         SingleLineStatus {
             label: "Test".to_owned(),
             value: value.to_owned(),
+            index: position as usize,
             position,
             masked_with: None,
             placeholder: None,
@@ -535,7 +592,7 @@ mod alphabet_tests {
         );
 
         assert_eq!(status.value, "123");
-        assert_eq!(status.position, 3);
+        assert_eq!(status.index, 3);
     }
 
     #[test]
@@ -547,7 +604,7 @@ mod alphabet_tests {
         );
 
         assert_eq!(status.value, "1234");
-        assert_eq!(status.position, 4);
+        assert_eq!(status.index, 4);
     }
 
     #[test]
@@ -559,7 +616,7 @@ mod alphabet_tests {
         );
 
         assert_eq!(status.value, "123a");
-        assert_eq!(status.position, 4);
+        assert_eq!(status.index, 4);
     }
 
     #[test]
@@ -568,7 +625,7 @@ mod alphabet_tests {
         status.set("12a3");
 
         assert_eq!(status.value, "123");
-        assert_eq!(status.position, 0);
+        assert_eq!(status.index, 0);
     }
 
     #[test]

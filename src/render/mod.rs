@@ -1,4 +1,8 @@
-use ratatui::{buffer::Buffer, layout::Rect, widgets::StatefulWidget};
+use ratatui::{
+    buffer::{Buffer, CellWidth},
+    layout::Rect,
+    widgets::StatefulWidget,
+};
 
 use crate::{
     Form, FormLayout, FormState,
@@ -76,7 +80,7 @@ pub(crate) fn count_lines(text: &str, max_width: u16) -> u16 {
         lines += 1;
         let mut current_width = 0;
         for word in line.split_whitespace() {
-            let word_width = word.chars().count() as u16;
+            let word_width = word.cell_width();
 
             if current_width == 0 {
                 current_width = word_width;

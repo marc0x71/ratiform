@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 
 use ratatui::{
-    buffer::Buffer,
+    buffer::{Buffer, CellWidth},
     crossterm::event::{KeyCode, KeyEvent, KeyModifiers},
     layout::Rect,
     text::Line,
@@ -66,7 +66,7 @@ impl<T: PartialEq> TextAreaBuilder<T> {
             kind: FieldKind::TextArea(TextAreaStatus {
                 label: self.label,
                 value: self.value,
-                position,
+                index: position,
                 lines: Vec::new(),
                 placeholder: self.placeholder,
                 visible_height: 0,
@@ -98,20 +98,28 @@ impl TextAreaRef<'_> {
         &self.inner.value
     }
 
-    /// The cursor's column position within its current line, in characters
-    /// from the start of the line.
-    pub fn cursor_position(&self) -> u16 {
-        self.inner.position
+    /// The cursor's `(column, row)` in the wrapped text as last rendered,
+    /// with the column in terminal cells. It is not a screen position (see
+    /// [`FormState::cursor_position`]) and it is `(0, 0)` before the first
+    /// render; [`index_position`](Self::index_position) doesn't depend on
+    /// rendering.
+    pub fn cursor_position(&self) -> (u16, u16) {
+        calculate_coordinate(self.inner)
     }
 
-    /// The field's content as a list of lines, in order, without their
-    /// trailing newlines.
+    /// The cursor's position within the value, in characters from the start
+    /// (each newline counts as one).
+    pub fn index_position(&self) -> usize {
+        self.inner.index
+    }
+
+    /// The content split into visual rows, as last rendered, without
+    /// trailing newlines. Empty before the first render.
     pub fn lines(&self) -> Vec<&str> {
         self.inner.lines.iter().map(|(_, l)| l.as_str()).collect()
     }
 
-    /// The number of logical lines in the field's content — i.e. lines as
-    /// separated by newlines in the value, not visual lines after wrapping.
+    /// The number of visual rows in [`lines`](Self::lines).
     pub fn line_count(&self) -> usize {
         self.inner.lines.len()
     }
@@ -136,7 +144,7 @@ impl TextAreaRef<'_> {
 pub struct TextAreaStatus {
     pub(crate) label: String,
     pub(crate) value: String,
-    pub(crate) position: u16,
+    pub(crate) index: usize,
     pub(crate) lines: Vec<(usize, String)>,
     pub(crate) placeholder: Option<String>,
     pub(crate) visible_height: u16,
@@ -153,94 +161,108 @@ impl TextAreaStatus {
     }
 
     pub(crate) fn set(&mut self, value: &str) {
-        let old_position = self.position;
+        let old_position = self.index;
         self.value = value.to_owned();
-        self.position = old_position.min(self.value.chars().count() as u16);
+        self.index = old_position.min(self.value.chars().count());
     }
 
-    fn byte_position(&self, position: u16, default: usize) -> usize {
+    fn byte_position(&self, position: usize, default: usize) -> usize {
         self.value
             .char_indices()
-            .nth(position as usize)
+            .nth(position)
             .map_or(default, |(i, _)| i)
     }
     fn delete(&mut self) {
         if self.value.is_empty() {
             return;
         }
-        let byte_idx = self.byte_position(self.position, self.value.len());
+        let byte_idx = self.byte_position(self.index, self.value.len());
         if byte_idx < self.value.len() {
             self.value.remove(byte_idx);
-            self.position = self.position.min(self.value.chars().count() as u16)
+            self.index = self.index.min(self.value.chars().count());
         }
     }
     fn backspace(&mut self) {
-        if self.position == 0 {
+        if self.index == 0 {
             return;
         }
-        let byte_idx = self.byte_position(self.position - 1, 0);
+        let byte_idx = self.byte_position(self.index - 1, 0);
         self.value.remove(byte_idx);
-        self.position = self.position.saturating_sub(1)
+        self.index = self.index.saturating_sub(1)
     }
     fn left(&mut self) {
-        self.position = self.position.saturating_sub(1)
+        self.index = self.index.saturating_sub(1)
     }
     fn right(&mut self) {
-        self.position = (self.position + 1).min(self.value.chars().count() as u16)
+        self.index = (self.index + 1).min(self.value.chars().count());
     }
     fn home(&mut self) {
-        self.position = 0
+        self.index = 0
     }
     fn end(&mut self) {
-        self.position = self.value.chars().count() as u16
+        self.index = self.value.chars().count();
     }
     fn up(&mut self) {
         let (col, mut row) = calculate_coordinate(self);
         row = row.saturating_sub(1);
-        self.position = calculate_position(self, col, row);
+        self.index = calculate_position(self, col, row);
     }
     fn down(&mut self) {
         let (col, mut row) = calculate_coordinate(self);
         if row + 1 < self.lines.len() as u16 {
             row += 1;
         }
-        self.position = calculate_position(self, col, row);
+        self.index = calculate_position(self, col, row);
     }
     fn enter(&mut self) {
         self.insert('\n');
     }
     fn insert(&mut self, c: char) {
-        let byte_idx = self.byte_position(self.position, self.value.len());
+        let byte_idx = self.byte_position(self.index, self.value.len());
         self.value.insert(byte_idx, c);
-        self.position += 1;
+        self.index += 1;
     }
 
     fn begin_row(&mut self) {
         let (_, row) = calculate_coordinate(self);
-        self.position = calculate_position(self, 0, row);
+        self.index = calculate_position(self, 0, row);
     }
 
     fn end_row(&mut self) {
         let (_, row) = calculate_coordinate(self);
-        let col = self
+        let next = self
+            .lines
+            .get(row as usize + 1)
+            .map(|(s, _)| s)
+            .copied()
+            .unwrap_or_default();
+
+        self.index = self
             .lines
             .get(row as usize)
-            .map(|(_, l)| l.chars().count().saturating_sub(1))
-            .unwrap_or_default() as u16;
-        self.position = calculate_position(self, col, row);
+            .map(|(start, l)| {
+                let len = l.chars().count();
+                let size = start + len;
+                if next == size {
+                    start + len.saturating_sub(1)
+                } else {
+                    start + len
+                }
+            })
+            .unwrap_or_default();
     }
 
     fn page_up(&mut self) {
         let (col, row) = calculate_coordinate(self);
         let new_row = row.saturating_sub(self.visible_height.saturating_sub(1));
-        self.position = calculate_position(self, col, new_row);
+        self.index = calculate_position(self, col, new_row);
     }
 
     fn page_down(&mut self) {
         let (col, row) = calculate_coordinate(self);
         let last_row = self.lines.len().saturating_sub(1) as u16;
         let new_row = (row + self.visible_height.saturating_sub(1)).min(last_row);
-        self.position = calculate_position(self, col, new_row);
+        self.index = calculate_position(self, col, new_row);
     }
 }
 
@@ -328,28 +350,63 @@ pub(crate) fn render_textarea(
 
 fn calculate_coordinate(text_area: &TextAreaStatus) -> (u16, u16) {
     let mut row: u16 = 0;
-    let mut begin: u16 = 0;
-    let mut max_length: u16 = 0;
+    let mut begin: usize = 0;
+    let mut max_length: usize = 0;
 
     for (start, line) in &text_area.lines {
-        if *start as u16 > text_area.position {
+        if *start > text_area.index {
             break;
         }
-        begin = *start as u16;
-        max_length = line.chars().count() as u16;
+        begin = *start;
+        max_length = line.chars().count();
         row += 1;
     }
-    let col = (text_area.position.saturating_sub(begin)).min(max_length);
+    let pos = (text_area.index.saturating_sub(begin)).min(max_length);
+    let col = text_area
+        .value
+        .chars()
+        .skip(begin)
+        .take(pos)
+        .collect::<String>()
+        .cell_width();
     (col, row.saturating_sub(1))
 }
 
-fn calculate_position(text_area: &TextAreaStatus, col: u16, row: u16) -> u16 {
+fn calculate_position(text_area: &TextAreaStatus, col: u16, row: u16) -> usize {
     if let Some((start, line)) = text_area.lines.get(row as usize) {
-        let x = col.min(line.chars().count() as u16);
-        (*start as u16) + x
+        let mut cur = 0;
+        let mut index = 0;
+        let mut buf = [0; 4];
+        for ch in line.chars() {
+            let delta = ch.encode_utf8(&mut buf).cell_width();
+            if cur + delta > col {
+                break;
+            }
+            index += 1;
+            cur += delta;
+        }
+        let x = index.min(line.chars().count());
+        *start + x
     } else {
         0
     }
+}
+
+fn wrap_by_width(text: &str, width: u16) -> Vec<String> {
+    let mut buf = [0; 4];
+    let mut s = String::new();
+    let mut result = Vec::new();
+    for ch in text.chars() {
+        let delta = ch.encode_utf8(&mut buf).cell_width();
+        if !s.is_empty() && s.cell_width() + delta > width {
+            result.push(std::mem::take(&mut s));
+        }
+        s.push(ch);
+    }
+    if !s.is_empty() {
+        result.push(s);
+    }
+    result
 }
 
 fn wrap_text(text: &str, width: usize) -> Vec<(usize, String)> {
@@ -362,9 +419,7 @@ fn wrap_text(text: &str, width: usize) -> Vec<(usize, String)> {
             pos += 1;
             continue;
         }
-        let chars: Vec<char> = line.chars().collect();
-        for block in chars.chunks(width) {
-            let block: String = block.iter().collect();
+        for block in wrap_by_width(line, width as u16) {
             if !block.is_empty() {
                 let new_pos = pos + block.chars().count();
                 lines.push((pos, block));
@@ -530,10 +585,22 @@ mod coordinate_tests {
     use super::*;
 
     fn make_text_area(lines: &[(usize, &str)], position: u16) -> TextAreaStatus {
+        // Rebuild the value the rows were wrapped from: a row that starts
+        // right where the previous one ended is a soft wrap, a gap is a '\n'.
+        let mut value = String::new();
+        let mut chars = 0;
+        for (start, line) in lines {
+            while chars < *start {
+                value.push('\n');
+                chars += 1;
+            }
+            value.push_str(line);
+            chars += line.chars().count();
+        }
         TextAreaStatus {
             label: "Test".to_owned(),
-            value: String::new(),
-            position,
+            value,
+            index: position as usize,
             lines: lines
                 .iter()
                 .map(|(start, line)| (*start, (*line).to_owned()))
@@ -603,7 +670,7 @@ mod editing_tests {
         TextAreaStatus {
             label: "Test".to_owned(),
             value: value.to_owned(),
-            position,
+            index: position as usize,
             lines: Vec::new(),
             placeholder: None,
             visible_height: 0,
@@ -622,7 +689,7 @@ mod editing_tests {
         handle_input_textarea(key(KeyCode::Char('X')), &mut text_area);
 
         assert_eq!(text_area.value, "citXtà");
-        assert_eq!(text_area.position, 4);
+        assert_eq!(text_area.index, 4);
     }
 
     #[test]
@@ -633,7 +700,7 @@ mod editing_tests {
         handle_input_textarea(key(KeyCode::Backspace), &mut text_area);
 
         assert_eq!(text_area.value, "citt");
-        assert_eq!(text_area.position, 4);
+        assert_eq!(text_area.index, 4);
     }
 
     #[test]
@@ -642,7 +709,7 @@ mod editing_tests {
         handle_input_textarea(key(KeyCode::Backspace), &mut text_area);
 
         assert_eq!(text_area.value, "città");
-        assert_eq!(text_area.position, 0);
+        assert_eq!(text_area.index, 0);
     }
 
     #[test]
@@ -652,7 +719,7 @@ mod editing_tests {
         handle_input_textarea(key(KeyCode::Delete), &mut text_area);
 
         assert_eq!(text_area.value, "citt");
-        assert_eq!(text_area.position, 4);
+        assert_eq!(text_area.index, 4);
     }
 
     #[test]
@@ -669,7 +736,7 @@ mod editing_tests {
         handle_input_textarea(key(KeyCode::Delete), &mut text_area);
 
         assert_eq!(text_area.value, "");
-        assert_eq!(text_area.position, 0);
+        assert_eq!(text_area.index, 0);
     }
 
     #[test]
@@ -677,7 +744,7 @@ mod editing_tests {
         let mut text_area = make_text_area("ciao", 0);
         handle_input_textarea(key(KeyCode::Left), &mut text_area);
 
-        assert_eq!(text_area.position, 0);
+        assert_eq!(text_area.index, 0);
     }
 
     #[test]
@@ -685,7 +752,7 @@ mod editing_tests {
         let mut text_area = make_text_area("ciao", 4);
         handle_input_textarea(key(KeyCode::Right), &mut text_area);
 
-        assert_eq!(text_area.position, 4);
+        assert_eq!(text_area.index, 4);
     }
 
     #[test]
@@ -698,7 +765,7 @@ mod editing_tests {
         handle_input_textarea(key(KeyCode::Backspace), &mut text_area);
 
         assert_eq!(text_area.value, "abcdef");
-        assert_eq!(text_area.position, 3);
+        assert_eq!(text_area.index, 3);
     }
 
     #[test]
@@ -709,7 +776,7 @@ mod editing_tests {
         handle_input_textarea(key(KeyCode::Delete), &mut text_area);
 
         assert_eq!(text_area.value, "abcdef");
-        assert_eq!(text_area.position, 3);
+        assert_eq!(text_area.index, 3);
     }
 
     #[test]

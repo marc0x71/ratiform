@@ -7,6 +7,21 @@ for `0.x` releases (a breaking change bumps the minor version, not the patch).
 
 ## [Unreleased]
 
+### Added
+- `SingleLineRef::index_position()` and `TextAreaRef::index_position()`: the
+  cursor's position within the value, in characters from the start.
+
+### Changed
+- **Breaking:** `SingleLineRef::cursor_position()` now returns the cursor's
+  column in terminal cells (a wide character counts as two) instead of its
+  index in characters. The type is still `u16`, so this compiles unchanged
+  and only differs with non-ASCII text; the index is now
+  `index_position()`.
+- **Breaking:** `TextAreaRef::cursor_position()` now returns `(u16, u16)`, the
+  cursor's `(column, row)` in the wrapped text as last rendered, with the
+  column in terminal cells, instead of a single index. The index is now
+  `index_position()`.
+
 ### Fixed
 - Horizontal `Select`/`MultiSelect`: `PageUp`/`PageDown` no longer move the
   cursor. The docs already said they had no effect in this layout, but they
@@ -19,7 +34,8 @@ for `0.x` releases (a breaking change bumps the minor version, not the patch).
 - `FormState::new()`/`reset()` no longer focus a `disabled()` or hidden first
   field: focus now starts on the first field that can actually receive it.
   Before, the first keystrokes were silently dropped until the user pressed
-  `Tab`, contradicting what `disabled()` documents.
+  `Tab`, contradicting what `disabled()` documents. The docs of
+  `focused_field()` and `reset()` now say so.
 - `SingleLine`: the cursor is no longer drawn one column past the end of the
   field once the value fills its width. It now stays on the last column while
   the text scrolls.
@@ -29,6 +45,22 @@ for `0.x` releases (a breaking change bumps the minor version, not the patch).
 - Validation errors containing an explicit newline (`\n`) are now drawn on
   separate rows in all three layouts (`Horizontal`, `Stacked`, `Custom`).
   Before, the newline was swallowed and the lines ran together.
+- Text width is now measured in terminal cells instead of characters, so wide
+  characters (CJK, most emoji) and combining marks no longer throw the layout
+  off:
+  - the label column is as wide as the widest label as drawn, and the height
+    reserved for wrapped labels and errors is computed the same way;
+  - `SingleLine`: the cursor is drawn in the right column, and the text
+    scrolls without leaving the cursor on top of the last character; masked
+    fields measure what is drawn (the mask), not what was typed;
+  - `TextArea`: rows wrap when the cells run out, so a wide character is no
+    longer clipped (it moves whole to the next row), the cursor is drawn in
+    the right column, and `Up`/`Down`/`PageUp`/`PageDown` keep the visual
+    column.
+- `TextArea`: `End` now moves after the last character of the row instead of
+  onto it, so typing right after appends. On a row that was wrapped it still
+  stops on the last character, since the position after it already belongs to
+  the next row.
 
 ### Documentation
 - The `.horizontal()` docs of `Select`/`MultiSelect` claimed that `Home`/`End`
@@ -36,11 +68,17 @@ for `0.x` releases (a breaking change bumps the minor version, not the patch).
   both layouts, as they always did; the docs now say so.
 - `docs/adding-a-widget.md`: logic shared between widgets belongs in
   `widget/common/`.
+- `TextAreaRef::line_count()` said it counted logical lines, but it has always
+  counted visual rows (as `lines()` does): the docs now say so.
+- `docs/tutorial.md`: the text area section now describes wrapping in
+  terminal cells, `End` on wrapped rows and the new `TextAreaRef` accessors.
 
 ### Chore
 - Cursor navigation shared by `Select` and `MultiSelect` now lives in
   `widget::common::direction`, replacing the copy each widget carried. No
   change to the public API.
+- Regression tests for the fixes above live in `tests/` and only use the
+  public API, rendering into a `Buffer`.
 
 ## [0.6.2] - 2026-09-17
 

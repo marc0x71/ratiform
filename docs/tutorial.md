@@ -340,9 +340,11 @@ A complete program built around this field kind is
 `.text_area(id, label)` is multi-line text, with the same
 insertion/deletion/placeholder support as a single-line field, plus
 `Up`/`Down`, scrolling, and `PageUp`/`PageDown`. `Home`/`End` jump to the
-start/end of the current visual line; `Ctrl+Home`/`Ctrl+End` jump to the
-start/end of the whole text. Long lines wrap at the character level, not at
-word boundaries — the same default `vim` uses.
+start/end of the current visual line (`End` stops on the last character of a
+wrapped row); `Ctrl+Home`/`Ctrl+End` jump to the start/end of the whole text.
+Long lines wrap at the character level, not at word boundaries — the same
+default `vim` uses — and width is measured in terminal cells, so wide
+characters take two columns and are never split.
 
 ```rust
 FormBuilder::new()
@@ -362,10 +364,10 @@ FormBuilder::new()
 Since `Enter` inserts a newline instead of submitting the form, submitting
 while a `TextArea` has focus needs `Ctrl+Enter` — see
 [Keyboard navigation](#15-keyboard-navigation). `state.text_area(&id)`
-returns a `TextAreaRef` with `value()`, `cursor_position()`, `lines()` (the
-text split into its visual lines) and `line_count()`, on top of the usual
-`state.value(&id)`. A form built entirely around this field kind is
-[`examples/text-area.rs`](../examples/text-area.rs).
+returns a `TextAreaRef` with `value()`, `cursor_position()` (`(column, row)`),
+`index_position()`, `lines()` (the text split into its visual lines) and
+`line_count()`, on top of the usual `state.value(&id)`. A form built entirely
+around this field kind is [`examples/text-area.rs`](../examples/text-area.rs).
 
 ## 9. Options shared by every field
 

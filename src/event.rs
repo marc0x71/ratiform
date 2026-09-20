@@ -27,7 +27,10 @@ pub fn handle_input_field<T>(key_event: KeyEvent, field: &mut Field<T>) {
 
 #[cfg(test)]
 mod handle_input_field_tests {
-    use ratatui::crossterm::event::{KeyCode, KeyModifiers};
+    use ratatui::{
+        buffer::CellWidth,
+        crossterm::event::{KeyCode, KeyModifiers},
+    };
 
     use super::*;
     use crate::{field::FieldOptions, validators, widget::single_line::SingleLineStatus};
@@ -38,7 +41,8 @@ mod handle_input_field_tests {
             kind: FieldKind::SingleLine(SingleLineStatus {
                 label: "Test".to_owned(),
                 value: value.to_owned(),
-                position: value.chars().count() as u16,
+                index: value.chars().count(),
+                position: value.cell_width(),
                 masked_with: None,
                 placeholder: None,
                 alphabet: None,
