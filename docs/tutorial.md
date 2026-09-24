@@ -314,12 +314,13 @@ FormBuilder::new()
 ```
 
 `state.multi_select(&id).unwrap().search_query()` reads the current query
-back, mirroring `SelectRef::search_query()`. [`examples/multi-select.rs`](../examples/multi-select.rs)
-combines both on its `Tags` field.
-
-`state.multi_select(&id).unwrap().search_query()` reads the current query
-back, mirroring `SelectRef::search_query()`. [`examples/multi-select.rs`](../examples/multi-select.rs)
-combines both on its `Tags` field.
+back, mirroring `SelectRef::search_query()`, and `filtered_count()` mirrors
+`SelectRef::filtered_count()`. With `.pinnable()`, the count only includes
+options that actually match the query: a checked option kept visible by
+pinning, without matching, isn't counted — so the number of rows on screen
+can be larger than `filtered_count()`.
+[`examples/multi-select.rs`](../examples/multi-select.rs) combines both on
+its `Tags` field.
 
 `state.value(&id)` returns every selected option's value joined into one
 comma-separated `String` (e.g. `"bug,docs"`) — handy for storing as a single
@@ -737,7 +738,7 @@ focus:
 | `Tab` / `Shift+Tab` | Move focus to the next / previous field, wrapping around. |
 | `Ctrl+Enter` | Submit, unless some field is currently invalid. |
 | `Enter` | Same as `Ctrl+Enter`, unless the focused field claims it for itself (a `TextArea` inserts a newline instead). |
-| `Esc` | Cancel the form, unless the focused field claims it for itself (a searchable `Select` clears its search query first — a second `Esc`, with an empty query, cancels as usual). |
+| `Esc` | Cancel the form, unless the focused field claims it for itself (a searchable `Select` or `MultiSelect` clears its search query first — a second `Esc`, with an empty query, cancels as usual). |
 
 Every other key goes to the field with focus — `Space` toggles a
 `Checkbox`/an option in a `MultiSelect`, arrow keys navigate a `Select` or
