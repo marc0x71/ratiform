@@ -14,6 +14,13 @@ for `0.x` releases (a breaking change bumps the minor version, not the patch).
   `MultiSelect` with `pinnable()`, checked options kept visible without
   matching the query are not counted.
 
+### Changed
+- Searchable `MultiSelect`: rendering and filtering no longer slow down
+  quadratically with the number of options. Looking up whether an option
+  matches the current query, and where its matched characters are, used to
+  scan all matches for every option shown; it now takes constant time, so
+  large option lists stay responsive while typing.
+
 ### Fixed
 - `MultiSelectRef::selected_index()` returned the cursor's position in the
   list as currently shown, instead of the index of the option under it in

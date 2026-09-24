@@ -16,12 +16,14 @@ pub(crate) struct SearchState {
     length: usize,
     query: String,
     matches: Vec<SearchMatch>,
+    visible: Vec<Option<usize>>,
 }
 
 impl SearchState {
     fn reset(&mut self) {
         self.query.clear();
         self.matches = all_matches(self.length);
+        self.visible = (0..self.length).map(Some).collect();
     }
 
     fn new(length: usize) -> Self {
@@ -29,7 +31,12 @@ impl SearchState {
             length,
             query: "".to_owned(),
             matches: all_matches(length),
+            visible: (0..length).map(Some).collect(),
         }
+    }
+
+    fn match_position(&self, original_idx: usize) -> Option<usize> {
+        self.visible.get(original_idx).copied().flatten()
     }
 
     fn original_index_at(&self, idx: usize, last_index: usize) -> Option<usize> {
@@ -40,16 +47,20 @@ impl SearchState {
     }
 
     fn filtered_index_of(&self, original: Option<usize>) -> Option<usize> {
-        original.and_then(|orig_index| {
-            self.matches
-                .iter()
-                .position(|m| m.original_index == orig_index)
-        })
+        original.and_then(|idx| self.match_position(idx))
     }
 
     fn refilter<'a>(&mut self, iter: impl Iterator<Item = &'a str>) {
+        self.visible = (0..self.length).map(|_| None).collect();
         let filtered = fuzzy_search(iter, self.query.as_str());
-        self.matches = filtered.into_iter().map(|i| i.into()).collect();
+        self.matches = filtered
+            .into_iter()
+            .enumerate()
+            .map(|(pos, item)| {
+                self.visible[item.index] = Some(pos);
+                item.into()
+            })
+            .collect();
     }
 
     fn has_query(&self) -> bool {
@@ -64,14 +75,13 @@ impl SearchState {
         )
     }
 
-    fn contains_original_index(&self, idx: usize) -> bool {
-        self.matches.iter().any(|m| m.original_index == idx)
+    fn contains_original_index(&self, original_idx: usize) -> bool {
+        self.match_position(original_idx).is_some()
     }
 
-    fn find_position(&self, idx: usize) -> &[usize] {
-        self.matches
-            .iter()
-            .find(|m| m.original_index == idx)
+    fn find_position(&self, original_idx: usize) -> &[usize] {
+        self.match_position(original_idx)
+            .and_then(|pos| self.matches.get(pos))
             .map(|m| m.positions.as_slice())
             .unwrap_or(&[])
     }
@@ -196,10 +206,10 @@ impl Search {
         }
     }
 
-    pub(crate) fn contains_original_index(&self, idx: usize) -> bool {
+    pub(crate) fn contains_original_index(&self, original_idx: usize) -> bool {
         match self {
             Search::Disabled => true,
-            Search::Enabled(search_state) => search_state.contains_original_index(idx),
+            Search::Enabled(search_state) => search_state.contains_original_index(original_idx),
         }
     }
 
@@ -355,6 +365,7 @@ mod searchable_test {
                     positions: vec![],
                 },
             ],
+            visible: vec![],
         });
 
         assert_eq!(search.original_index_at(1, 3), Some(0));
@@ -365,6 +376,7 @@ mod searchable_test {
             length: 3,
             query: "zzz".to_owned(),
             matches: vec![],
+            visible: vec![],
         });
 
         assert_eq!(search.original_index_at(0, 3), None);
@@ -384,6 +396,7 @@ mod searchable_test {
                     positions: vec![],
                 },
             ],
+            visible: vec![],
         });
 
         assert_eq!(search.original_index_at(usize::MAX, 3), Some(2));
@@ -507,5 +520,73 @@ mod searchable_test {
         assert!(!search.contains_original_index(1));
         assert!(search.contains_original_index(2));
         assert!(!search.contains_original_index(3));
+    }
+    #[test]
+    fn filtered_index_of_an_out_of_range_index_is_none() {
+        let search = Search::enabled(3);
+
+        assert_eq!(search.filtered_index_of(Some(10)), None);
+    }
+
+    #[test]
+    fn index_mapping_follows_score_order_not_original_order() {
+        // "xaxb" matches "ab" at [1, 3] -> score 1 + (10 - 2) = 9
+        // "ab"   matches "ab" at [0, 1] -> score 1 + 20      = 21
+        // So the item with the higher original index comes first in `matches`.
+        let items = ["xaxb", "ab"];
+        let mut search = Search::enabled(items.len());
+
+        for c in "ab".chars() {
+            search.handle_input(key(KeyCode::Char(c)));
+        }
+        search.refilter(items.into_iter());
+
+        assert_eq!(search.original_index_at(0, 2), Some(1));
+        assert_eq!(search.original_index_at(1, 2), Some(0));
+
+        assert_eq!(search.filtered_index_of(Some(1)), Some(0));
+        assert_eq!(search.filtered_index_of(Some(0)), Some(1));
+
+        assert_eq!(search.find_positions(0), &[1, 3]);
+        assert_eq!(search.find_positions(1), &[0, 1]);
+    }
+
+    #[test]
+    fn a_second_refilter_forgets_items_that_no_longer_match() {
+        let items = ["apple", "banana", "apricot", "pear"];
+        let mut search = Search::enabled(items.len());
+
+        for c in "ap".chars() {
+            search.handle_input(key(KeyCode::Char(c)));
+        }
+        search.refilter(items.into_iter()); // apple, apricot
+
+        search.handle_input(key(KeyCode::Char('r')));
+        search.refilter(items.into_iter()); // only apricot
+
+        assert!(!search.contains_original_index(0));
+        assert_eq!(search.filtered_index_of(Some(0)), None);
+        assert_eq!(search.find_positions(0), &[]);
+
+        assert!(search.contains_original_index(2));
+        assert_eq!(search.filtered_index_of(Some(2)), Some(0));
+        assert_eq!(search.find_positions(2), &[0, 1, 2]);
+    }
+
+    #[test]
+    fn reset_restores_identity_index_mapping() {
+        let items = ["apple", "banana", "apricot", "pear"];
+        let mut search = Search::enabled(items.len());
+
+        for c in "apr".chars() {
+            search.handle_input(key(KeyCode::Char(c)));
+        }
+        search.refilter(items.into_iter());
+
+        search.reset();
+
+        for i in 0..items.len() {
+            assert_eq!(search.filtered_index_of(Some(i)), Some(i));
+        }
     }
 }
