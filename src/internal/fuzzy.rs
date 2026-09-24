@@ -27,7 +27,7 @@ fn fuzzy_score(text: &str, query: &str) -> (usize, Vec<usize>) {
         if let Some(idx) = found {
             positions.push(idx);
         } else {
-            return (score(&positions, query.chars().count()), positions);
+            break;
         }
     }
     (score(&positions, query.chars().count()), positions)
@@ -52,9 +52,12 @@ fn score(v: &[usize], expected: usize) -> usize {
     score
 }
 
-pub(crate) fn fuzzy_search<'a>(items: &'a [&str], query: &str) -> Vec<FuzzyItem<'a>> {
+pub(crate) fn fuzzy_search<'a>(
+    iter: impl Iterator<Item = &'a str>,
+    query: &str,
+) -> Vec<FuzzyItem<'a>> {
     let mut result = vec![];
-    for (index, item) in items.iter().enumerate() {
+    for (index, item) in iter.enumerate() {
         let (score, positions) = fuzzy_score(item, query);
         if score == 0 {
             continue;
@@ -133,7 +136,7 @@ mod fuzzy_search_tests {
         let items = ["Italia", "Francia", "Germania"];
 
         assert_eq!(
-            fuzzy_search(&items, ""),
+            fuzzy_search(items.iter().copied(), ""),
             vec![
                 FuzzyItem {
                     index: 0,
@@ -162,7 +165,7 @@ mod fuzzy_search_tests {
         let items = ["Italia", "Francia", "Germania"];
 
         assert_eq!(
-            fuzzy_search(&items, "ger"),
+            fuzzy_search(items.iter().copied(), "ger"),
             vec![FuzzyItem {
                 index: 2,
                 label: "Germania",
@@ -175,7 +178,7 @@ mod fuzzy_search_tests {
     #[test]
     fn empty_items_returns_empty_result() {
         let items: [&str; 0] = [];
-        assert_eq!(fuzzy_search(&items, "qualunque"), vec![]);
+        assert_eq!(fuzzy_search(items.iter().copied(), "qualunque"), vec![]);
     }
 
     #[test]
@@ -187,7 +190,7 @@ mod fuzzy_search_tests {
         let items = ["Zebra", "Apple", "Igloo"];
 
         assert_eq!(
-            fuzzy_search(&items, "a"),
+            fuzzy_search(items.iter().copied(), "a"),
             vec![
                 FuzzyItem {
                     index: 0,
@@ -213,7 +216,7 @@ mod fuzzy_search_tests {
         let items = ["Xaybzc", "Abc"];
 
         assert_eq!(
-            fuzzy_search(&items, "abc"),
+            fuzzy_search(items.iter().copied(), "abc"),
             vec![
                 FuzzyItem {
                     index: 1,

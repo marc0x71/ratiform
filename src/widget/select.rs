@@ -15,9 +15,12 @@ use crate::{
     error::BuildError,
     field::{Field, FieldKind, FieldOptions},
     field_builder_common,
-    internal::{fuzzy::fuzzy_search, list::HorizontalList},
+    internal::list::HorizontalList,
     style::{FormStyle, Parts, States, Widgets},
-    widget::common::direction::{Direction, StateDirection},
+    widget::common::{
+        direction::{Direction, StateDirection},
+        searchable::Search,
+    },
 };
 
 // BUILDER
@@ -215,11 +218,10 @@ impl<T: PartialEq> SelectBuilder<T> {
                     None
                 },
                 searchable: if self.searchable {
-                    Some("".to_string())
+                    Search::enabled(len)
                 } else {
-                    None
+                    Search::Disabled
                 },
-                filtered: (0..len).map(|i| (i, vec![])).collect(),
             }),
             options: self.options,
             error: None,
@@ -242,6 +244,19 @@ impl SelectRef<'_> {
     /// selection (e.g. the field has no options).
     pub fn selected_index(&self) -> Option<usize> {
         self.inner.selected()
+    }
+
+    /// The *label* of the currently selected option — the second element of
+    /// the `(value, label)` pair, i.e. the text shown on screen — or `None`
+    /// if there is no selection.
+    ///
+    /// See [`selected_value`](SelectRef::selected_value) for an example
+    /// contrasting the two.
+    pub fn selected_label(&self) -> Option<&str> {
+        self.inner
+            .selected()
+            .and_then(|idx| self.inner.values.get(idx))
+            .map(|(_, s)| s.as_str())
     }
 
     /// The *value* of the currently selected option — the first element of
@@ -268,19 +283,6 @@ impl SelectRef<'_> {
     /// assert_eq!(sel.selected_value(), Some("FR"));
     /// assert_eq!(sel.selected_label(), Some("France"));
     /// ```
-    pub fn selected_label(&self) -> Option<&str> {
-        self.inner
-            .selected()
-            .and_then(|idx| self.inner.values.get(idx))
-            .map(|(_, s)| s.as_str())
-    }
-
-    /// The *label* of the currently selected option — the second element of
-    /// the `(value, label)` pair, i.e. the text shown on screen — or `None`
-    /// if there is no selection.
-    ///
-    /// See [`selected_value`](SelectRef::selected_value) for an example
-    /// contrasting the two.
     pub fn selected_value(&self) -> Option<&str> {
         self.inner
             .selected()
@@ -292,7 +294,17 @@ impl SelectRef<'_> {
     /// `Some("")` before any character is typed, `None` if the field
     /// isn't searchable at all.
     pub fn search_query(&self) -> Option<&str> {
-        self.inner.searchable.as_deref()
+        self.inner.searchable.search_query()
+    }
+
+    /// The number of options matching the current search query.
+    ///
+    /// Returns the total number of options when the field isn't searchable or
+    /// when the search query is empty.
+    pub fn filtered_count(&self) -> usize {
+        self.inner
+            .searchable
+            .filtered_count(self.inner.values.len())
     }
 }
 
@@ -306,18 +318,14 @@ pub struct SelectStatus {
     pub(crate) spacing: usize,
     pub(crate) preview: usize,
     pub(crate) scrollbar: Option<ScrollbarState>,
-    pub(crate) searchable: Option<String>,
-    pub(crate) filtered: Vec<(usize, Vec<usize>)>,
+    pub(crate) searchable: Search,
 }
 
 impl SelectStatus {
     fn selected(&self) -> Option<usize> {
-        let last_values = self.values.len().saturating_sub(1);
-        let last_filtered = self.filtered.len().saturating_sub(1);
-        self.list_state.selected().and_then(|filtered_idx| {
-            self.filtered
-                .get(filtered_idx.min(last_filtered))
-                .map(|value_idx| value_idx.0.min(last_values))
+        self.list_state.selected().and_then(|idx| {
+            self.searchable
+                .original_index_at(idx, self.values.iter().len())
         })
     }
 
@@ -336,34 +344,19 @@ impl SelectStatus {
     }
 
     pub(crate) fn set(&mut self, value: &str) {
-        if self.searchable.is_some() {
-            self.searchable = Some(String::new());
-            self.refilter();
-        }
+        self.searchable.reset();
         let original = self.values.iter().position(|(k, _)| k == value);
-        let filtered_pos = original.and_then(|orig_idx| {
-            self.filtered
-                .iter()
-                .position(|(filter_idx, _)| *filter_idx == orig_idx)
-        });
-        self.list_state.select(filtered_pos);
+        let position = self.searchable.filtered_index_of(original);
+        self.list_state.select(position);
     }
 
     fn refilter(&mut self) {
-        let values = self
-            .values
-            .iter()
-            .map(|(_, v)| v.as_str())
-            .collect::<Vec<_>>();
-        let filtered = fuzzy_search(&values, self.searchable.as_ref().map_or("", |v| v));
-        self.filtered = filtered
-            .into_iter()
-            .map(|f| (f.index, f.positions))
-            .collect();
+        let values_iter = self.values.iter().map(|(_, v)| v.as_str());
+        self.searchable.refilter(values_iter);
     }
 
     pub(crate) fn special_key_handled(&self) -> Vec<KeyCode> {
-        if self.searchable.as_ref().is_some_and(|q| !q.is_empty()) {
+        if self.searchable.has_query() {
             vec![KeyCode::Esc]
         } else {
             Vec::new()
@@ -373,30 +366,11 @@ impl SelectStatus {
 
 // EVENT
 pub(crate) fn handle_input_select(key_event: KeyEvent, select: &mut SelectStatus) {
-    let mut need_refilter = false;
-    match key_event.code {
-        KeyCode::Char(c) => {
-            if let Some(ref mut query) = select.searchable {
-                query.push(c);
-                need_refilter = true;
-            }
-        }
-        KeyCode::Backspace => {
-            if let Some(ref mut query) = select.searchable {
-                need_refilter = true;
-                let _ = query.pop();
-            }
-        }
-        KeyCode::Esc => {
-            if let Some(ref mut query) = select.searchable {
-                need_refilter = true;
-                query.clear();
-            }
-        }
-        _ => select.list_state.handle_input(key_event, select.height),
-    }
+    let need_refilter = select.searchable.handle_input(key_event);
     if need_refilter {
         select.refilter();
+    } else {
+        select.list_state.handle_input(key_event, select.height);
     }
 }
 
@@ -439,17 +413,15 @@ pub(crate) fn render_select(
             area
         };
 
-    let filtered = select
-        .filtered
-        .iter()
-        .filter_map(|(idx, pos)| select.values.get(*idx).map(|(_, v)| (v, pos)))
-        .collect::<Vec<_>>();
-
     let normal = style.get(Widgets::SELECT, Parts::ITEM, field_state);
     let highlight = style.get(Widgets::SELECT, Parts::MATCH, field_state);
-    let items: Vec<Line<'_>> = filtered
-        .iter()
-        .map(|item| Line::from(make_spans(item.0, item.1, normal, highlight)))
+    let items: Vec<Line<'_>> = select
+        .searchable
+        .iter(select.values.len())
+        .map(|(idx, positions)| {
+            let text = select.values[idx].1.as_str();
+            Line::from(make_spans(text, positions, normal, highlight))
+        })
         .collect();
 
     match select.list_state {
@@ -512,8 +484,7 @@ mod select_tests {
             spacing: 2,
             preview: 2,
             scrollbar: None,
-            searchable: None,
-            filtered: (0..values.len()).map(|i| (i, vec![])).collect(),
+            searchable: Search::Disabled,
         }
     }
 
@@ -578,83 +549,21 @@ mod select_tests {
     }
 
     #[test]
-    fn selected_resolves_filtered_position_to_original_index() {
+    fn selected_clamps_stale_cursor_after_refilter() {
         let mut select = make_select(
             &[("IT", "Italia"), ("FR", "Francia"), ("DE", "Germania")],
             None,
         );
-        // simulo un filtro che ha riordinato: posizione 0 della vista
-        // filtrata punta all'originale 2, posizione 1 punta all'originale 0
-        select.filtered = vec![(2, vec![]), (0, vec![])];
-        select.list_state.select(Some(1));
 
-        assert_eq!(select.selected(), Some(0)); // indice ORIGINALE, non 1
-    }
-
-    #[test]
-    fn selected_is_none_when_filtered_is_empty() {
-        let mut select = make_select(&[("IT", "Italia"), ("FR", "Francia")], None);
-        select.filtered = vec![]; // zero match
-        select.list_state.select(Some(0));
-
-        assert_eq!(select.selected(), None);
-    }
-
-    #[test]
-    fn selected_clamps_out_of_range_list_state_to_last_filtered_entry() {
-        let mut select = make_select(
-            &[("IT", "Italia"), ("FR", "Francia"), ("DE", "Germania")],
-            None,
-        );
-        select.list_state.select(Some(usize::MAX));
-        assert_eq!(select.selected(), Some(2));
-    }
-
-    #[test]
-    fn refilter_with_empty_query_restores_full_list_in_original_order() {
-        let mut select = make_select(
-            &[("IT", "Italia"), ("FR", "Francia"), ("DE", "Germania")],
-            None,
-        );
-        select.searchable = Some(String::new());
-
-        select.refilter();
-
-        assert_eq!(select.filtered, vec![(0, vec![]), (1, vec![]), (2, vec![])]);
-    }
-
-    #[test]
-    fn refilter_with_matching_query_narrows_and_scores() {
-        let mut select = make_select(
-            &[("IT", "Italia"), ("FR", "Francia"), ("DE", "Germania")],
-            None,
-        );
-        select.searchable = Some("ger".to_owned());
-
-        select.refilter();
-
-        assert_eq!(select.filtered, vec![(2, vec![0, 1, 2])]);
-    }
-
-    #[test]
-    fn refilter_with_no_matches_empties_filtered() {
-        let mut select = make_select(&[("IT", "Italia"), ("FR", "Francia")], None);
-        select.searchable = Some("xyz".to_owned());
-
-        select.refilter();
-
-        assert_eq!(select.filtered, vec![]);
-    }
-
-    #[test]
-    fn refilter_resets_cursor_to_first_match_not_to_stale_position() {
-        let mut select = make_select(
-            &[("IT", "Italia"), ("FR", "Francia"), ("DE", "Germania")],
-            None,
-        );
+        select.searchable = Search::enabled(select.values.len());
         select.list_state.select(Some(2)); // cursore su "Germania"
 
-        select.searchable = Some("fra".to_owned()); // ora l'utente digita
+        for c in "fra".chars() {
+            select
+                .searchable
+                .handle_input(KeyEvent::new(KeyCode::Char(c), KeyModifiers::NONE));
+        }
+
         select.refilter();
 
         assert_eq!(select.selected(), Some(1)); // indice originale di Francia
@@ -668,6 +577,24 @@ mod select_tests {
             &mut select,
         );
         assert_eq!(select.list_state.selected(), Some(4));
+    }
+
+    #[test]
+    fn typing_in_search_does_not_move_cursor() {
+        let mut select = make_select(
+            &[("IT", "Italia"), ("FR", "Francia"), ("DE", "Germania")],
+            None,
+        );
+        select.searchable = Search::enabled(select.values.len());
+        select.list_state.select(Some(0));
+
+        handle_input_select(
+            KeyEvent::new(KeyCode::Char('a'), KeyModifiers::NONE),
+            &mut select,
+        );
+
+        assert_eq!(select.searchable.search_query(), Some("a"));
+        assert_eq!(select.list_state.selected(), Some(0));
     }
 }
 

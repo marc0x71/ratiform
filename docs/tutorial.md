@@ -253,6 +253,9 @@ assert_eq!(sel.selected_index(), Some(1));
 
 `sel.search_query()` returns the current query as `Some("")` before any
 character is typed, or `None` if `.searchable()` wasn't set at all.
+`sel.filtered_count()` returns how many options match that query — handy
+for a "3 matches" hint next to the field. It's the total number of options
+when the query is empty, or when the field isn't searchable at all.
 
 ## 7. Multi-select
 
@@ -314,6 +317,10 @@ FormBuilder::new()
 back, mirroring `SelectRef::search_query()`. [`examples/multi-select.rs`](../examples/multi-select.rs)
 combines both on its `Tags` field.
 
+`state.multi_select(&id).unwrap().search_query()` reads the current query
+back, mirroring `SelectRef::search_query()`. [`examples/multi-select.rs`](../examples/multi-select.rs)
+combines both on its `Tags` field.
+
 `state.value(&id)` returns every selected option's value joined into one
 comma-separated `String` (e.g. `"bug,docs"`) — handy for storing as a single
 field, but usually not what you want to iterate over. `state.multi_select(&id)`
@@ -331,6 +338,11 @@ let tags: Vec<&str> = state
 `selected()` gives the raw selected indices. Because values are joined with
 `,`, an option whose own value contains a comma is rejected at `build()`
 time — see [`InvalidMultiSelectValue`](#16-handling-build-errors).
+
+`selected_index()` is the odd one out: it's the option under the cursor,
+not part of the selection, and always an index into the original list of
+options — even while the list is filtered by a query or reordered by
+`.pinnable()`.
 
 A complete program built around this field kind is
 [`examples/multi-select.rs`](../examples/multi-select.rs).
