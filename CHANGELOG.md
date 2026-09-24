@@ -28,6 +28,11 @@ for `0.x` releases (a breaking change bumps the minor version, not the patch).
   search query or reordered by `pinnable()`.
 - The doc comments of `SelectRef::selected_value()` and
   `SelectRef::selected_label()` were swapped.
+- Searchable `Select`/`MultiSelect` with `.scrollbar(true)`: while a search
+  query was active, the scrollbar measured the full list of options but
+  positioned itself within the filtered one, so it showed the wrong
+  position (typically far too high). It now tracks the list as shown,
+  including checked options kept visible by `pinnable()`.
 
 ## [0.7.0] - 2026-09-20
 

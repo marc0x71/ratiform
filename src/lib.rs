@@ -496,7 +496,7 @@ mod form_state_tests {
                 lines: Vec::new(),
                 placeholder: None,
                 visible_height: 0,
-                scrollbar: None,
+                scrollbar: false,
             }),
             options: FieldOptions {
                 required: None,

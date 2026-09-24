@@ -70,11 +70,7 @@ impl<T: PartialEq> TextAreaBuilder<T> {
                 lines: Vec::new(),
                 placeholder: self.placeholder,
                 visible_height: 0,
-                scrollbar: if self.scrollbar {
-                    Some(ScrollbarState::new(0))
-                } else {
-                    None
-                },
+                scrollbar: self.scrollbar,
             }),
             options: self.options,
             error: None,
@@ -148,7 +144,7 @@ pub struct TextAreaStatus {
     pub(crate) lines: Vec<(usize, String)>,
     pub(crate) placeholder: Option<String>,
     pub(crate) visible_height: u16,
-    pub(crate) scrollbar: Option<ScrollbarState>,
+    pub(crate) scrollbar: bool,
 }
 
 impl TextAreaStatus {
@@ -303,7 +299,7 @@ pub(crate) fn render_textarea(
 ) -> Option<(u16, u16)> {
     let mut text_style = style.get(Widgets::SINGLE_LINE, Parts::TEXT, state);
 
-    let scrollbar_gap = if text_area.scrollbar.is_some() { 1 } else { 0 };
+    let scrollbar_gap = if text_area.scrollbar { 1 } else { 0 };
     text_area.lines = wrap_text(
         &text_area.value,
         area.width.saturating_sub(scrollbar_gap) as usize,
@@ -333,8 +329,8 @@ pub(crate) fn render_textarea(
 
     value.render(area, buf);
 
-    if let Some(ref mut scroll_state) = text_area.scrollbar {
-        *scroll_state = ScrollbarState::new(text_area.lines.len())
+    if text_area.scrollbar {
+        let mut scroll_state = ScrollbarState::new(text_area.lines.len())
             .viewport_content_length(area.height as usize)
             .position(row as usize);
 
@@ -342,7 +338,7 @@ pub(crate) fn render_textarea(
             .begin_symbol(Some("↑"))
             .end_symbol(Some("↓"));
 
-        scrollbar.render(area, buf, scroll_state);
+        scrollbar.render(area, buf, &mut scroll_state);
     }
 
     Some((area.x + col, area.y + row.saturating_sub(scroll_y)))
@@ -607,7 +603,7 @@ mod coordinate_tests {
                 .collect(),
             placeholder: None,
             visible_height: 5,
-            scrollbar: None,
+            scrollbar: false,
         }
     }
 
@@ -674,7 +670,7 @@ mod editing_tests {
             lines: Vec::new(),
             placeholder: None,
             visible_height: 0,
-            scrollbar: None,
+            scrollbar: false,
         }
     }
 

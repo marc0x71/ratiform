@@ -234,11 +234,7 @@ impl<T: PartialEq> MultiSelectBuilder<T> {
                 selected,
                 spacing: self.spacing,
                 preview: self.preview,
-                scrollbar: if self.scrollbar {
-                    Some(ScrollbarState::new(len))
-                } else {
-                    None
-                },
+                scrollbar: self.scrollbar,
                 pinnable: self.pinnable,
                 order: (0..len).collect(),
                 searchable: if self.searchable {
@@ -347,7 +343,7 @@ pub struct MultiSelectStatus {
     pub(crate) unselected_symbol: String,
     pub(crate) spacing: usize,
     pub(crate) preview: usize,
-    pub(crate) scrollbar: Option<ScrollbarState>,
+    pub(crate) scrollbar: bool,
     pub(crate) pinnable: bool,
     pub(crate) order: Vec<usize>,
     pub(crate) searchable: Search,
@@ -492,15 +488,15 @@ pub(crate) fn render_multiselect(
     style: &FormStyle,
     field_state: States,
 ) -> Option<(u16, u16)> {
-    let list_area =
-        if select.scrollbar.is_some() && matches!(select.list_state, StateDirection::Vertical(_)) {
-            Rect {
-                width: area.width.saturating_sub(1),
-                ..area
-            }
-        } else {
-            area
-        };
+    let list_area = if select.scrollbar && matches!(select.list_state, StateDirection::Vertical(_))
+    {
+        Rect {
+            width: area.width.saturating_sub(1),
+            ..area
+        }
+    } else {
+        area
+    };
 
     let mut items: Vec<Line<'_>> = Vec::new();
 
@@ -549,7 +545,9 @@ pub(crate) fn render_multiselect(
         }
     }
 
-    if let Some(ref mut scroll_state) = select.scrollbar {
+    if select.scrollbar {
+        // The selection must be read after the list render, which clamps an
+        // out-of-range index (e.g. `usize::MAX` from `select_last()`).
         let (orientation, selected, [begin_sym, end_sym]) = match &select.list_state {
             StateDirection::Horizontal(list_state) => (
                 ScrollbarOrientation::HorizontalBottom,
@@ -562,14 +560,14 @@ pub(crate) fn render_multiselect(
                 ["↑", "↓"],
             ),
         };
-        *scroll_state = ScrollbarState::new(select.values.len()).position(selected);
+        let mut scroll_state = ScrollbarState::new(select.view.len()).position(selected);
 
         let scrollbar = Scrollbar::new(orientation)
             .style(style.get(Widgets::MULTI_SELECT, Parts::ITEM, field_state))
             .begin_symbol(Some(begin_sym))
             .end_symbol(Some(end_sym));
 
-        scrollbar.render(area, buf, scroll_state);
+        scrollbar.render(area, buf, &mut scroll_state);
     }
 
     None
@@ -618,7 +616,7 @@ mod test_helpers {
             selected: vec![false; values.len()],
             spacing: 2,
             preview: 2,
-            scrollbar: None,
+            scrollbar: false,
             pinnable,
             order: (0..values.len()).collect(),
             searchable: Search::Disabled,
