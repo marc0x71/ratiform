@@ -7,6 +7,21 @@ for `0.x` releases (a breaking change bumps the minor version, not the patch).
 
 ## [Unreleased]
 
+### Added
+- `SelectRef::filtered_count()` and `MultiSelectRef::filtered_count()`: the
+  number of options matching the current search query (the total number of
+  options when the query is empty or the field isn't searchable). On a
+  `MultiSelect` with `pinnable()`, checked options kept visible without
+  matching the query are not counted.
+
+### Fixed
+- `MultiSelectRef::selected_index()` returned the cursor's position in the
+  list as currently shown, instead of the index of the option under it in
+  the original list. The two differ whenever the list is filtered by a
+  search query or reordered by `pinnable()`.
+- The doc comments of `SelectRef::selected_value()` and
+  `SelectRef::selected_label()` were swapped.
+
 ## [0.7.0] - 2026-09-20
 
 ### Added
