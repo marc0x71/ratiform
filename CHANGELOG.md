@@ -7,6 +7,8 @@ for `0.x` releases (a breaking change bumps the minor version, not the patch).
 
 ## [Unreleased]
 
+## [0.7.1] - 2026-10-11
+
 ### Added
 - `SelectRef::filtered_count()` and `MultiSelectRef::filtered_count()`: the
   number of options matching the current search query (the total number of
@@ -33,6 +35,16 @@ for `0.x` releases (a breaking change bumps the minor version, not the patch).
   positioned itself within the filtered one, so it showed the wrong
   position (typically far too high). It now tracks the list as shown,
   including checked options kept visible by `pinnable()`.
+- Default theme: the chosen option of a `Select` looked exactly like the
+  others whenever the field didn't have the focus (normal, read-only and
+  disabled states), so the choice disappeared as soon as the focus moved
+  on. It is now underlined in those states; the focused look (reversed)
+  is unchanged.
+- `TextArea` looked its styles up under `Widgets::SINGLE_LINE` instead of
+  `Widgets::TEXT_AREA`: rules written for `Widgets::TEXT_AREA` were
+  ignored, and rules written only for `Widgets::SINGLE_LINE` applied to
+  text areas too. The default theme is unaffected; custom themes that
+  relied on the old behavior must now target `Widgets::TEXT_AREA` as well.
 
 ## [0.7.0] - 2026-09-20
 

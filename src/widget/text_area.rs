@@ -297,7 +297,7 @@ pub(crate) fn render_textarea(
     style: &FormStyle,
     state: States,
 ) -> Option<(u16, u16)> {
-    let mut text_style = style.get(Widgets::SINGLE_LINE, Parts::TEXT, state);
+    let mut text_style = style.get(Widgets::TEXT_AREA, Parts::TEXT, state);
 
     let scrollbar_gap = if text_area.scrollbar { 1 } else { 0 };
     text_area.lines = wrap_text(
@@ -315,7 +315,7 @@ pub(crate) fn render_textarea(
         && display.is_empty()
     {
         display = vec![Line::from(placeholder.clone())];
-        text_style = style.get(Widgets::SINGLE_LINE, Parts::PLACEHOLDER, state);
+        text_style = style.get(Widgets::TEXT_AREA, Parts::PLACEHOLDER, state);
     }
 
     let (col, row) = calculate_coordinate(text_area);
@@ -324,7 +324,7 @@ pub(crate) fn render_textarea(
 
     let value = Paragraph::new(display)
         .style(text_style)
-        .block(Block::default().style(style.get(Widgets::SINGLE_LINE, Parts::AREA, state)))
+        .block(Block::default().style(style.get(Widgets::TEXT_AREA, Parts::AREA, state)))
         .scroll((scroll_y, 0));
 
     value.render(area, buf);

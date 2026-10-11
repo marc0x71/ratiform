@@ -324,12 +324,14 @@ impl FormStyle {
 
 impl Default for FormStyle {
     /// The built-in theme: gray text everywhere, bold when a field has
-    /// focus, reversed for the active row of a `Select`/`MultiSelect`,
+    /// focus, reversed for the active row of a focused `Select`/`MultiSelect`,
     /// a dark background box for a focused `SingleLine`/`TextArea`, and
-    /// a bold marker for `MultiSelect`. Disabled fields cross out
-    /// uniformly across every part. Errors are red and bold; placeholders
-    /// are gray and italic. Every widget/part/state combination has a
-    /// value — build your own with [`FormStyle::builder`] for full
+    /// a bold marker for `MultiSelect`. A `Select` keeps its chosen option
+    /// underlined while it isn't focused (including read-only and disabled),
+    /// so the choice stays visible after the focus moves on. Disabled fields
+    /// cross out uniformly across every part. Errors are red and bold;
+    /// placeholders are gray and italic. Every widget/part/state combination
+    /// has a value — build your own with [`FormStyle::builder`] for full
     /// control.
     fn default() -> Self {
         let normal = Style::default().fg(Color::Gray);
@@ -368,6 +370,12 @@ impl Default for FormStyle {
                 Parts::ITEM,
                 States::FOCUSED,
                 normal.bold(),
+            )
+            .add(
+                Widgets::SELECT,
+                Parts::ACTIVE,
+                States::NORMAL | States::READ_ONLY | States::DISABLED,
+                normal.underlined(),
             )
             // MARKER dedicated to MULTI_SELECT: bold in every non-disabled state
             .add(
